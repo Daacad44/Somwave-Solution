@@ -1,0 +1,35 @@
+# Local development infrastructure (SYSTEM_PROMPT §4). Postgres 16 with pgvector
+# and Redis 7. Production runs these as Coolify services on the internal network
+# (§14) — this file is for local/staging developer use only.
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: somwave
+      POSTGRES_PASSWORD: somwave
+      POSTGRES_DB: somwave
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U somwave']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+  redisdata:
