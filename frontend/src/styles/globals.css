@@ -9,7 +9,8 @@ body {
   font-family: system-ui, sans-serif;
 }
 
-.app-shell {
+.app-shell,
+.auth-shell {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -17,4 +18,33 @@ body {
   justify-content: center;
   gap: 8px;
   text-align: center;
+}
+
+.auth-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 320px;
+  text-align: start;
+}
+
+.auth-card input {
+  padding: 8px;
+  font: inherit;
+}
+
+.auth-card button {
+  margin-top: 8px;
+  padding: 10px;
+  font: inherit;
+  min-height: 44px;
+}
+
+.field-error,
+.form-error {
+  margin: 0;
+  font-size: 14px;
+  /* Adopts the design token when tokens.css lands in F0.4 (§8: --color-error). */
+  color: var(--color-error, #dc2626);
 }
