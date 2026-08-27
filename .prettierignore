@@ -1,0 +1,11 @@
+node_modules/
+dist/
+build/
+.astro/
+coverage/
+*.tsbuildinfo
+package-lock.json
+
+# Authoritative spec — kept verbatim as delivered
+CLAUDE.md
+docs/
