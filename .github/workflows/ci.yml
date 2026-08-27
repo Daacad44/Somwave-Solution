@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: typecheck · lint · test · build
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: somwave
+          POSTGRES_PASSWORD: somwave
+          POSTGRES_DB: somwave
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U somwave"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://somwave:somwave@localhost:5432/somwave
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ci-jwt-secret-not-for-production-0000000000
+      CORS_ORIGINS: http://localhost:5173,http://localhost:4321
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # Runs the backend postinstall (prisma generate) as part of the install.
+      - name: Install
+        run: npm ci
+
+      # Apply the committed migration to the CI database, then run the idempotent seed.
+      - name: Apply migration
+        run: npm run prisma:migrate --workspace @somwave/backend
+
+      - name: Seed
+        run: npm run db:seed --workspace @somwave/backend
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Test
+        run: npm run coverage
+
+      - name: Build
+        run: npm run build
