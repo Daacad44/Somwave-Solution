@@ -6,10 +6,11 @@ import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { pinoHttp } from 'pino-http';
-import rateLimit from 'express-rate-limit';
 import { corsOrigins } from './lib/env';
 import { logger } from './lib/logger';
+import { apiRateLimiter } from './middleware/rateLimit';
 import { healthRouter } from './routes/health.routes';
+import { authRouter } from './routes/auth.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 export function createApp(): Express {
@@ -27,16 +28,10 @@ export function createApp(): Express {
 
   app.use(healthRouter);
 
-  app.use(
-    rateLimit({
-      windowMs: 60_000,
-      limit: 100,
-      standardHeaders: 'draft-7',
-      legacyHeaders: false,
-    }),
-  );
+  app.use(apiRateLimiter);
 
-  // Feature routers mount under /api/v1 from F0.3 onward.
+  // Feature routers mount under /api/v1.
+  app.use('/api/v1/auth', authRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
