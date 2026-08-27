@@ -14,6 +14,8 @@ export default tseslint.config(
       '**/coverage/**',
       '**/*.config.js',
       '**/*.config.ts',
+      '**/*.config.mjs',
+      '**/*.astro',
     ],
   },
   js.configs.recommended,
@@ -26,6 +28,12 @@ export default tseslint.config(
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
     },
+  },
+  {
+    // Triple-slash references are idiomatic in ambient .d.ts files (Vite and
+    // Astro generate them).
+    files: ['**/*.d.ts'],
+    rules: { '@typescript-eslint/triple-slash-reference': 'off' },
   },
   prettier,
 );
