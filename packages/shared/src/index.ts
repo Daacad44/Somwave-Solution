@@ -3,5 +3,10 @@
 //
 // Modules are re-exported here as they land:
 //   F0.2 — constants/errorCodes (the API envelope's error-code union)
-//   F0.3 — schemas/, types/, remaining constants (permissions, limits, pagination)
+//   F0.3 — constants/roles, permissions, pagination, limits
+//   later — schemas/, types/ (per feature)
 export * from './constants/errorCodes';
+export * from './constants/roles';
+export * from './constants/permissions';
+export * from './constants/pagination';
+export * from './constants/limits';

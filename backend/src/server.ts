@@ -4,6 +4,7 @@ import { createApp } from './app';
 import { env } from './lib/env';
 import { logger } from './lib/logger';
 import { redis } from './lib/redis';
+import { prisma } from './lib/prisma';
 
 const app = createApp();
 
@@ -14,7 +15,7 @@ const server = app.listen(env.PORT, () => {
 function shutdown(signal: string): void {
   logger.info(`${signal} received — shutting down`);
   server.close(() => {
-    void redis.quit().finally(() => process.exit(0));
+    void Promise.allSettled([redis.quit(), prisma.$disconnect()]).finally(() => process.exit(0));
   });
 }
 
