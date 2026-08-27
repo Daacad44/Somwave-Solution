@@ -1,0 +1,20 @@
+/* Minimal bootstrap styling only. The design system (tokens.css, palette,
+   typography) lands in F0.4 (SYSTEM_PROMPT §8, §6). */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+}

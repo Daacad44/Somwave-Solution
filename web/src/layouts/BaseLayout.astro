@@ -1,0 +1,20 @@
+---
+// Base HTML shell for public pages (SYSTEM_PROMPT §6: layouts/BaseLayout.astro).
+// Shared tokens.css and full head/meta land with the design system in F0.4.
+interface Props {
+  title: string;
+}
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="so">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
