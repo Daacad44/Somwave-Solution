@@ -1,5 +1,12 @@
 // Users & roles feature API (I1, §6: features/<feature>/api.ts → apiClient).
-import type { AdminUser, AdminRole, CreateUserInput, UpdateUserInput } from '@somwave/shared';
+import type {
+  AdminUser,
+  AdminRole,
+  CreateUserInput,
+  UpdateUserInput,
+  RoleDetail,
+  Permission,
+} from '@somwave/shared';
 import { apiFetch, apiFetchPaged, type PaginationMeta } from '../../lib/apiClient';
 
 export interface ListUsersParams {
@@ -33,4 +40,21 @@ export function updateUser(id: string, input: UpdateUserInput): Promise<AdminUse
 
 export function deactivateUser(id: string): Promise<{ success: boolean }> {
   return apiFetch<{ success: boolean }>(`/users/${id}`, { method: 'DELETE' });
+}
+
+// ── Roles & permissions (I1.2) ────────────────────────────────────────────────
+
+export function getRole(id: string): Promise<RoleDetail> {
+  return apiFetch<RoleDetail>(`/roles/${id}`);
+}
+
+export function listPermissions(): Promise<Permission[]> {
+  return apiFetch<Permission[]>('/permissions');
+}
+
+export function setRolePermissions(id: string, permissionKeys: string[]): Promise<RoleDetail> {
+  return apiFetch<RoleDetail>(`/roles/${id}/permissions`, {
+    method: 'PUT',
+    body: JSON.stringify({ permissionKeys }),
+  });
 }
