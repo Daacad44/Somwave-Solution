@@ -7,6 +7,10 @@ export const PERMISSIONS = {
   USERS_DELETE: 'users.delete',
   ROLES_READ: 'roles.read',
   ROLES_MANAGE: 'roles.manage',
+  PROJECTS_READ: 'projects.read',
+  PROJECTS_CREATE: 'projects.create',
+  PROJECTS_UPDATE: 'projects.update',
+  PROJECTS_DELETE: 'projects.delete',
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

@@ -13,6 +13,7 @@ import { healthRouter } from './routes/health.routes';
 import { authRouter } from './routes/auth.routes';
 import { publicRouter } from './routes/public.routes';
 import { usersRouter, rolesRouter, permissionsRouter } from './routes/user.routes';
+import { projectsRouter } from './routes/project.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 export function createApp(): Express {
@@ -38,6 +39,7 @@ export function createApp(): Express {
   app.use('/api/v1/users', usersRouter);
   app.use('/api/v1/roles', rolesRouter);
   app.use('/api/v1/permissions', permissionsRouter);
+  app.use('/api/v1/projects', projectsRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
