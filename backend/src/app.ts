@@ -16,6 +16,7 @@ import { usersRouter, rolesRouter, permissionsRouter } from './routes/user.route
 import { projectsRouter } from './routes/project.routes';
 import { tasksRouter } from './routes/task.routes';
 import { milestonesRouter } from './routes/milestone.routes';
+import { cmsRouter } from './routes/cms.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 export function createApp(): Express {
@@ -44,6 +45,7 @@ export function createApp(): Express {
   app.use('/api/v1/projects', projectsRouter);
   app.use('/api/v1/tasks', tasksRouter);
   app.use('/api/v1/milestones', milestonesRouter);
+  app.use('/api/v1/cms', cmsRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -19,6 +19,11 @@ export const PERMISSIONS = {
   MILESTONES_CREATE: 'milestones.create',
   MILESTONES_UPDATE: 'milestones.update',
   MILESTONES_DELETE: 'milestones.delete',
+  // CMS content (W4) — the EDITOR role manages website content.
+  CONTENT_READ: 'content.read',
+  CONTENT_CREATE: 'content.create',
+  CONTENT_UPDATE: 'content.update',
+  CONTENT_DELETE: 'content.delete',
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
