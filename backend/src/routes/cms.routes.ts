@@ -1,7 +1,13 @@
 // CMS routes (W4, §9, §10). Authenticated content management, gated behind the
 // content.* permissions (held by EDITOR). Mounted under /api/v1/cms.
 import { Router } from 'express';
-import { createServiceSchema, updateServiceSchema, PERMISSIONS } from '@somwave/shared';
+import {
+  createServiceSchema,
+  updateServiceSchema,
+  createPostSchema,
+  updatePostSchema,
+  PERMISSIONS,
+} from '@somwave/shared';
 import { requireAuth } from '../middleware/auth';
 import { rbac } from '../middleware/rbac';
 import { validate } from '../middleware/validate';
@@ -25,3 +31,20 @@ cmsRouter.patch(
   cmsController.updateService,
 );
 cmsRouter.delete('/services/:id', rbac(PERMISSIONS.CONTENT_DELETE), cmsController.deleteService);
+
+cmsRouter.get('/categories', rbac(PERMISSIONS.CONTENT_READ), cmsController.listCategories);
+
+cmsRouter.get('/posts', rbac(PERMISSIONS.CONTENT_READ), cmsController.listPosts);
+cmsRouter.post(
+  '/posts',
+  rbac(PERMISSIONS.CONTENT_CREATE),
+  validate(createPostSchema),
+  cmsController.createPost,
+);
+cmsRouter.patch(
+  '/posts/:id',
+  rbac(PERMISSIONS.CONTENT_UPDATE),
+  validate(updatePostSchema),
+  cmsController.updatePost,
+);
+cmsRouter.delete('/posts/:id', rbac(PERMISSIONS.CONTENT_DELETE), cmsController.deletePost);
