@@ -58,4 +58,10 @@
     font-size: 14px;
     color: var(--color-error);
   }
+
+  /* Modal scrim — ink at 50% (mirrors the §8 shadow tokens; Tailwind can't
+     alpha a CSS-variable hex, so it lives here in the design layer). */
+  .modal-overlay {
+    background: rgb(15 23 42 / 0.5);
+  }
 }

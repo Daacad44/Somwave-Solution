@@ -5,7 +5,14 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['backend/**/*.test.ts', 'packages/shared/**/*.test.ts', 'frontend/**/*.test.ts'],
+    // Enables Testing Library's automatic DOM cleanup between component tests.
+    globals: true,
+    setupFiles: ['./vitest.setup.ts'],
+    include: [
+      'backend/**/*.test.ts',
+      'packages/shared/**/*.test.ts',
+      'frontend/**/*.test.{ts,tsx}',
+    ],
     env: {
       NODE_ENV: 'test',
       DATABASE_URL: 'postgresql://somwave:somwave@localhost:5432/somwave',
