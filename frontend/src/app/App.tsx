@@ -19,6 +19,9 @@ const ProjectsPage = lazy(() =>
 const TasksPage = lazy(() =>
   import('../features/tasks/TasksPage').then((m) => ({ default: m.TasksPage })),
 );
+const MilestonesPage = lazy(() =>
+  import('../features/milestones/MilestonesPage').then((m) => ({ default: m.MilestonesPage })),
+);
 
 // Placeholder authenticated landing. Real feature routes (lazy) mount under the
 // AppShell as they land (SYSTEM_PROMPT §6, §16).
@@ -68,6 +71,14 @@ export function App(): ReactNode {
             element={
               <Suspense fallback={<LoadingState rows={6} />}>
                 <TasksPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/milestones"
+            element={
+              <Suspense fallback={<LoadingState rows={6} />}>
+                <MilestonesPage />
               </Suspense>
             }
           />
