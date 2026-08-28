@@ -95,3 +95,21 @@ model RefreshToken {
   @@index([userId])
   @@map("refresh_tokens")
 }
+
+// ── Website (web.prisma domain, §7) ──────────────────────────────────────────
+
+model Service {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  summary     String
+  description String?
+  icon        String?
+  order       Int      @default(0)
+  isPublished Boolean  @default(true) @map("is_published")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([isPublished, order])
+  @@map("services")
+}
