@@ -17,6 +17,9 @@ const shared = {
 
 export const apiRateLimiter = rateLimit({ windowMs: 60_000, limit: 100, ...shared });
 
+// Public website endpoints (unauthenticated) get their own, tighter budget.
+export const publicRateLimiter = rateLimit({ windowMs: 60_000, limit: 60, ...shared });
+
 // By client IP.
 export const loginIpRateLimiter = rateLimit({ windowMs: 15 * 60_000, limit: 20, ...shared });
 

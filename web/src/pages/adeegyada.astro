@@ -1,0 +1,53 @@
+---
+// Data-driven services page (W2). Server-rendered on request so the list is
+// always current — it reads /api/v1/public/services (SYSTEM_PROMPT §5, §10).
+export const prerender = false;
+
+import PageLayout from '../layouts/PageLayout.astro';
+import ServiceCard from '../components/ServiceCard.astro';
+import { fetchServices } from '../lib/api';
+import type { PublicService } from '@somwave/shared';
+
+let services: PublicService[] = [];
+let failed = false;
+try {
+  services = await fetchServices();
+} catch {
+  failed = true;
+}
+---
+
+<PageLayout
+  title="Adeegyada — Somwave"
+  description="Adeegyada Somwave: horumarinta websaydka, nidaamyo gudaha ah, iyo barnaamijyo mobil."
+>
+  <section class="mx-auto max-w-content px-4 py-20 sm:px-6">
+    <div class="max-w-2xl">
+      <p class="text-sm font-semibold uppercase tracking-[0.14em] text-accent-600">Adeegyada</p>
+      <h1 class="mt-2 text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
+        Waxa aan kuu qaban karno
+      </h1>
+      <p class="mt-4 text-lg leading-relaxed text-muted">
+        Adeegyada aan bixinno si aad ganacsigaaga online ugu koriso.
+      </p>
+    </div>
+
+    {
+      failed ? (
+        <p class="mt-10 rounded-lg border border-border bg-surface-alt p-6 text-muted">
+          Cilad ayaa dhacday markii adeegyada la soo raadinayay. Fadlan mar kale isku day.
+        </p>
+      ) : services.length === 0 ? (
+        <p class="mt-10 rounded-lg border border-border bg-surface-alt p-6 text-muted">
+          Weli adeegyo lama daabicin.
+        </p>
+      ) : (
+        <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {services.map((service) => (
+            <ServiceCard title={service.title} description={service.summary} />
+          ))}
+        </div>
+      )
+    }
+  </section>
+</PageLayout>

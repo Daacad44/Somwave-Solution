@@ -29,6 +29,34 @@ async function main(): Promise<void> {
     data: { permissions: { set: permissions.map((permission) => ({ id: permission.id })) } },
   });
 
+  // Website services shown on the public site (managed from the CMS later).
+  const services = [
+    {
+      slug: 'horumarinta-websaydka',
+      title: 'Horumarinta Websaydka',
+      summary:
+        'Website-yo dhaqso ah oo naqshadeysan, ku habboon mobil iyo kombuyuutar, oo Google si fiican u arko.',
+      order: 1,
+    },
+    {
+      slug: 'nidaamyo-gudaha',
+      title: 'Nidaamyo Gudaha ah',
+      summary:
+        'Nidaamyo maamul oo mashruuc, shaqaale, iyo maaliyad hal meel isugu keena — Excel iyo WhatsApp ka bax.',
+      order: 2,
+    },
+    {
+      slug: 'barnaamijyo-mobil',
+      title: 'Barnaamijyo Mobil',
+      summary:
+        'Apps iOS iyo Android ah oo isku xiran API-gaaga, adeeggaaga macaamiisha kuu fududeeya.',
+      order: 3,
+    },
+  ];
+  for (const service of services) {
+    await prisma.service.upsert({ where: { slug: service.slug }, update: {}, create: service });
+  }
+
   // Super-admin user — only when a password is provided; never a hardcoded one.
   const email = process.env.SEED_ADMIN_EMAIL ?? 'admin@somwave.com';
   const password = process.env.SEED_ADMIN_PASSWORD;
