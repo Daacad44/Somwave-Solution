@@ -1,7 +1,12 @@
 // The website's client for the public API (SYSTEM_PROMPT §6). Unwraps the
 // standard { data } envelope (§10). Reads run from SSR pages; submitInquiry runs
 // in the browser.
-import type { CreateInquiryInput, PublicService } from '@somwave/shared';
+import type {
+  CreateInquiryInput,
+  PublicPortfolioDetail,
+  PublicPortfolioItem,
+  PublicService,
+} from '@somwave/shared';
 
 const API_URL = import.meta.env.PUBLIC_API_URL;
 
@@ -14,6 +19,18 @@ async function getData<T>(path: string): Promise<T> {
 
 export function fetchServices(): Promise<PublicService[]> {
   return getData<PublicService[]>('/public/services');
+}
+
+export function fetchPortfolio(): Promise<PublicPortfolioItem[]> {
+  return getData<PublicPortfolioItem[]>('/public/portfolio');
+}
+
+export async function fetchPortfolioItem(slug: string): Promise<PublicPortfolioDetail | null> {
+  try {
+    return await getData<PublicPortfolioDetail>(`/public/portfolio/${encodeURIComponent(slug)}`);
+  } catch {
+    return null;
+  }
 }
 
 export async function submitInquiry(

@@ -13,3 +13,4 @@ export * from './constants/limits';
 export * from './schemas/auth';
 export * from './schemas/service';
 export * from './schemas/inquiry';
+export * from './schemas/portfolio';

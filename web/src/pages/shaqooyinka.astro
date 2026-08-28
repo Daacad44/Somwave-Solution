@@ -1,0 +1,58 @@
+---
+// Portfolio listing (W3.1). SSR — reads /api/v1/public/portfolio at request time.
+export const prerender = false;
+
+import PageLayout from '../layouts/PageLayout.astro';
+import PortfolioCard from '../components/PortfolioCard.astro';
+import { fetchPortfolio } from '../lib/api';
+import type { PublicPortfolioItem } from '@somwave/shared';
+
+let items: PublicPortfolioItem[] = [];
+let failed = false;
+try {
+  items = await fetchPortfolio();
+} catch {
+  failed = true;
+}
+---
+
+<PageLayout
+  title="Shaqooyinka — Somwave"
+  description="Shaqooyinka Somwave — mashruucyo dhab ah oo aan u dhisnay macaamiil kala duwan."
+>
+  <section class="mx-auto max-w-content px-4 py-20 sm:px-6">
+    <div class="max-w-2xl">
+      <p class="text-sm font-semibold uppercase tracking-[0.14em] text-accent-600">Shaqooyinka</p>
+      <h1 class="mt-2 text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
+        Mashruucyo aan ku faanno
+      </h1>
+      <p class="mt-4 text-lg leading-relaxed text-muted">
+        Qaar ka mid ah shaqooyinkii ugu dambeeyay ee aan u dhisnay macaamiisheena.
+      </p>
+    </div>
+
+    {
+      failed ? (
+        <p class="mt-10 rounded-lg border border-border bg-surface-alt p-6 text-muted">
+          Cilad ayaa dhacday markii shaqooyinka la soo raadinayay. Fadlan mar kale isku day.
+        </p>
+      ) : items.length === 0 ? (
+        <p class="mt-10 rounded-lg border border-border bg-surface-alt p-6 text-muted">
+          Weli shaqooyin lama daabicin.
+        </p>
+      ) : (
+        <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((item) => (
+            <PortfolioCard
+              slug={item.slug}
+              title={item.title}
+              summary={item.summary}
+              client={item.client}
+              coverImage={item.coverImage}
+            />
+          ))}
+        </div>
+      )
+    }
+  </section>
+</PageLayout>

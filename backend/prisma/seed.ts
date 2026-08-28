@@ -57,6 +57,35 @@ async function main(): Promise<void> {
     await prisma.service.upsert({ where: { slug: service.slug }, update: {}, create: service });
   }
 
+  // Portfolio items shown on the public site (managed from the CMS later).
+  const portfolio = [
+    {
+      slug: 'nidaamka-maamulka-iskuulka',
+      title: 'Nidaamka Maamulka Iskuulka',
+      summary: 'Nidaam buuxa oo maamula ardayda, lacag-bixinta, iyo natiijooyinka.',
+      description:
+        'Waxaan u dhisnay iskuul weyn nidaam maamul oo casri ah — diiwaangelinta ardayda, lacag-bixinta, iyo warbixinnada — oo dhammaan hal meel ka shaqeeya.',
+      client: 'Iskuul Gaar ah',
+      order: 1,
+    },
+    {
+      slug: 'app-dhaqaale-mobil',
+      title: 'App Dhaqaale Mobil',
+      summary: 'Barnaamij mobil oo macaamiisha u sahla lacag-bixin iyo la-socod.',
+      description:
+        'App iOS iyo Android ah oo isku xiran API ammaan ah, macaamiishu ku bixin karaan biilasha oo ay la socon karaan mashruucyadooda.',
+      client: 'Shirkad Dhaqaale',
+      order: 2,
+    },
+  ];
+  for (const item of portfolio) {
+    await prisma.portfolioItem.upsert({
+      where: { slug: item.slug },
+      update: {},
+      create: { ...item, publishedAt: new Date() },
+    });
+  }
+
   // Super-admin user — only when a password is provided; never a hardcoded one.
   const email = process.env.SEED_ADMIN_EMAIL ?? 'admin@somwave.com';
   const password = process.env.SEED_ADMIN_PASSWORD;
