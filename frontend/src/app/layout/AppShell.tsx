@@ -13,6 +13,7 @@ export function AppShell(): ReactNode {
   const logout = useLogout();
   const navigate = useNavigate();
   const canReadUsers = useHasPermission(PERMISSIONS.USERS_READ);
+  const canReadRoles = useHasPermission(PERMISSIONS.ROLES_READ);
 
   const onLogout = async (): Promise<void> => {
     await logout.mutateAsync();
@@ -50,6 +51,11 @@ export function AppShell(): ReactNode {
           {canReadUsers ? (
             <NavLink to="/users" className={navLinkClass}>
               Isticmaalayaasha
+            </NavLink>
+          ) : null}
+          {canReadRoles ? (
+            <NavLink to="/roles" className={navLinkClass}>
+              Doorar &amp; rukhsado
             </NavLink>
           ) : null}
         </nav>

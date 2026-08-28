@@ -10,6 +10,9 @@ import { LoadingState } from '../components/states';
 const UsersPage = lazy(() =>
   import('../features/users-roles/UsersPage').then((m) => ({ default: m.UsersPage })),
 );
+const RolesPage = lazy(() =>
+  import('../features/users-roles/RolesPage').then((m) => ({ default: m.RolesPage })),
+);
 
 // Placeholder authenticated landing. Real feature routes (lazy) mount under the
 // AppShell as they land (SYSTEM_PROMPT §6, §16).
@@ -35,6 +38,14 @@ export function App(): ReactNode {
             element={
               <Suspense fallback={<LoadingState rows={6} />}>
                 <UsersPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/roles"
+            element={
+              <Suspense fallback={<LoadingState rows={6} />}>
+                <RolesPage />
               </Suspense>
             }
           />

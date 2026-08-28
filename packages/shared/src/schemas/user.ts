@@ -13,6 +13,29 @@ export const adminRoleSchema = z.object({
 
 export type AdminRole = z.infer<typeof adminRoleSchema>;
 
+// A permission in the RBAC vocabulary (key is `resource.action`, §5).
+export const permissionSchema = z.object({
+  id: z.string(),
+  key: z.string(),
+  description: z.string().nullable(),
+});
+
+export type Permission = z.infer<typeof permissionSchema>;
+
+// A role with its assigned permission keys (I1.2 role editor).
+export const roleDetailSchema = adminRoleSchema.extend({
+  permissions: z.array(z.string()), // permission keys
+});
+
+export type RoleDetail = z.infer<typeof roleDetailSchema>;
+
+// Replace the full permission set of a role (I1.2). Keys are validated server-side.
+export const updateRolePermissionsSchema = z.object({
+  permissionKeys: z.array(z.string()),
+});
+
+export type UpdateRolePermissionsInput = z.infer<typeof updateRolePermissionsSchema>;
+
 // A user as shown in the internal admin list/detail — never a secret field (§13).
 export const adminUserSchema = z.object({
   id: z.string(),
