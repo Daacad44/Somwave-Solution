@@ -1,13 +1,14 @@
 // Public website controller (SYSTEM_PROMPT §5). Unauthenticated; delegates to
 // services and returns the standard envelope.
 import type { NextFunction, Request, Response } from 'express';
-import type { CreateInquiryInput } from '@somwave/shared';
+import type { CreateInquiryInput, CreateJobApplicationInput } from '@somwave/shared';
 import { AppError, sendData } from '../lib/http';
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from '@somwave/shared';
 import { listPublishedServices } from '../services/service.service';
 import { createInquiry as createInquiryService } from '../services/inquiry.service';
 import { listPublishedPortfolio, getPortfolioBySlug } from '../services/portfolio.service';
 import { listPublishedPosts, getPostBySlug } from '../services/post.service';
+import { listPublishedOpenings, getOpeningBySlug, applyToOpening } from '../services/job.service';
 
 function parsePositiveInt(value: unknown, fallback: number): number {
   const parsed = typeof value === 'string' ? Number.parseInt(value, 10) : NaN;
@@ -86,6 +87,48 @@ export async function createInquiry(
       throw new AppError('VALIDATION_ERROR', 400, 'Idempotency-Key header ayaa loo baahan yahay');
     }
     const result = await createInquiryService(req.body as CreateInquiryInput, idempotencyKey);
+    sendData(res, result, 201);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getCareers(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    sendData(res, await listPublishedOpenings());
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getCareer(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { slug } = req.params;
+    const opening = slug ? await getOpeningBySlug(slug) : null;
+    if (!opening) throw new AppError('NOT_FOUND', 404, 'Fursaddan shaqo lama helin');
+    sendData(res, opening);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function applyToCareer(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { slug } = req.params;
+    const idempotencyKey = req.header('Idempotency-Key');
+    if (!slug) throw new AppError('NOT_FOUND', 404, 'Fursaddan shaqo lama helin');
+    if (!idempotencyKey) {
+      throw new AppError('VALIDATION_ERROR', 400, 'Idempotency-Key header ayaa loo baahan yahay');
+    }
+    const result = await applyToOpening(
+      slug,
+      req.body as CreateJobApplicationInput,
+      idempotencyKey,
+    );
     sendData(res, result, 201);
   } catch (err) {
     next(err);

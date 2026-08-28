@@ -3,6 +3,9 @@
 // in the browser.
 import type {
   CreateInquiryInput,
+  CreateJobApplicationInput,
+  PublicJobOpeningDetail,
+  PublicJobOpeningSummary,
   PublicPortfolioDetail,
   PublicPortfolioItem,
   PublicPostDetail,
@@ -45,6 +48,38 @@ export async function fetchPost(slug: string): Promise<PublicPostDetail | null> 
   } catch {
     return null;
   }
+}
+
+export function fetchCareers(): Promise<PublicJobOpeningSummary[]> {
+  return getData<PublicJobOpeningSummary[]>('/public/careers');
+}
+
+export async function fetchCareer(slug: string): Promise<PublicJobOpeningDetail | null> {
+  try {
+    return await getData<PublicJobOpeningDetail>(`/public/careers/${encodeURIComponent(slug)}`);
+  } catch {
+    return null;
+  }
+}
+
+export async function applyToCareer(
+  slug: string,
+  input: CreateJobApplicationInput,
+  idempotencyKey: string,
+): Promise<{ id: string }> {
+  const res = await fetch(`${API_URL}/public/careers/${encodeURIComponent(slug)}/applications`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify(input),
+  });
+  const body = (await res.json().catch(() => null)) as {
+    data?: { id: string };
+    error?: { message?: string };
+  } | null;
+  if (!res.ok || !body?.data) {
+    throw new Error(body?.error?.message ?? 'Codsigaaga lama dirin. Fadlan mar kale isku day.');
+  }
+  return body.data;
 }
 
 export async function submitInquiry(

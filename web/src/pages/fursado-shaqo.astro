@@ -1,0 +1,58 @@
+---
+// Careers listing (W3.3). SSR — reads /api/v1/public/careers at request time.
+export const prerender = false;
+
+import PageLayout from '../layouts/PageLayout.astro';
+import JobCard from '../components/JobCard.astro';
+import { fetchCareers } from '../lib/api';
+import type { PublicJobOpeningSummary } from '@somwave/shared';
+
+let openings: PublicJobOpeningSummary[] = [];
+let failed = false;
+try {
+  openings = await fetchCareers();
+} catch {
+  failed = true;
+}
+---
+
+<PageLayout
+  title="Fursado shaqo — Somwave"
+  description="Ku biir kooxda Somwave — fiiri fursadaha shaqo ee furan."
+>
+  <section class="mx-auto max-w-content px-4 py-20 sm:px-6">
+    <div class="max-w-2xl">
+      <p class="text-sm font-semibold uppercase tracking-[0.14em] text-accent-600">Fursado shaqo</p>
+      <h1 class="mt-2 text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
+        Ku biir kooxdayada
+      </h1>
+      <p class="mt-4 text-lg leading-relaxed text-muted">
+        Waxaan raadinaynaa dad karti leh oo nala dhisa tignoolajiyada. Fiiri fursadaha furan oo codso.
+      </p>
+    </div>
+
+    {
+      failed ? (
+        <p class="mt-10 rounded-lg border border-border bg-surface-alt p-6 text-muted">
+          Cilad ayaa dhacday markii fursadaha la soo raadinayay. Fadlan mar kale isku day.
+        </p>
+      ) : openings.length === 0 ? (
+        <p class="mt-10 rounded-lg border border-border bg-surface-alt p-6 text-muted">
+          Weli fursado shaqo furan ma jiraan. Dib u soo eeg dhawaan.
+        </p>
+      ) : (
+        <div class="mt-10 grid gap-6 sm:grid-cols-2">
+          {openings.map((opening) => (
+            <JobCard
+              slug={opening.slug}
+              title={opening.title}
+              location={opening.location}
+              employmentType={opening.employmentType}
+              summary={opening.summary}
+            />
+          ))}
+        </div>
+      )
+    }
+  </section>
+</PageLayout>
