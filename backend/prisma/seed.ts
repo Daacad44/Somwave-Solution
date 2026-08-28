@@ -143,6 +143,29 @@ async function main(): Promise<void> {
     });
   }
 
+  // Sample projects (I2.1) — seeded once, only when none exist yet (no natural
+  // unique key to upsert on).
+  if ((await prisma.project.count()) === 0) {
+    await prisma.project.createMany({
+      data: [
+        {
+          name: 'Nidaamka Maamulka Iskuulka',
+          description: 'Dhisidda nidaamka buuxa ee maamulka ardayda iyo lacag-bixinta.',
+          status: 'ACTIVE',
+          startDate: new Date('2026-01-15'),
+          dueDate: new Date('2026-06-30'),
+          budget: '25000.00',
+        },
+        {
+          name: 'App Dhaqaale Mobil',
+          description: 'App iOS iyo Android ah oo macaamiisha u sahla lacag-bixinta.',
+          status: 'PLANNING',
+          budget: '18000.00',
+        },
+      ],
+    });
+  }
+
   // Super-admin user — only when a password is provided; never a hardcoded one.
   const email = process.env.SEED_ADMIN_EMAIL ?? 'admin@somwave.com';
   const password = process.env.SEED_ADMIN_PASSWORD;
