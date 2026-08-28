@@ -11,6 +11,8 @@ export const publicRouter: Router = Router();
 publicRouter.use(publicRateLimiter);
 
 publicRouter.get('/services', publicController.getServices);
+publicRouter.get('/portfolio', publicController.getPortfolio);
+publicRouter.get('/portfolio/:slug', publicController.getPortfolioItem);
 publicRouter.post(
   '/inquiries',
   inquiryRateLimiter,
