@@ -16,3 +16,4 @@ export * from './schemas/inquiry';
 export * from './schemas/portfolio';
 export * from './schemas/post';
 export * from './schemas/job';
+export * from './schemas/user';
