@@ -20,8 +20,8 @@ export const apiRateLimiter = rateLimit({ windowMs: 60_000, limit: 100, ...share
 // Public website endpoints (unauthenticated) get their own, tighter budget.
 export const publicRateLimiter = rateLimit({ windowMs: 60_000, limit: 60, ...shared });
 
-// Enquiry submissions are much tighter to blunt spam.
-export const inquiryRateLimiter = rateLimit({ windowMs: 60 * 60_000, limit: 5, ...shared });
+// Public submissions (enquiries, job applications) are much tighter to blunt spam.
+export const submissionRateLimiter = rateLimit({ windowMs: 60 * 60_000, limit: 5, ...shared });
 
 // By client IP.
 export const loginIpRateLimiter = rateLimit({ windowMs: 15 * 60_000, limit: 20, ...shared });

@@ -114,6 +114,35 @@ async function main(): Promise<void> {
     });
   }
 
+  // Careers — open positions.
+  const openings = [
+    {
+      slug: 'horumariye-frontend',
+      title: 'Horumariye Frontend',
+      location: 'Muqdisho / Fog',
+      employmentType: 'FULL_TIME' as const,
+      summary: 'Ku biir kooxdayada oo dhis interfaces casri ah oo React ah.',
+      description:
+        'Waxaan raadinaynaa horumariye frontend oo khibrad u leh React iyo TypeScript, kaasoo naga caawiya dhisidda portal-ka iyo nidaamyada gudaha. Waa inaad si fiican u fahamtaa naqshadaynta iyo isticmaalka.',
+    },
+    {
+      slug: 'naqshadeeye-uiux',
+      title: 'Naqshadeeye UI/UX',
+      location: 'Muqdisho',
+      employmentType: 'CONTRACT' as const,
+      summary: 'Naqshadee waxyaabo dad badan isticmaali karaan oo qurux badan.',
+      description:
+        'Naqshadeeye UI/UX oo naga caawiya inaan sameyno waxyaabo fudud oo la isticmaalo. Khibrad Figma iyo fikirka isticmaalaha ayaa lama huraan ah.',
+    },
+  ];
+  for (const opening of openings) {
+    await prisma.jobOpening.upsert({
+      where: { slug: opening.slug },
+      update: {},
+      create: { ...opening, publishedAt: new Date() },
+    });
+  }
+
   // Super-admin user — only when a password is provided; never a hardcoded one.
   const email = process.env.SEED_ADMIN_EMAIL ?? 'admin@somwave.com';
   const password = process.env.SEED_ADMIN_PASSWORD;
