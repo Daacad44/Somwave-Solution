@@ -1,17 +1,35 @@
 ---
-// Base HTML shell for public pages (SYSTEM_PROMPT §6: layouts/BaseLayout.astro).
-// Shared tokens.css and full head/meta land with the design system in F0.4.
+// Base HTML shell for public pages (SYSTEM_PROMPT §6). Owns <head>, SEO meta,
+// fonts, and the shared global stylesheet. Somali is the default locale (§17).
+import '../styles/global.css';
+
 interface Props {
   title: string;
+  description?: string;
 }
-const { title } = Astro.props;
+
+const { title, description = 'Somwave — shirkad teknoolajiyad oo dhisa xalal dijital ah.' } =
+  Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
 ---
 
 <!doctype html>
-<html lang="so">
+<html lang="so" dir="ltr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
     <title>{title}</title>
   </head>
   <body>

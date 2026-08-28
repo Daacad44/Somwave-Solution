@@ -1,0 +1,54 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+
+// W1 contact page. The interactive enquiry form (which creates an Inquiry via
+// /api/v1/public and feeds Internal leads) is W2.4 — this page carries the intent
+// and the interim email channel until then.
+const email = 'info@somwave.com';
+---
+
+<PageLayout
+  title="Nala soo xiriir — Somwave"
+  description="La xiriir Somwave si aad u bilowdo mashruucaaga dijital ah."
+>
+  <section class="mx-auto max-w-content px-4 py-20 sm:px-6">
+    <div class="max-w-2xl">
+      <p class="text-sm font-semibold uppercase tracking-[0.14em] text-accent-600">Nala soo xiriir</p>
+      <h1 class="mt-2 text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
+        Aan wada hadalno mashruucaaga
+      </h1>
+      <p class="mt-4 text-lg leading-relaxed text-muted">
+        Sheeg waxa aad rabto inaad dhisto — website, nidaam gudaha ah, ama app mobil — waxaanan kula
+        soo noqonaynaa qorshe iyo qiimo cad.
+      </p>
+    </div>
+
+    <div class="mt-10 grid gap-5 sm:grid-cols-2">
+      <div class="rounded-lg border border-border bg-surface p-6">
+        <h2 class="text-lg font-semibold text-ink">Iimayl noo dir</h2>
+        <p class="mt-2 text-[15px] leading-relaxed text-muted">
+          Foomka codsiga tooska ah dhawaan ayuu imanayaa. Ilaa hadda, si toos ah noogu soo qor.
+        </p>
+        <a
+          href={`mailto:${email}`}
+          class="mt-4 inline-flex h-11 items-center rounded-md bg-primary px-5 text-sm font-semibold text-surface transition-colors hover:bg-primary-600"
+        >
+          {email}
+        </a>
+      </div>
+
+      <div class="rounded-lg border border-border bg-surface-alt p-6">
+        <h2 class="text-lg font-semibold text-ink">Macaamiil hore?</h2>
+        <p class="mt-2 text-[15px] leading-relaxed text-muted">
+          Gal portal-ka macaamiisha si aad u aragto mashruucyadaada oo aad u bixiso biilasha.
+        </p>
+        <a
+          href="https://app.somwave.com"
+          class="mt-4 inline-flex h-11 items-center rounded-md border border-border px-5 text-sm font-semibold text-primary transition-colors hover:bg-surface"
+        >
+          Portal-ka gal
+        </a>
+      </div>
+    </div>
+  </section>
+</PageLayout>

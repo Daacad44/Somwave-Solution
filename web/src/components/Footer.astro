@@ -1,0 +1,58 @@
+---
+const year = new Date().getFullYear();
+const columns = [
+  {
+    title: 'Adeegyada',
+    links: [
+      { href: '/#adeegyada', label: 'Horumarinta Websaydka' },
+      { href: '/#adeegyada', label: 'Abaabulka Nidaamyada' },
+      { href: '/#adeegyada', label: 'Barnaamijyada Mobilada' },
+    ],
+  },
+  {
+    title: 'Shirkadda',
+    links: [
+      { href: '/#habka-shaqada', label: 'Habka shaqada' },
+      { href: '/nala-soo-xiriir', label: 'Nala soo xiriir' },
+    ],
+  },
+];
+---
+
+<footer class="mt-24 border-t border-border bg-surface-alt">
+  <div class="mx-auto grid max-w-content gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.5fr_1fr_1fr]">
+    <div>
+      <div class="flex items-center gap-2 text-lg font-extrabold text-primary">
+        <span class="inline-block h-3 w-3 rounded-full bg-accent" aria-hidden="true"></span>
+        Somwave
+      </div>
+      <p class="mt-3 max-w-xs text-sm leading-relaxed text-muted">
+        Waxaan u dhisnaa ganacsiyada xalal dijital ah oo casri ah — website, nidaamyo gudaha ah, iyo
+        barnaamijyo mobil.
+      </p>
+    </div>
+
+    {
+      columns.map((column) => (
+        <div>
+          <h2 class="text-sm font-semibold text-ink">{column.title}</h2>
+          <ul class="mt-3 space-y-2">
+            {column.links.map((link) => (
+              <li>
+                <a href={link.href} class="text-sm text-muted transition-colors hover:text-primary">
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))
+    }
+  </div>
+
+  <div class="border-t border-border">
+    <p class="mx-auto max-w-content px-4 py-6 text-sm text-muted sm:px-6">
+      © {year} Somwave. Dhammaan xuquuqdu way xifdisan tahay.
+    </p>
+  </div>
+</footer>
