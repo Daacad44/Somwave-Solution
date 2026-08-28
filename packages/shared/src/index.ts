@@ -19,3 +19,4 @@ export * from './schemas/job';
 export * from './schemas/user';
 export * from './schemas/project';
 export * from './schemas/task';
+export * from './schemas/milestone';

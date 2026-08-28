@@ -15,6 +15,10 @@ export const PERMISSIONS = {
   TASKS_CREATE: 'tasks.create',
   TASKS_UPDATE: 'tasks.update',
   TASKS_DELETE: 'tasks.delete',
+  MILESTONES_READ: 'milestones.read',
+  MILESTONES_CREATE: 'milestones.create',
+  MILESTONES_UPDATE: 'milestones.update',
+  MILESTONES_DELETE: 'milestones.delete',
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

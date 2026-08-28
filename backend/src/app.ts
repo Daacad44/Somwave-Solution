@@ -15,6 +15,7 @@ import { publicRouter } from './routes/public.routes';
 import { usersRouter, rolesRouter, permissionsRouter } from './routes/user.routes';
 import { projectsRouter } from './routes/project.routes';
 import { tasksRouter } from './routes/task.routes';
+import { milestonesRouter } from './routes/milestone.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 export function createApp(): Express {
@@ -42,6 +43,7 @@ export function createApp(): Express {
   app.use('/api/v1/permissions', permissionsRouter);
   app.use('/api/v1/projects', projectsRouter);
   app.use('/api/v1/tasks', tasksRouter);
+  app.use('/api/v1/milestones', milestonesRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
