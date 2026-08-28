@@ -12,3 +12,4 @@ export * from './constants/pagination';
 export * from './constants/limits';
 export * from './schemas/auth';
 export * from './schemas/service';
+export * from './schemas/inquiry';

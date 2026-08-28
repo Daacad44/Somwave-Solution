@@ -113,3 +113,23 @@ model Service {
   @@index([isPublished, order])
   @@map("services")
 }
+
+enum InquiryStatus {
+  NEW
+  READ
+  ARCHIVED
+}
+
+// Website enquiries. These become CRM leads in Internal (I5.1).
+model Inquiry {
+  id        String        @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  message   String
+  status    InquiryStatus @default(NEW)
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  @@index([status, createdAt])
+  @@map("inquiries")
+}
