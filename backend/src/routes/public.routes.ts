@@ -13,6 +13,8 @@ publicRouter.use(publicRateLimiter);
 publicRouter.get('/services', publicController.getServices);
 publicRouter.get('/portfolio', publicController.getPortfolio);
 publicRouter.get('/portfolio/:slug', publicController.getPortfolioItem);
+publicRouter.get('/posts', publicController.getPosts);
+publicRouter.get('/posts/:slug', publicController.getPost);
 publicRouter.post(
   '/inquiries',
   inquiryRateLimiter,
