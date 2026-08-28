@@ -1,0 +1,28 @@
+/* Design tokens (SYSTEM_PROMPT §8) — shared with the React app. Single source of
+   colour, type, radius, and shadow. Never a raw hex in a component. */
+:root {
+  --color-primary: #0b1f3a;
+  --color-primary-600: #16324f;
+  --color-accent: #f59e0b;
+  --color-accent-600: #d97706;
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-error: #dc2626;
+  --color-info: #0284c7;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f8fafc;
+  --color-ink: #0f172a;
+  --color-muted: #64748b;
+  --color-border: #e2e8f0;
+
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-ar: 'Noto Naskh Arabic', serif;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06);
+  --shadow-md: 0 4px 12px rgb(15 23 42 / 0.08);
+  --shadow-lg: 0 12px 32px rgb(15 23 42 / 0.12);
+}
