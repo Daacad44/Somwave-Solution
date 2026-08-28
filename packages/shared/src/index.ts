@@ -18,3 +18,4 @@ export * from './schemas/post';
 export * from './schemas/job';
 export * from './schemas/user';
 export * from './schemas/project';
+export * from './schemas/task';
