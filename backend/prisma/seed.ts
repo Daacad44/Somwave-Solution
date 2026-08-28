@@ -86,6 +86,34 @@ async function main(): Promise<void> {
     });
   }
 
+  // Blog category + posts.
+  const category = await prisma.category.upsert({
+    where: { slug: 'talooyin' },
+    update: {},
+    create: { slug: 'talooyin', name: 'Talooyin' },
+  });
+  const posts = [
+    {
+      slug: 'sida-loo-doorto-shirkad-website',
+      title: 'Sida loo doorto shirkad website oo ku habboon',
+      excerpt: 'Afar shay oo aad fiirsato kahor intaadan dooran shirkad kuu dhista website.',
+      body: 'Marka aad doorato shirkad website, fiiri khibradda, tayada naqshadda, taageerada kadib, iyo qiimaha cad. Shirkad wanaagsan waxay ku caawisaa inaad online si guul leh ugu koraan.',
+    },
+    {
+      slug: 'muhiimadda-nidaamyada-gudaha',
+      title: 'Muhiimadda nidaamyada gudaha ee ganacsiga',
+      excerpt: 'Sababta ganacsigaagu uga baxo Excel iyo WhatsApp una gudbo nidaam buuxa.',
+      body: 'Nidaamyada gudaha waxay hal meel isugu keenaan mashruucyada, shaqaalaha, iyo maaliyadda — taasoo yareysa khaladaadka oo kordhisa hufnaanta.',
+    },
+  ];
+  for (const post of posts) {
+    await prisma.post.upsert({
+      where: { slug: post.slug },
+      update: {},
+      create: { ...post, isPublished: true, publishedAt: new Date(), categoryId: category.id },
+    });
+  }
+
   // Super-admin user — only when a password is provided; never a hardcoded one.
   const email = process.env.SEED_ADMIN_EMAIL ?? 'admin@somwave.com';
   const password = process.env.SEED_ADMIN_PASSWORD;

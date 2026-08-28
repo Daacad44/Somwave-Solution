@@ -5,6 +5,8 @@ import type {
   CreateInquiryInput,
   PublicPortfolioDetail,
   PublicPortfolioItem,
+  PublicPostDetail,
+  PublicPostSummary,
   PublicService,
 } from '@somwave/shared';
 
@@ -28,6 +30,18 @@ export function fetchPortfolio(): Promise<PublicPortfolioItem[]> {
 export async function fetchPortfolioItem(slug: string): Promise<PublicPortfolioDetail | null> {
   try {
     return await getData<PublicPortfolioDetail>(`/public/portfolio/${encodeURIComponent(slug)}`);
+  } catch {
+    return null;
+  }
+}
+
+export function fetchPosts(): Promise<PublicPostSummary[]> {
+  return getData<PublicPostSummary[]>('/public/posts');
+}
+
+export async function fetchPost(slug: string): Promise<PublicPostDetail | null> {
+  try {
+    return await getData<PublicPostDetail>(`/public/posts/${encodeURIComponent(slug)}`);
   } catch {
     return null;
   }

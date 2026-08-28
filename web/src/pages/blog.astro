@@ -1,0 +1,58 @@
+---
+// Blog listing (W3.2). SSR — reads /api/v1/public/posts at request time.
+export const prerender = false;
+
+import PageLayout from '../layouts/PageLayout.astro';
+import PostCard from '../components/PostCard.astro';
+import { fetchPosts } from '../lib/api';
+import type { PublicPostSummary } from '@somwave/shared';
+
+let posts: PublicPostSummary[] = [];
+let failed = false;
+try {
+  posts = await fetchPosts();
+} catch {
+  failed = true;
+}
+---
+
+<PageLayout
+  title="Maqaallada — Somwave"
+  description="Talooyin iyo fikrado ku saabsan teknoolajiyada iyo horumarinta ganacsiga online."
+>
+  <section class="mx-auto max-w-content px-4 py-20 sm:px-6">
+    <div class="max-w-2xl">
+      <p class="text-sm font-semibold uppercase tracking-[0.14em] text-accent-600">Maqaallada</p>
+      <h1 class="mt-2 text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
+        Talooyin iyo fikrado
+      </h1>
+      <p class="mt-4 text-lg leading-relaxed text-muted">
+        Waxyaabaha aan ka barannay dhisidda xalal dijital ah oo shaqeeya.
+      </p>
+    </div>
+
+    {
+      failed ? (
+        <p class="mt-10 rounded-lg border border-border bg-surface-alt p-6 text-muted">
+          Cilad ayaa dhacday markii maqaallada la soo raadinayay. Fadlan mar kale isku day.
+        </p>
+      ) : posts.length === 0 ? (
+        <p class="mt-10 rounded-lg border border-border bg-surface-alt p-6 text-muted">
+          Weli maqaallo lama daabicin.
+        </p>
+      ) : (
+        <div class="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {posts.map((post) => (
+            <PostCard
+              slug={post.slug}
+              title={post.title}
+              excerpt={post.excerpt}
+              publishedAt={post.publishedAt}
+              category={post.category}
+            />
+          ))}
+        </div>
+      )
+    }
+  </section>
+</PageLayout>
