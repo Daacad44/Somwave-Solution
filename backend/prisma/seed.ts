@@ -29,6 +29,13 @@ async function main(): Promise<void> {
     data: { permissions: { set: permissions.map((permission) => ({ id: permission.id })) } },
   });
 
+  // EDITOR manages website content via the CMS (W4, §9): content.* only.
+  const contentPermissions = permissions.filter((p) => p.key.startsWith('content.'));
+  await prisma.role.update({
+    where: { name: ROLES.EDITOR },
+    data: { permissions: { set: contentPermissions.map((permission) => ({ id: permission.id })) } },
+  });
+
   // Website services shown on the public site (managed from the CMS later).
   const services = [
     {
