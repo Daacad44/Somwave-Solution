@@ -1,50 +1,61 @@
-/* Minimal bootstrap styling only. The design system (tokens.css, palette,
-   typography) lands in F0.4 (SYSTEM_PROMPT §8, §6). */
-* {
-  box-sizing: border-box;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    color: var(--color-ink);
+    background: var(--color-surface);
+  }
 }
 
-body {
-  margin: 0;
-  font-family: system-ui, sans-serif;
-}
+/* Temporary bootstrap layout — replaced by AppShell and the UI kit as F0.4 lands. */
+@layer components {
+  .app-shell,
+  .auth-shell {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-align: center;
+  }
 
-.app-shell,
-.auth-shell {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  text-align: center;
-}
+  .auth-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    max-width: 320px;
+    text-align: start;
+  }
 
-.auth-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
-  max-width: 320px;
-  text-align: start;
-}
+  .auth-card input {
+    padding: 8px;
+    font: inherit;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
 
-.auth-card input {
-  padding: 8px;
-  font: inherit;
-}
+  .auth-card button {
+    margin-top: 8px;
+    padding: 10px;
+    font: inherit;
+    min-height: 44px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--color-primary);
+    color: var(--color-surface);
+    cursor: pointer;
+  }
 
-.auth-card button {
-  margin-top: 8px;
-  padding: 10px;
-  font: inherit;
-  min-height: 44px;
-}
-
-.field-error,
-.form-error {
-  margin: 0;
-  font-size: 14px;
-  /* Adopts the design token when tokens.css lands in F0.4 (§8: --color-error). */
-  color: var(--color-error, #dc2626);
+  .field-error,
+  .form-error {
+    margin: 0;
+    font-size: 14px;
+    color: var(--color-error);
+  }
 }
