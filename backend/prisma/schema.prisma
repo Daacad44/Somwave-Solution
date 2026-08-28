@@ -34,6 +34,7 @@ model User {
   roles           UserRole[]
   refreshTokens   RefreshToken[]
   managedProjects Project[]      @relation("ProjectManager")
+  assignedTasks   Task[]         @relation("TaskAssignee")
 
   @@index([clientId])
   @@index([employeeId])
@@ -260,10 +261,47 @@ model Project {
   updatedAt   DateTime      @updatedAt @map("updated_at")
   deletedAt   DateTime?     @map("deleted_at")
 
-  manager User? @relation("ProjectManager", fields: [managerId], references: [id], onDelete: SetNull)
+  manager User?  @relation("ProjectManager", fields: [managerId], references: [id], onDelete: SetNull)
+  tasks   Task[]
 
   @@index([clientId])
   @@index([status])
   @@index([managerId])
   @@map("projects")
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// Tasks belong to a project (the owner key, §7). assigneeId links to a staff User.
+model Task {
+  id          String       @id @default(cuid())
+  projectId   String       @map("project_id")
+  title       String
+  description String?
+  status      TaskStatus   @default(TODO)
+  priority    TaskPriority @default(MEDIUM)
+  assigneeId  String?      @map("assignee_id")
+  dueDate     DateTime?    @map("due_date")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  deletedAt   DateTime?    @map("deleted_at")
+
+  project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee User?   @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, status])
+  @@index([assigneeId])
+  @@map("tasks")
 }
