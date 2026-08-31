@@ -11,6 +11,8 @@ import type {
   UpdateJobOpeningInput,
   CreateTestimonialInput,
   UpdateTestimonialInput,
+  CreateTeamMemberInput,
+  UpdateTeamMemberInput,
 } from '@somwave/shared';
 import {
   listServices,
@@ -34,6 +36,10 @@ import {
   createTestimonial,
   updateTestimonial,
   deleteTestimonial,
+  listTeam,
+  createTeamMember,
+  updateTeamMember,
+  deleteTeamMember,
 } from './api';
 
 const SERVICES_KEY = ['cms', 'services'] as const;
@@ -42,6 +48,7 @@ const CATEGORIES_KEY = ['cms', 'categories'] as const;
 const PORTFOLIO_KEY = ['cms', 'portfolio'] as const;
 const CAREERS_KEY = ['cms', 'careers'] as const;
 const TESTIMONIALS_KEY = ['cms', 'testimonials'] as const;
+const TEAM_KEY = ['cms', 'team'] as const;
 
 export function useCmsServices() {
   return useQuery({ queryKey: SERVICES_KEY, queryFn: listServices });
@@ -196,5 +203,36 @@ export function useDeleteTestimonial() {
   return useMutation({
     mutationFn: (id: string) => deleteTestimonial(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: TESTIMONIALS_KEY }),
+  });
+}
+
+// ── Team members (W5.2) ───────────────────────────────────────────────────────
+
+export function useCmsTeam() {
+  return useQuery({ queryKey: TEAM_KEY, queryFn: listTeam });
+}
+
+export function useCreateTeamMember() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateTeamMemberInput) => createTeamMember(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: TEAM_KEY }),
+  });
+}
+
+export function useUpdateTeamMember() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateTeamMemberInput }) =>
+      updateTeamMember(id, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: TEAM_KEY }),
+  });
+}
+
+export function useDeleteTeamMember() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteTeamMember(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: TEAM_KEY }),
   });
 }

@@ -1,0 +1,47 @@
+---
+// A team member card (W5.2). Shows the photo, name, role, bio, and an optional
+// LinkedIn link.
+interface Props {
+  name: string;
+  role: string;
+  bio: string | null;
+  photoUrl: string | null;
+  linkedinUrl: string | null;
+}
+const { name, role, bio, photoUrl, linkedinUrl } = Astro.props;
+---
+
+<div class="flex flex-col items-center rounded-lg border border-border bg-surface p-6 text-center shadow-sm">
+  {
+    photoUrl ? (
+      <img
+        src={photoUrl}
+        alt={name}
+        loading="lazy"
+        class="size-24 rounded-full border border-border object-cover"
+      />
+    ) : (
+      <span
+        class="flex size-24 items-center justify-center rounded-full bg-surface-alt text-2xl font-semibold text-muted"
+        aria-hidden="true"
+      >
+        {name.charAt(0)}
+      </span>
+    )
+  }
+  <h3 class="mt-4 text-lg font-semibold text-ink">{name}</h3>
+  <p class="text-sm font-semibold text-accent-600">{role}</p>
+  {bio ? <p class="mt-2 text-[15px] leading-relaxed text-muted">{bio}</p> : null}
+  {
+    linkedinUrl ? (
+      <a
+        href={linkedinUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="mt-3 text-sm font-semibold text-accent-600"
+      >
+        LinkedIn →
+      </a>
+    ) : null
+  }
+</div>

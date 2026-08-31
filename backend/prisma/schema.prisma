@@ -351,3 +351,21 @@ model Testimonial {
   @@index([isPublished, order])
   @@map("testimonials")
 }
+
+// ── Website: team (web.prisma domain, §7) ────────────────────────────────────
+
+model TeamMember {
+  id          String   @id @default(cuid())
+  name        String
+  role        String
+  bio         String?
+  photoUrl    String?  @map("photo_url")
+  linkedinUrl String?  @map("linkedin_url")
+  order       Int      @default(0)
+  isPublished Boolean  @default(true) @map("is_published")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([isPublished, order])
+  @@map("team_members")
+}

@@ -12,6 +12,8 @@ import type {
   UpdateJobOpeningInput,
   CreateTestimonialInput,
   UpdateTestimonialInput,
+  CreateTeamMemberInput,
+  UpdateTeamMemberInput,
 } from '@somwave/shared';
 import { AppError, sendData } from '../lib/http';
 import * as serviceService from '../services/service.service';
@@ -19,6 +21,7 @@ import * as postService from '../services/post.service';
 import * as portfolioService from '../services/portfolio.service';
 import * as jobService from '../services/job.service';
 import * as testimonialService from '../services/testimonial.service';
+import * as teamService from '../services/team.service';
 
 export async function listServices(
   _req: Request,
@@ -296,6 +299,59 @@ export async function deleteTestimonial(
     const { id } = req.params;
     if (!id) throw new AppError('NOT_FOUND', 404, 'Marag-furkan lama helin');
     await testimonialService.deleteTestimonial(id);
+    sendData(res, { success: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ── Team members (W5.2) ───────────────────────────────────────────────────────
+
+export async function listTeam(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    sendData(res, await teamService.listAllTeam());
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function createTeamMember(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const member = await teamService.createTeamMember(req.body as CreateTeamMemberInput);
+    sendData(res, member, 201);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateTeamMember(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { id } = req.params;
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Xubintan lama helin');
+    const member = await teamService.updateTeamMember(id, req.body as UpdateTeamMemberInput);
+    sendData(res, member);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteTeamMember(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { id } = req.params;
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Xubintan lama helin');
+    await teamService.deleteTeamMember(id);
     sendData(res, { success: true });
   } catch (err) {
     next(err);

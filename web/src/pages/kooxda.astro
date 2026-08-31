@@ -1,0 +1,58 @@
+---
+// Team page (W5.2). SSR — reads /api/v1/public/team at request time.
+export const prerender = false;
+
+import PageLayout from '../layouts/PageLayout.astro';
+import TeamCard from '../components/TeamCard.astro';
+import { fetchTeam } from '../lib/api';
+import type { PublicTeamMember } from '@somwave/shared';
+
+let team: PublicTeamMember[] = [];
+let failed = false;
+try {
+  team = await fetchTeam();
+} catch {
+  failed = true;
+}
+---
+
+<PageLayout
+  title="Kooxdayada — Somwave"
+  description="Kulan la yeelo dadka ka dambeeya Somwave."
+>
+  <section class="mx-auto max-w-content px-4 py-20 sm:px-6">
+    <div class="max-w-2xl">
+      <p class="text-sm font-semibold uppercase tracking-[0.14em] text-accent-600">Kooxdayada</p>
+      <h1 class="mt-2 text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
+        Dadka ka dambeeya Somwave
+      </h1>
+      <p class="mt-4 text-lg leading-relaxed text-muted">
+        Koox karti leh oo u heellan inay ganacsigaaga online u gaadhsiiyaan heerka ugu sarreeya.
+      </p>
+    </div>
+
+    {
+      failed ? (
+        <p class="mt-10 rounded-lg border border-border bg-surface-alt p-6 text-muted">
+          Cilad ayaa dhacday markii kooxda la soo raadinayay. Fadlan mar kale isku day.
+        </p>
+      ) : team.length === 0 ? (
+        <p class="mt-10 rounded-lg border border-border bg-surface-alt p-6 text-muted">
+          Weli xubno kooxeed lama daabicin.
+        </p>
+      ) : (
+        <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {team.map((member) => (
+            <TeamCard
+              name={member.name}
+              role={member.role}
+              bio={member.bio}
+              photoUrl={member.photoUrl}
+              linkedinUrl={member.linkedinUrl}
+            />
+          ))}
+        </div>
+      )
+    }
+  </section>
+</PageLayout>

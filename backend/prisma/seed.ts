@@ -199,6 +199,26 @@ async function main(): Promise<void> {
     });
   }
 
+  // Team members (W5.2) — seeded once, only when none exist yet.
+  if ((await prisma.teamMember.count()) === 0) {
+    await prisma.teamMember.createMany({
+      data: [
+        {
+          name: 'Cabdirisaaq Warsame',
+          role: 'Aasaase & Injineer Sare',
+          bio: 'Wuxuu hoggaamiyaa dhisidda tignoolajiyada Somwave.',
+          order: 1,
+        },
+        {
+          name: 'Hodan Maxamed',
+          role: 'Naqshadeeye UI/UX',
+          bio: 'Waxay abuurtaa waxyaabo fudud oo la isticmaalo.',
+          order: 2,
+        },
+      ],
+    });
+  }
+
   // Super-admin user — only when a password is provided; never a hardcoded one.
   const email = process.env.SEED_ADMIN_EMAIL ?? 'admin@somwave.com';
   const password = process.env.SEED_ADMIN_PASSWORD;
