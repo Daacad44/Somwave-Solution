@@ -8,11 +8,14 @@ import type {
   UpdatePostInput,
   CreatePortfolioItemInput,
   UpdatePortfolioItemInput,
+  CreateJobOpeningInput,
+  UpdateJobOpeningInput,
 } from '@somwave/shared';
 import { AppError, sendData } from '../lib/http';
 import * as serviceService from '../services/service.service';
 import * as postService from '../services/post.service';
 import * as portfolioService from '../services/portfolio.service';
+import * as jobService from '../services/job.service';
 
 export async function listServices(
   _req: Request,
@@ -176,6 +179,63 @@ export async function deletePortfolio(
     const { id } = req.params;
     if (!id) throw new AppError('NOT_FOUND', 404, 'Shaqadan lama helin');
     await portfolioService.deletePortfolioItem(id);
+    sendData(res, { success: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ── Careers / job openings (W4.4) ─────────────────────────────────────────────
+
+export async function listOpenings(
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    sendData(res, await jobService.listAllOpenings());
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function createOpening(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const opening = await jobService.createOpening(req.body as CreateJobOpeningInput);
+    sendData(res, opening, 201);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateOpening(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { id } = req.params;
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Fursaddan shaqo lama helin');
+    const opening = await jobService.updateOpening(id, req.body as UpdateJobOpeningInput);
+    sendData(res, opening);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteOpening(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { id } = req.params;
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Fursaddan shaqo lama helin');
+    await jobService.deleteOpening(id);
     sendData(res, { success: true });
   } catch (err) {
     next(err);

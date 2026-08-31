@@ -10,6 +10,9 @@ import type {
   AdminPortfolioItem,
   CreatePortfolioItemInput,
   UpdatePortfolioItemInput,
+  AdminJobOpening,
+  CreateJobOpeningInput,
+  UpdateJobOpeningInput,
 } from '@somwave/shared';
 import { apiFetch } from '../../lib/apiClient';
 
@@ -82,4 +85,28 @@ export function updatePortfolio(
 
 export function deletePortfolio(id: string): Promise<{ success: boolean }> {
   return apiFetch<{ success: boolean }>(`/cms/portfolio/${id}`, { method: 'DELETE' });
+}
+
+// ── Careers / job openings (W4.4) ─────────────────────────────────────────────
+
+export function listOpenings(): Promise<AdminJobOpening[]> {
+  return apiFetch<AdminJobOpening[]>('/cms/careers');
+}
+
+export function createOpening(input: CreateJobOpeningInput): Promise<AdminJobOpening> {
+  return apiFetch<AdminJobOpening>('/cms/careers', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateOpening(id: string, input: UpdateJobOpeningInput): Promise<AdminJobOpening> {
+  return apiFetch<AdminJobOpening>(`/cms/careers/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteOpening(id: string): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/cms/careers/${id}`, { method: 'DELETE' });
 }
