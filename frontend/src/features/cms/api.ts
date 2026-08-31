@@ -1,5 +1,13 @@
 // CMS feature API (W4, §6: features/<feature>/api.ts → apiClient).
-import type { AdminService, CreateServiceInput, UpdateServiceInput } from '@somwave/shared';
+import type {
+  AdminService,
+  CreateServiceInput,
+  UpdateServiceInput,
+  AdminPost,
+  AdminCategory,
+  CreatePostInput,
+  UpdatePostInput,
+} from '@somwave/shared';
 import { apiFetch } from '../../lib/apiClient';
 
 export function listServices(): Promise<AdminService[]> {
@@ -22,4 +30,26 @@ export function updateService(id: string, input: UpdateServiceInput): Promise<Ad
 
 export function deleteService(id: string): Promise<{ success: boolean }> {
   return apiFetch<{ success: boolean }>(`/cms/services/${id}`, { method: 'DELETE' });
+}
+
+// ── Blog posts (W4.2) ─────────────────────────────────────────────────────────
+
+export function listPosts(): Promise<AdminPost[]> {
+  return apiFetch<AdminPost[]>('/cms/posts');
+}
+
+export function listCategories(): Promise<AdminCategory[]> {
+  return apiFetch<AdminCategory[]>('/cms/categories');
+}
+
+export function createPost(input: CreatePostInput): Promise<AdminPost> {
+  return apiFetch<AdminPost>('/cms/posts', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export function updatePost(id: string, input: UpdatePostInput): Promise<AdminPost> {
+  return apiFetch<AdminPost>(`/cms/posts/${id}`, { method: 'PATCH', body: JSON.stringify(input) });
+}
+
+export function deletePost(id: string): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/cms/posts/${id}`, { method: 'DELETE' });
 }

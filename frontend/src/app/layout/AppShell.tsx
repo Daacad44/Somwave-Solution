@@ -72,6 +72,11 @@ export function AppShell(): ReactNode {
               CMS · Adeegyada
             </NavLink>
           ) : null}
+          {canReadContent ? (
+            <NavLink to="/cms/posts" className={navLinkClass}>
+              CMS · Maqaallada
+            </NavLink>
+          ) : null}
           {canReadUsers ? (
             <NavLink to="/users" className={navLinkClass}>
               Isticmaalayaasha

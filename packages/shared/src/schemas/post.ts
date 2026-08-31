@@ -27,18 +27,67 @@ export const publicPostDetailSchema = publicPostSummarySchema.extend({
 
 export type PublicPostDetail = z.infer<typeof publicPostDetailSchema>;
 
-// Create/update payload — used by the CMS later.
+// A category as shown in the CMS category picker.
+export const adminCategorySchema = z.object({
+  id: z.string(),
+  slug: z.string(),
+  name: z.string(),
+});
+
+export type AdminCategory = z.infer<typeof adminCategorySchema>;
+
+// Full post shape shown in the CMS (W4) — includes body and unpublished posts.
+export const adminPostSchema = z.object({
+  id: z.string(),
+  slug: z.string(),
+  title: z.string(),
+  excerpt: z.string(),
+  body: z.string(),
+  coverImage: z.string().nullable(),
+  isPublished: z.boolean(),
+  publishedAt: z.string().nullable(), // ISO 8601
+  categoryId: z.string().nullable(),
+  category: publicCategorySchema.nullable(),
+  createdAt: z.string(),
+});
+
+export type AdminPost = z.infer<typeof adminPostSchema>;
+
+// Create payload — used by the CMS (W4).
 export const createPostSchema = z.object({
   slug: z
     .string()
-    .min(1)
-    .regex(/^[a-z0-9-]+$/, 'Slug must be kebab-case (a-z, 0-9, -)'),
-  title: z.string().min(1),
-  excerpt: z.string().min(1),
-  body: z.string().min(1),
-  coverImage: z.string().url().optional(),
+    .trim()
+    .min(1, 'Slug waa waajib')
+    .regex(/^[a-z0-9-]+$/, 'Slug waa inuu noqdaa kebab-case (a-z, 0-9, -)'),
+  title: z.string().trim().min(1, 'Cinwaanka waa waajib').max(200),
+  excerpt: z.string().trim().min(1, 'Kooban waa waajib').max(500),
+  body: z.string().trim().min(1, 'Qoraalka waa waajib'),
+  coverImage: z.string().url('Fadlan geli link sax ah').optional(),
   categoryId: z.string().optional(),
   isPublished: z.boolean().default(false),
 });
 
 export type CreatePostInput = z.infer<typeof createPostSchema>;
+
+// Update payload — every field optional; at least one required.
+export const updatePostSchema = z
+  .object({
+    slug: z
+      .string()
+      .trim()
+      .min(1)
+      .regex(/^[a-z0-9-]+$/, 'Slug waa inuu noqdaa kebab-case (a-z, 0-9, -)')
+      .optional(),
+    title: z.string().trim().min(1).max(200).optional(),
+    excerpt: z.string().trim().min(1).max(500).optional(),
+    body: z.string().trim().min(1).optional(),
+    coverImage: z.string().url('Fadlan geli link sax ah').nullable().optional(),
+    categoryId: z.string().nullable().optional(),
+    isPublished: z.boolean().optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'Ugu yaraan hal beddel ayaa loo baahan yahay',
+  });
+
+export type UpdatePostInput = z.infer<typeof updatePostSchema>;
