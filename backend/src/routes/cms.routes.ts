@@ -8,6 +8,8 @@ import {
   updatePostSchema,
   createPortfolioItemSchema,
   updatePortfolioItemSchema,
+  createJobOpeningSchema,
+  updateJobOpeningSchema,
   PERMISSIONS,
 } from '@somwave/shared';
 import { requireAuth } from '../middleware/auth';
@@ -65,3 +67,18 @@ cmsRouter.patch(
   cmsController.updatePortfolio,
 );
 cmsRouter.delete('/portfolio/:id', rbac(PERMISSIONS.CONTENT_DELETE), cmsController.deletePortfolio);
+
+cmsRouter.get('/careers', rbac(PERMISSIONS.CONTENT_READ), cmsController.listOpenings);
+cmsRouter.post(
+  '/careers',
+  rbac(PERMISSIONS.CONTENT_CREATE),
+  validate(createJobOpeningSchema),
+  cmsController.createOpening,
+);
+cmsRouter.patch(
+  '/careers/:id',
+  rbac(PERMISSIONS.CONTENT_UPDATE),
+  validate(updateJobOpeningSchema),
+  cmsController.updateOpening,
+);
+cmsRouter.delete('/careers/:id', rbac(PERMISSIONS.CONTENT_DELETE), cmsController.deleteOpening);

@@ -7,6 +7,8 @@ import type {
   UpdatePostInput,
   CreatePortfolioItemInput,
   UpdatePortfolioItemInput,
+  CreateJobOpeningInput,
+  UpdateJobOpeningInput,
 } from '@somwave/shared';
 import {
   listServices,
@@ -22,12 +24,17 @@ import {
   createPortfolio,
   updatePortfolio,
   deletePortfolio,
+  listOpenings,
+  createOpening,
+  updateOpening,
+  deleteOpening,
 } from './api';
 
 const SERVICES_KEY = ['cms', 'services'] as const;
 const POSTS_KEY = ['cms', 'posts'] as const;
 const CATEGORIES_KEY = ['cms', 'categories'] as const;
 const PORTFOLIO_KEY = ['cms', 'portfolio'] as const;
+const CAREERS_KEY = ['cms', 'careers'] as const;
 
 export function useCmsServices() {
   return useQuery({ queryKey: SERVICES_KEY, queryFn: listServices });
@@ -120,5 +127,36 @@ export function useDeletePortfolio() {
   return useMutation({
     mutationFn: (id: string) => deletePortfolio(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: PORTFOLIO_KEY }),
+  });
+}
+
+// ── Careers / job openings (W4.4) ─────────────────────────────────────────────
+
+export function useCmsCareers() {
+  return useQuery({ queryKey: CAREERS_KEY, queryFn: listOpenings });
+}
+
+export function useCreateOpening() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateJobOpeningInput) => createOpening(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CAREERS_KEY }),
+  });
+}
+
+export function useUpdateOpening() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateJobOpeningInput }) =>
+      updateOpening(id, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CAREERS_KEY }),
+  });
+}
+
+export function useDeleteOpening() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteOpening(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CAREERS_KEY }),
   });
 }

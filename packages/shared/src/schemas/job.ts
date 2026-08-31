@@ -41,3 +41,58 @@ export const createJobApplicationSchema = z.object({
 });
 
 export type CreateJobApplicationInput = z.infer<typeof createJobApplicationSchema>;
+
+// ── CMS (W4.4) — the admin view manages openings incl. unpublished ─────────────
+
+export const adminJobOpeningSchema = z.object({
+  id: z.string(),
+  slug: z.string(),
+  title: z.string(),
+  location: z.string(),
+  employmentType: employmentTypeSchema,
+  summary: z.string(),
+  description: z.string(),
+  isPublished: z.boolean(),
+  publishedAt: z.string().nullable(), // ISO 8601
+  applicationCount: z.number().int(),
+  createdAt: z.string(),
+});
+
+export type AdminJobOpening = z.infer<typeof adminJobOpeningSchema>;
+
+export const createJobOpeningSchema = z.object({
+  slug: z
+    .string()
+    .trim()
+    .min(1, 'Slug waa waajib')
+    .regex(/^[a-z0-9-]+$/, 'Slug waa inuu noqdaa kebab-case (a-z, 0-9, -)'),
+  title: z.string().trim().min(1, 'Cinwaanka waa waajib').max(200),
+  location: z.string().trim().min(1, 'Goobta waa waajib').max(200),
+  employmentType: employmentTypeSchema,
+  summary: z.string().trim().min(1, 'Kooban waa waajib').max(500),
+  description: z.string().trim().min(1, 'Faahfaahin waa waajib'),
+  isPublished: z.boolean().default(true),
+});
+
+export type CreateJobOpeningInput = z.infer<typeof createJobOpeningSchema>;
+
+export const updateJobOpeningSchema = z
+  .object({
+    slug: z
+      .string()
+      .trim()
+      .min(1)
+      .regex(/^[a-z0-9-]+$/, 'Slug waa inuu noqdaa kebab-case (a-z, 0-9, -)')
+      .optional(),
+    title: z.string().trim().min(1).max(200).optional(),
+    location: z.string().trim().min(1).max(200).optional(),
+    employmentType: employmentTypeSchema.optional(),
+    summary: z.string().trim().min(1).max(500).optional(),
+    description: z.string().trim().min(1).optional(),
+    isPublished: z.boolean().optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'Ugu yaraan hal beddel ayaa loo baahan yahay',
+  });
+
+export type UpdateJobOpeningInput = z.infer<typeof updateJobOpeningSchema>;
