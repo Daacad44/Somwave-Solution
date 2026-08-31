@@ -1,0 +1,65 @@
+---
+// FAQ page (W5.3). SSR — reads /api/v1/public/faqs at request time. Uses native
+// <details> disclosure so it works without JavaScript.
+export const prerender = false;
+
+import PageLayout from '../layouts/PageLayout.astro';
+import { fetchFaqs } from '../lib/api';
+import type { PublicFaq } from '@somwave/shared';
+
+let faqs: PublicFaq[] = [];
+let failed = false;
+try {
+  faqs = await fetchFaqs();
+} catch {
+  failed = true;
+}
+---
+
+<PageLayout
+  title="Su’aalaha badanaa la is-weydiiyo — Somwave"
+  description="Jawaabaha su’aalaha badanaa la is-weydiiyo ee ku saabsan adeegyada Somwave."
+>
+  <section class="mx-auto max-w-3xl px-4 py-20 sm:px-6">
+    <div>
+      <p class="text-sm font-semibold uppercase tracking-[0.14em] text-accent-600">Su’aalaha</p>
+      <h1 class="mt-2 text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
+        Su’aalaha badanaa la is-weydiiyo
+      </h1>
+      <p class="mt-4 text-lg leading-relaxed text-muted">
+        Haddii aadan halkan ka helin jawaabtaada, nala soo xiriir.
+      </p>
+    </div>
+
+    {
+      failed ? (
+        <p class="mt-10 rounded-lg border border-border bg-surface-alt p-6 text-muted">
+          Cilad ayaa dhacday markii su’aalaha la soo raadinayay. Fadlan mar kale isku day.
+        </p>
+      ) : faqs.length === 0 ? (
+        <p class="mt-10 rounded-lg border border-border bg-surface-alt p-6 text-muted">
+          Weli su’aalo lama daabicin.
+        </p>
+      ) : (
+        <div class="mt-10 flex flex-col gap-3">
+          {faqs.map((faq) => (
+            <details class="group rounded-lg border border-border bg-surface p-5 shadow-sm">
+              <summary class="flex cursor-pointer items-center justify-between gap-4 text-base font-semibold text-ink">
+                {faq.question}
+                <span
+                  class="text-accent-600 transition-transform group-open:rotate-45"
+                  aria-hidden="true"
+                >
+                  +
+                </span>
+              </summary>
+              <p class="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-muted">
+                {faq.answer}
+              </p>
+            </details>
+          ))}
+        </div>
+      )
+    }
+  </section>
+</PageLayout>

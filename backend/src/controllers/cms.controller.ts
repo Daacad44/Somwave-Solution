@@ -14,6 +14,8 @@ import type {
   UpdateTestimonialInput,
   CreateTeamMemberInput,
   UpdateTeamMemberInput,
+  CreateFaqInput,
+  UpdateFaqInput,
 } from '@somwave/shared';
 import { AppError, sendData } from '../lib/http';
 import * as serviceService from '../services/service.service';
@@ -22,6 +24,7 @@ import * as portfolioService from '../services/portfolio.service';
 import * as jobService from '../services/job.service';
 import * as testimonialService from '../services/testimonial.service';
 import * as teamService from '../services/team.service';
+import * as faqService from '../services/faq.service';
 
 export async function listServices(
   _req: Request,
@@ -352,6 +355,47 @@ export async function deleteTeamMember(
     const { id } = req.params;
     if (!id) throw new AppError('NOT_FOUND', 404, 'Xubintan lama helin');
     await teamService.deleteTeamMember(id);
+    sendData(res, { success: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ── FAQ (W5.3) ────────────────────────────────────────────────────────────────
+
+export async function listFaqs(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    sendData(res, await faqService.listAllFaqs());
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function createFaq(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const faq = await faqService.createFaq(req.body as CreateFaqInput);
+    sendData(res, faq, 201);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateFaq(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { id } = req.params;
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Su’aashan lama helin');
+    const faq = await faqService.updateFaq(id, req.body as UpdateFaqInput);
+    sendData(res, faq);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteFaq(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { id } = req.params;
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Su’aashan lama helin');
+    await faqService.deleteFaq(id);
     sendData(res, { success: true });
   } catch (err) {
     next(err);
