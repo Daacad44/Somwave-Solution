@@ -46,6 +46,8 @@ import {
   createFaq,
   updateFaq,
   deleteFaq,
+  listSubscribers,
+  deleteSubscriber,
 } from './api';
 
 const SERVICES_KEY = ['cms', 'services'] as const;
@@ -56,6 +58,7 @@ const CAREERS_KEY = ['cms', 'careers'] as const;
 const TESTIMONIALS_KEY = ['cms', 'testimonials'] as const;
 const TEAM_KEY = ['cms', 'team'] as const;
 const FAQS_KEY = ['cms', 'faqs'] as const;
+const SUBSCRIBERS_KEY = ['cms', 'subscribers'] as const;
 
 export function useCmsServices() {
   return useQuery({ queryKey: SERVICES_KEY, queryFn: listServices });
@@ -271,5 +274,19 @@ export function useDeleteFaq() {
   return useMutation({
     mutationFn: (id: string) => deleteFaq(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: FAQS_KEY }),
+  });
+}
+
+// ── Subscribers (W5.4) ────────────────────────────────────────────────────────
+
+export function useCmsSubscribers() {
+  return useQuery({ queryKey: SUBSCRIBERS_KEY, queryFn: listSubscribers });
+}
+
+export function useDeleteSubscriber() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteSubscriber(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: SUBSCRIBERS_KEY }),
   });
 }

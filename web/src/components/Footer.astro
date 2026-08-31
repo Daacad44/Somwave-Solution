@@ -51,8 +51,64 @@ const columns = [
   </div>
 
   <div class="border-t border-border">
+    <div class="mx-auto max-w-content px-4 py-8 sm:px-6">
+      <h2 class="text-sm font-semibold text-ink">Warsidaha iimaylka</h2>
+      <p class="mt-1 max-w-md text-sm text-muted">
+        Hel talooyin iyo warar cusub — geli iimaylkaaga.
+      </p>
+      <form id="subscribe-form" class="mt-3 flex max-w-md flex-wrap gap-2" novalidate>
+        <input
+          type="email"
+          name="email"
+          required
+          autocomplete="email"
+          placeholder="iimaylkaaga@tusaale.com"
+          aria-label="Iimaylkaaga"
+          class="h-11 min-w-56 flex-1 rounded-md border border-border bg-surface px-3 text-base text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        />
+        <button
+          type="submit"
+          class="inline-flex h-11 items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-surface transition-colors hover:bg-primary-600 disabled:opacity-50"
+        >
+          Diiwaangeli
+        </button>
+      </form>
+      <p id="subscribe-status" class="mt-2 text-sm text-muted" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+
+  <div class="border-t border-border">
     <p class="mx-auto max-w-content px-4 py-6 text-sm text-muted sm:px-6">
       © {year} Somwave. Dhammaan xuquuqdu way xifdisan tahay.
     </p>
   </div>
 </footer>
+
+<script>
+  import { subscribe } from '../lib/api';
+
+  const form = document.getElementById('subscribe-form') as HTMLFormElement | null;
+  const statusEl = document.getElementById('subscribe-status');
+  if (form && statusEl) {
+    const button = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const email = String(new FormData(form).get('email') ?? '').trim();
+      if (button) button.disabled = true;
+      statusEl.textContent = 'Waa la diiwaangelinayaa…';
+      statusEl.style.color = 'var(--color-muted)';
+      try {
+        await subscribe(email);
+        form.reset();
+        statusEl.textContent = 'Waad ku mahadsan tahay! Waa lagu diiwaangeliyay.';
+        statusEl.style.color = 'var(--color-success)';
+      } catch (error) {
+        statusEl.textContent =
+          error instanceof Error ? error.message : 'Cilad ayaa dhacday. Fadlan mar kale isku day.';
+        statusEl.style.color = 'var(--color-error)';
+      } finally {
+        if (button) button.disabled = false;
+      }
+    });
+  }
+</script>

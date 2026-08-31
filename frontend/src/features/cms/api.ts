@@ -22,6 +22,7 @@ import type {
   AdminFaq,
   CreateFaqInput,
   UpdateFaqInput,
+  AdminSubscriber,
 } from '@somwave/shared';
 import { apiFetch } from '../../lib/apiClient';
 
@@ -187,4 +188,14 @@ export function updateFaq(id: string, input: UpdateFaqInput): Promise<AdminFaq> 
 
 export function deleteFaq(id: string): Promise<{ success: boolean }> {
   return apiFetch<{ success: boolean }>(`/cms/faqs/${id}`, { method: 'DELETE' });
+}
+
+// ── Subscribers (W5.4) — read + remove only ───────────────────────────────────
+
+export function listSubscribers(): Promise<AdminSubscriber[]> {
+  return apiFetch<AdminSubscriber[]>('/cms/subscribers');
+}
+
+export function deleteSubscriber(id: string): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/cms/subscribers/${id}`, { method: 'DELETE' });
 }

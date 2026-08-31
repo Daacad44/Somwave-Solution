@@ -12,6 +12,8 @@ import { listPublishedOpenings, getOpeningBySlug, applyToOpening } from '../serv
 import { listPublishedTestimonials } from '../services/testimonial.service';
 import { listPublishedTeam } from '../services/team.service';
 import { listPublishedFaqs } from '../services/faq.service';
+import { subscribe as subscribeService } from '../services/subscriber.service';
+import type { CreateSubscriberInput } from '@somwave/shared';
 
 function parsePositiveInt(value: unknown, fallback: number): number {
   const parsed = typeof value === 'string' ? Number.parseInt(value, 10) : NaN;
@@ -127,6 +129,15 @@ export async function getTeam(_req: Request, res: Response, next: NextFunction):
 export async function getFaqs(_req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     sendData(res, await listPublishedFaqs());
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function subscribe(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const result = await subscribeService(req.body as CreateSubscriberInput);
+    sendData(res, result, 201);
   } catch (err) {
     next(err);
   }

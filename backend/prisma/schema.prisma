@@ -384,3 +384,17 @@ model Faq {
   @@index([isPublished, order])
   @@map("faqs")
 }
+
+// ── Website: newsletter (web.prisma domain, §7) ──────────────────────────────
+
+model Subscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  source    String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([isActive, createdAt])
+  @@map("subscribers")
+}

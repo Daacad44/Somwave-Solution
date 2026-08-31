@@ -97,6 +97,22 @@ export async function applyToCareer(
   return body.data;
 }
 
+export async function subscribe(email: string): Promise<{ id: string }> {
+  const res = await fetch(`${API_URL}/public/subscribers`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  const body = (await res.json().catch(() => null)) as {
+    data?: { id: string };
+    error?: { message?: string };
+  } | null;
+  if (!res.ok || !body?.data) {
+    throw new Error(body?.error?.message ?? 'Diiwaangelintu ma dhicin. Fadlan mar kale isku day.');
+  }
+  return body.data;
+}
+
 export async function submitInquiry(
   input: CreateInquiryInput,
   idempotencyKey: string,
