@@ -10,6 +10,8 @@ import {
   updatePortfolioItemSchema,
   createJobOpeningSchema,
   updateJobOpeningSchema,
+  createTestimonialSchema,
+  updateTestimonialSchema,
   PERMISSIONS,
 } from '@somwave/shared';
 import { requireAuth } from '../middleware/auth';
@@ -82,3 +84,22 @@ cmsRouter.patch(
   cmsController.updateOpening,
 );
 cmsRouter.delete('/careers/:id', rbac(PERMISSIONS.CONTENT_DELETE), cmsController.deleteOpening);
+
+cmsRouter.get('/testimonials', rbac(PERMISSIONS.CONTENT_READ), cmsController.listTestimonials);
+cmsRouter.post(
+  '/testimonials',
+  rbac(PERMISSIONS.CONTENT_CREATE),
+  validate(createTestimonialSchema),
+  cmsController.createTestimonial,
+);
+cmsRouter.patch(
+  '/testimonials/:id',
+  rbac(PERMISSIONS.CONTENT_UPDATE),
+  validate(updateTestimonialSchema),
+  cmsController.updateTestimonial,
+);
+cmsRouter.delete(
+  '/testimonials/:id',
+  rbac(PERMISSIONS.CONTENT_DELETE),
+  cmsController.deleteTestimonial,
+);

@@ -9,6 +9,7 @@ import { createInquiry as createInquiryService } from '../services/inquiry.servi
 import { listPublishedPortfolio, getPortfolioBySlug } from '../services/portfolio.service';
 import { listPublishedPosts, getPostBySlug } from '../services/post.service';
 import { listPublishedOpenings, getOpeningBySlug, applyToOpening } from '../services/job.service';
+import { listPublishedTestimonials } from '../services/testimonial.service';
 
 function parsePositiveInt(value: unknown, fallback: number): number {
   const parsed = typeof value === 'string' ? Number.parseInt(value, 10) : NaN;
@@ -96,6 +97,18 @@ export async function createInquiry(
 export async function getCareers(_req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     sendData(res, await listPublishedOpenings());
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getTestimonials(
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    sendData(res, await listPublishedTestimonials());
   } catch (err) {
     next(err);
   }

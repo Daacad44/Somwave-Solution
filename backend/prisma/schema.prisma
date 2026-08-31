@@ -332,3 +332,22 @@ model Task {
   @@index([assigneeId])
   @@map("tasks")
 }
+
+// ── Website: social proof (web.prisma domain, §7) ────────────────────────────
+
+model Testimonial {
+  id          String   @id @default(cuid())
+  author      String
+  role        String?
+  company     String?
+  quote       String
+  avatarUrl   String?  @map("avatar_url")
+  rating      Int?
+  order       Int      @default(0)
+  isPublished Boolean  @default(true) @map("is_published")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([isPublished, order])
+  @@map("testimonials")
+}

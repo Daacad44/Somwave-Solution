@@ -9,6 +9,8 @@ import type {
   UpdatePortfolioItemInput,
   CreateJobOpeningInput,
   UpdateJobOpeningInput,
+  CreateTestimonialInput,
+  UpdateTestimonialInput,
 } from '@somwave/shared';
 import {
   listServices,
@@ -28,6 +30,10 @@ import {
   createOpening,
   updateOpening,
   deleteOpening,
+  listTestimonials,
+  createTestimonial,
+  updateTestimonial,
+  deleteTestimonial,
 } from './api';
 
 const SERVICES_KEY = ['cms', 'services'] as const;
@@ -35,6 +41,7 @@ const POSTS_KEY = ['cms', 'posts'] as const;
 const CATEGORIES_KEY = ['cms', 'categories'] as const;
 const PORTFOLIO_KEY = ['cms', 'portfolio'] as const;
 const CAREERS_KEY = ['cms', 'careers'] as const;
+const TESTIMONIALS_KEY = ['cms', 'testimonials'] as const;
 
 export function useCmsServices() {
   return useQuery({ queryKey: SERVICES_KEY, queryFn: listServices });
@@ -158,5 +165,36 @@ export function useDeleteOpening() {
   return useMutation({
     mutationFn: (id: string) => deleteOpening(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: CAREERS_KEY }),
+  });
+}
+
+// ── Testimonials (W5.1) ───────────────────────────────────────────────────────
+
+export function useCmsTestimonials() {
+  return useQuery({ queryKey: TESTIMONIALS_KEY, queryFn: listTestimonials });
+}
+
+export function useCreateTestimonial() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateTestimonialInput) => createTestimonial(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: TESTIMONIALS_KEY }),
+  });
+}
+
+export function useUpdateTestimonial() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateTestimonialInput }) =>
+      updateTestimonial(id, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: TESTIMONIALS_KEY }),
+  });
+}
+
+export function useDeleteTestimonial() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteTestimonial(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: TESTIMONIALS_KEY }),
   });
 }
