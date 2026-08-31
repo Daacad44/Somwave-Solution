@@ -7,6 +7,9 @@ import type {
   AdminCategory,
   CreatePostInput,
   UpdatePostInput,
+  AdminPortfolioItem,
+  CreatePortfolioItemInput,
+  UpdatePortfolioItemInput,
 } from '@somwave/shared';
 import { apiFetch } from '../../lib/apiClient';
 
@@ -52,4 +55,31 @@ export function updatePost(id: string, input: UpdatePostInput): Promise<AdminPos
 
 export function deletePost(id: string): Promise<{ success: boolean }> {
   return apiFetch<{ success: boolean }>(`/cms/posts/${id}`, { method: 'DELETE' });
+}
+
+// ── Portfolio (W4.3) ──────────────────────────────────────────────────────────
+
+export function listPortfolio(): Promise<AdminPortfolioItem[]> {
+  return apiFetch<AdminPortfolioItem[]>('/cms/portfolio');
+}
+
+export function createPortfolio(input: CreatePortfolioItemInput): Promise<AdminPortfolioItem> {
+  return apiFetch<AdminPortfolioItem>('/cms/portfolio', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function updatePortfolio(
+  id: string,
+  input: UpdatePortfolioItemInput,
+): Promise<AdminPortfolioItem> {
+  return apiFetch<AdminPortfolioItem>(`/cms/portfolio/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export function deletePortfolio(id: string): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/cms/portfolio/${id}`, { method: 'DELETE' });
 }

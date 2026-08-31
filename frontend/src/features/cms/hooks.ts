@@ -5,6 +5,8 @@ import type {
   UpdateServiceInput,
   CreatePostInput,
   UpdatePostInput,
+  CreatePortfolioItemInput,
+  UpdatePortfolioItemInput,
 } from '@somwave/shared';
 import {
   listServices,
@@ -16,11 +18,16 @@ import {
   createPost,
   updatePost,
   deletePost,
+  listPortfolio,
+  createPortfolio,
+  updatePortfolio,
+  deletePortfolio,
 } from './api';
 
 const SERVICES_KEY = ['cms', 'services'] as const;
 const POSTS_KEY = ['cms', 'posts'] as const;
 const CATEGORIES_KEY = ['cms', 'categories'] as const;
+const PORTFOLIO_KEY = ['cms', 'portfolio'] as const;
 
 export function useCmsServices() {
   return useQuery({ queryKey: SERVICES_KEY, queryFn: listServices });
@@ -82,5 +89,36 @@ export function useDeletePost() {
   return useMutation({
     mutationFn: (id: string) => deletePost(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: POSTS_KEY }),
+  });
+}
+
+// ── Portfolio (W4.3) ──────────────────────────────────────────────────────────
+
+export function useCmsPortfolio() {
+  return useQuery({ queryKey: PORTFOLIO_KEY, queryFn: listPortfolio });
+}
+
+export function useCreatePortfolio() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreatePortfolioItemInput) => createPortfolio(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: PORTFOLIO_KEY }),
+  });
+}
+
+export function useUpdatePortfolio() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdatePortfolioItemInput }) =>
+      updatePortfolio(id, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: PORTFOLIO_KEY }),
+  });
+}
+
+export function useDeletePortfolio() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deletePortfolio(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: PORTFOLIO_KEY }),
   });
 }
