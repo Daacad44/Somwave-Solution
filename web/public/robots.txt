@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://somwave.com/sitemap-index.xml

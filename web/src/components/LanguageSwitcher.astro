@@ -1,0 +1,73 @@
+---
+// Language switcher for the site chrome (W5.5, §17). Renders SO/EN/AR buttons and
+// ships a small client script that applies the stored locale on load — setting
+// <html lang/dir> (RTL for Arabic) and swapping every [data-i18n] chrome string.
+import { LOCALES, LOCALE_LABELS, LOCALE_NAMES } from '../lib/i18n';
+---
+
+<div
+  class="flex items-center gap-1 rounded-md border border-border p-0.5"
+  role="group"
+  aria-label="Luqadda"
+>
+  {
+    LOCALES.map((locale) => (
+      <button
+        type="button"
+        data-locale={locale}
+        aria-label={LOCALE_NAMES[locale]}
+        class="lang-btn rounded px-2 py-1 text-xs font-semibold text-muted transition-colors hover:text-primary aria-[pressed=true]:bg-primary aria-[pressed=true]:text-surface"
+      >
+        {LOCALE_LABELS[locale]}
+      </button>
+    ))
+  }
+</div>
+
+<script>
+  import { chrome, RTL_LOCALES, DEFAULT_LOCALE, isLocale, type Locale } from '../lib/i18n';
+
+  function readStored(): Locale {
+    try {
+      const stored = localStorage.getItem('locale');
+      if (isLocale(stored)) return stored;
+    } catch {
+      // localStorage may be unavailable; fall through to the default.
+    }
+    return DEFAULT_LOCALE;
+  }
+
+  function apply(locale: Locale): void {
+    const dict = chrome[locale] ?? chrome[DEFAULT_LOCALE];
+    const root = document.documentElement;
+    root.lang = locale;
+    root.dir = RTL_LOCALES.includes(locale) ? 'rtl' : 'ltr';
+    document.querySelectorAll<HTMLElement>('[data-i18n]').forEach((el) => {
+      const key = el.dataset.i18n;
+      if (key && dict[key]) el.textContent = dict[key];
+    });
+    document.querySelectorAll<HTMLButtonElement>('.lang-btn').forEach((btn) => {
+      btn.setAttribute('aria-pressed', String(btn.dataset.locale === locale));
+    });
+  }
+
+  function store(locale: Locale): void {
+    try {
+      localStorage.setItem('locale', locale);
+    } catch {
+      // Ignore storage failures — the choice simply won't persist.
+    }
+    document.cookie = `locale=${locale};path=/;max-age=31536000;samesite=lax`;
+  }
+
+  apply(readStored());
+
+  document.querySelectorAll<HTMLButtonElement>('.lang-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const locale = btn.dataset.locale;
+      if (!isLocale(locale)) return;
+      store(locale);
+      apply(locale);
+    });
+  });
+</script>

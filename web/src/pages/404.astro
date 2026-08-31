@@ -1,0 +1,33 @@
+---
+// Custom 404 page (W5.5 SEO). Static — served for unknown routes.
+import PageLayout from '../layouts/PageLayout.astro';
+---
+
+<PageLayout
+  title="Bogga lama helin — Somwave"
+  description="Boggan lama helin. Dib ugu noqo bogga hore."
+>
+  <section class="mx-auto max-w-content px-4 py-24 text-center sm:px-6">
+    <p class="text-sm font-semibold uppercase tracking-[0.14em] text-accent-600">Khalad 404</p>
+    <h1 class="mt-2 text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
+      Bogga lama helin
+    </h1>
+    <p class="mx-auto mt-4 max-w-md text-lg leading-relaxed text-muted">
+      Boggii aad raadinaysay ma jiro ama waa la qaaday. Dib ugu noqo bogga hore ama nala soo xiriir.
+    </p>
+    <div class="mt-8 flex flex-wrap justify-center gap-3">
+      <a
+        href="/"
+        class="inline-flex h-11 items-center rounded-md bg-primary px-5 text-sm font-semibold text-surface hover:bg-primary-600"
+      >
+        Bogga hore
+      </a>
+      <a
+        href="/nala-soo-xiriir"
+        class="inline-flex h-11 items-center rounded-md border border-border bg-surface px-5 text-sm font-semibold text-ink hover:bg-surface-alt"
+      >
+        Nala soo xiriir
+      </a>
+    </div>
+  </section>
+</PageLayout>
