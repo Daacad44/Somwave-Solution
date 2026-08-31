@@ -1,18 +1,21 @@
 ---
 // Site header + primary navigation (SYSTEM_PROMPT §6). Uses logical properties so
-// it flips cleanly when Arabic (RTL) is added later (§12).
-// Services and process are homepage sections in W1; portfolio (W3) and the
-// enquiry form (W2.4) arrive with their phases.
+// it flips cleanly for Arabic (RTL, §12). Labels carry a data-i18n key: the
+// server renders Somali (default) and the language switcher swaps them (W5.5).
+import LanguageSwitcher from './LanguageSwitcher.astro';
+import { chrome, DEFAULT_LOCALE } from '../lib/i18n';
+
+const t = chrome[DEFAULT_LOCALE];
 const links = [
-  { href: '/', label: 'Guriga' },
-  { href: '/adeegyada', label: 'Adeegyada' },
-  { href: '/shaqooyinka', label: 'Shaqooyinka' },
-  { href: '/blog', label: 'Maqaallada' },
-  { href: '/kooxda', label: 'Kooxda' },
-  { href: '/marag-furka', label: 'Marag-furka' },
-  { href: '/su-aalaha', label: 'Su’aalaha' },
-  { href: '/fursado-shaqo', label: 'Fursado shaqo' },
-  { href: '/nala-soo-xiriir', label: 'Nala soo xiriir' },
+  { href: '/', key: 'nav.home' },
+  { href: '/adeegyada', key: 'nav.services' },
+  { href: '/shaqooyinka', key: 'nav.portfolio' },
+  { href: '/blog', key: 'nav.blog' },
+  { href: '/kooxda', key: 'nav.team' },
+  { href: '/marag-furka', key: 'nav.testimonials' },
+  { href: '/su-aalaha', key: 'nav.faq' },
+  { href: '/fursado-shaqo', key: 'nav.careers' },
+  { href: '/nala-soo-xiriir', key: 'nav.contact' },
 ];
 const portalUrl = 'https://app.somwave.com';
 ---
@@ -33,20 +36,25 @@ const portalUrl = 'https://app.somwave.com';
           <li>
             <a
               href={link.href}
+              data-i18n={link.key}
               class="text-sm font-medium text-muted transition-colors hover:text-primary"
             >
-              {link.label}
+              {t[link.key]}
             </a>
           </li>
         ))
       }
     </ul>
 
-    <a
-      href={portalUrl}
-      class="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-semibold text-surface transition-colors hover:bg-primary-600"
-    >
-      Portal-ka
-    </a>
+    <div class="flex items-center gap-3">
+      <LanguageSwitcher />
+      <a
+        href={portalUrl}
+        data-i18n="cta.portal"
+        class="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-semibold text-surface transition-colors hover:bg-primary-600"
+      >
+        {t['cta.portal']}
+      </a>
+    </div>
   </nav>
 </header>

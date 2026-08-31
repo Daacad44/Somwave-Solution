@@ -1,7 +1,11 @@
 // Public, unauthenticated, cached, rate-limited routes (SYSTEM_PROMPT §5, §10):
 // everything under /api/v1/public/*.
 import { Router } from 'express';
-import { createInquirySchema, createJobApplicationSchema } from '@somwave/shared';
+import {
+  createInquirySchema,
+  createJobApplicationSchema,
+  createSubscriberSchema,
+} from '@somwave/shared';
 import { publicRateLimiter, submissionRateLimiter } from '../middleware/rateLimit';
 import { validate } from '../middleware/validate';
 import * as publicController from '../controllers/public.controller';
@@ -36,4 +40,11 @@ publicRouter.post(
   submissionRateLimiter,
   validate(createInquirySchema),
   publicController.createInquiry,
+);
+
+publicRouter.post(
+  '/subscribers',
+  submissionRateLimiter,
+  validate(createSubscriberSchema),
+  publicController.subscribe,
 );

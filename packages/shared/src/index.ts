@@ -23,3 +23,4 @@ export * from './schemas/milestone';
 export * from './schemas/testimonial';
 export * from './schemas/team';
 export * from './schemas/faq';
+export * from './schemas/subscriber';

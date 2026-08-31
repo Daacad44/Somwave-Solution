@@ -1,8 +1,13 @@
 ---
+// Footer (SYSTEM_PROMPT §6). Chrome headings carry a data-i18n key so the
+// language switcher (W5.5) can translate them; the server renders Somali.
+import { chrome, DEFAULT_LOCALE } from '../lib/i18n';
+
+const t = chrome[DEFAULT_LOCALE];
 const year = new Date().getFullYear();
 const columns = [
   {
-    title: 'Adeegyada',
+    key: 'footer.services',
     links: [
       { href: '/#adeegyada', label: 'Horumarinta Websaydka' },
       { href: '/#adeegyada', label: 'Abaabulka Nidaamyada' },
@@ -10,7 +15,7 @@ const columns = [
     ],
   },
   {
-    title: 'Shirkadda',
+    key: 'footer.company',
     links: [
       { href: '/#habka-shaqada', label: 'Habka shaqada' },
       { href: '/nala-soo-xiriir', label: 'Nala soo xiriir' },
@@ -35,7 +40,9 @@ const columns = [
     {
       columns.map((column) => (
         <div>
-          <h2 class="text-sm font-semibold text-ink">{column.title}</h2>
+          <h2 class="text-sm font-semibold text-ink" data-i18n={column.key}>
+            {t[column.key]}
+          </h2>
           <ul class="mt-3 space-y-2">
             {column.links.map((link) => (
               <li>
@@ -51,8 +58,67 @@ const columns = [
   </div>
 
   <div class="border-t border-border">
+    <div class="mx-auto max-w-content px-4 py-8 sm:px-6">
+      <h2 class="text-sm font-semibold text-ink" data-i18n="footer.newsletter.title">
+        {t['footer.newsletter.title']}
+      </h2>
+      <p class="mt-1 max-w-md text-sm text-muted" data-i18n="footer.newsletter.desc">
+        {t['footer.newsletter.desc']}
+      </p>
+      <form id="subscribe-form" class="mt-3 flex max-w-md flex-wrap gap-2" novalidate>
+        <input
+          type="email"
+          name="email"
+          required
+          autocomplete="email"
+          placeholder="iimaylkaaga@tusaale.com"
+          aria-label="Iimaylkaaga"
+          class="h-11 min-w-56 flex-1 rounded-md border border-border bg-surface px-3 text-base text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        />
+        <button
+          type="submit"
+          data-i18n="footer.newsletter.button"
+          class="inline-flex h-11 items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-surface transition-colors hover:bg-primary-600 disabled:opacity-50"
+        >
+          {t['footer.newsletter.button']}
+        </button>
+      </form>
+      <p id="subscribe-status" class="mt-2 text-sm text-muted" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+
+  <div class="border-t border-border">
     <p class="mx-auto max-w-content px-4 py-6 text-sm text-muted sm:px-6">
-      © {year} Somwave. Dhammaan xuquuqdu way xifdisan tahay.
+      © {year} Somwave. <span data-i18n="footer.rights">{t['footer.rights']}</span>
     </p>
   </div>
 </footer>
+
+<script>
+  import { subscribe } from '../lib/api';
+
+  const form = document.getElementById('subscribe-form') as HTMLFormElement | null;
+  const statusEl = document.getElementById('subscribe-status');
+  if (form && statusEl) {
+    const button = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const email = String(new FormData(form).get('email') ?? '').trim();
+      if (button) button.disabled = true;
+      statusEl.textContent = 'Waa la diiwaangelinayaa…';
+      statusEl.style.color = 'var(--color-muted)';
+      try {
+        await subscribe(email);
+        form.reset();
+        statusEl.textContent = 'Waad ku mahadsan tahay! Waa lagu diiwaangeliyay.';
+        statusEl.style.color = 'var(--color-success)';
+      } catch (error) {
+        statusEl.textContent =
+          error instanceof Error ? error.message : 'Cilad ayaa dhacday. Fadlan mar kale isku day.';
+        statusEl.style.color = 'var(--color-error)';
+      } finally {
+        if (button) button.disabled = false;
+      }
+    });
+  }
+</script>

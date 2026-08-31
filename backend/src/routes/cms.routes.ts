@@ -137,3 +137,10 @@ cmsRouter.patch(
   cmsController.updateFaq,
 );
 cmsRouter.delete('/faqs/:id', rbac(PERMISSIONS.CONTENT_DELETE), cmsController.deleteFaq);
+
+cmsRouter.get('/subscribers', rbac(PERMISSIONS.CONTENT_READ), cmsController.listSubscribers);
+cmsRouter.delete(
+  '/subscribers/:id',
+  rbac(PERMISSIONS.CONTENT_DELETE),
+  cmsController.deleteSubscriber,
+);

@@ -25,6 +25,7 @@ import * as jobService from '../services/job.service';
 import * as testimonialService from '../services/testimonial.service';
 import * as teamService from '../services/team.service';
 import * as faqService from '../services/faq.service';
+import * as subscriberService from '../services/subscriber.service';
 
 export async function listServices(
   _req: Request,
@@ -396,6 +397,35 @@ export async function deleteFaq(req: Request, res: Response, next: NextFunction)
     const { id } = req.params;
     if (!id) throw new AppError('NOT_FOUND', 404, 'Su’aashan lama helin');
     await faqService.deleteFaq(id);
+    sendData(res, { success: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ── Subscribers (W5.4) ────────────────────────────────────────────────────────
+
+export async function listSubscribers(
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    sendData(res, await subscriberService.listSubscribers());
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteSubscriber(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { id } = req.params;
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Diiwaangalahan lama helin');
+    await subscriberService.deleteSubscriber(id);
     sendData(res, { success: true });
   } catch (err) {
     next(err);
