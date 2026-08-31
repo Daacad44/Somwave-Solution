@@ -13,6 +13,9 @@ import type {
   AdminJobOpening,
   CreateJobOpeningInput,
   UpdateJobOpeningInput,
+  AdminTestimonial,
+  CreateTestimonialInput,
+  UpdateTestimonialInput,
 } from '@somwave/shared';
 import { apiFetch } from '../../lib/apiClient';
 
@@ -109,4 +112,31 @@ export function updateOpening(id: string, input: UpdateJobOpeningInput): Promise
 
 export function deleteOpening(id: string): Promise<{ success: boolean }> {
   return apiFetch<{ success: boolean }>(`/cms/careers/${id}`, { method: 'DELETE' });
+}
+
+// ── Testimonials (W5.1) ───────────────────────────────────────────────────────
+
+export function listTestimonials(): Promise<AdminTestimonial[]> {
+  return apiFetch<AdminTestimonial[]>('/cms/testimonials');
+}
+
+export function createTestimonial(input: CreateTestimonialInput): Promise<AdminTestimonial> {
+  return apiFetch<AdminTestimonial>('/cms/testimonials', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateTestimonial(
+  id: string,
+  input: UpdateTestimonialInput,
+): Promise<AdminTestimonial> {
+  return apiFetch<AdminTestimonial>(`/cms/testimonials/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteTestimonial(id: string): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/cms/testimonials/${id}`, { method: 'DELETE' });
 }

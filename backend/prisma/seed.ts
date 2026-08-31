@@ -173,6 +173,32 @@ async function main(): Promise<void> {
     });
   }
 
+  // Testimonials (W5.1) — seeded once, only when none exist yet.
+  if ((await prisma.testimonial.count()) === 0) {
+    await prisma.testimonial.createMany({
+      data: [
+        {
+          author: 'Faadumo Cabdi',
+          role: 'Maamulaha Guud',
+          company: 'Iskuul Gaar ah',
+          quote:
+            'Somwave waxay nagu dhistay nidaam maamul oo casri ah — hawshu waa fududaatay, khaladaadkuna way yaraadeen.',
+          rating: 5,
+          order: 1,
+        },
+        {
+          author: 'Axmed Nuur',
+          role: 'Milkiile',
+          company: 'Shirkad Dhaqaale',
+          quote:
+            'App-ka ay noo sameeyeen macaamiisheena aad buu u helay — lacag-bixintu way fududaatay.',
+          rating: 5,
+          order: 2,
+        },
+      ],
+    });
+  }
+
   // Super-admin user — only when a password is provided; never a hardcoded one.
   const email = process.env.SEED_ADMIN_EMAIL ?? 'admin@somwave.com';
   const password = process.env.SEED_ADMIN_PASSWORD;

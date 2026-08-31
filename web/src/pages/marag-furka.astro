@@ -1,0 +1,59 @@
+---
+// Testimonials page (W5.1). SSR — reads /api/v1/public/testimonials at request time.
+export const prerender = false;
+
+import PageLayout from '../layouts/PageLayout.astro';
+import TestimonialCard from '../components/TestimonialCard.astro';
+import { fetchTestimonials } from '../lib/api';
+import type { PublicTestimonial } from '@somwave/shared';
+
+let testimonials: PublicTestimonial[] = [];
+let failed = false;
+try {
+  testimonials = await fetchTestimonials();
+} catch {
+  failed = true;
+}
+---
+
+<PageLayout
+  title="Marag-furka macaamiisha — Somwave"
+  description="Waxa macaamiisheena ka yiraahdeen shaqada Somwave."
+>
+  <section class="mx-auto max-w-content px-4 py-20 sm:px-6">
+    <div class="max-w-2xl">
+      <p class="text-sm font-semibold uppercase tracking-[0.14em] text-accent-600">Marag-furka</p>
+      <h1 class="mt-2 text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
+        Waxa macaamiishu naga yiraahdeen
+      </h1>
+      <p class="mt-4 text-lg leading-relaxed text-muted">
+        Kalsoonida macaamiisheena ayaa ah aasaaska shaqadeena.
+      </p>
+    </div>
+
+    {
+      failed ? (
+        <p class="mt-10 rounded-lg border border-border bg-surface-alt p-6 text-muted">
+          Cilad ayaa dhacday markii marag-furka la soo raadinayay. Fadlan mar kale isku day.
+        </p>
+      ) : testimonials.length === 0 ? (
+        <p class="mt-10 rounded-lg border border-border bg-surface-alt p-6 text-muted">
+          Weli marag-fur lama daabicin.
+        </p>
+      ) : (
+        <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {testimonials.map((testimonial) => (
+            <TestimonialCard
+              author={testimonial.author}
+              role={testimonial.role}
+              company={testimonial.company}
+              quote={testimonial.quote}
+              avatarUrl={testimonial.avatarUrl}
+              rating={testimonial.rating}
+            />
+          ))}
+        </div>
+      )
+    }
+  </section>
+</PageLayout>

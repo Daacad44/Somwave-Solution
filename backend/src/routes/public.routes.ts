@@ -18,6 +18,8 @@ publicRouter.get('/portfolio/:slug', publicController.getPortfolioItem);
 publicRouter.get('/posts', publicController.getPosts);
 publicRouter.get('/posts/:slug', publicController.getPost);
 
+publicRouter.get('/testimonials', publicController.getTestimonials);
+
 publicRouter.get('/careers', publicController.getCareers);
 publicRouter.get('/careers/:slug', publicController.getCareer);
 publicRouter.post(

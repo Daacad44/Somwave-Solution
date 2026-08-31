@@ -11,6 +11,7 @@ import type {
   PublicPostDetail,
   PublicPostSummary,
   PublicService,
+  PublicTestimonial,
 } from '@somwave/shared';
 
 const API_URL = import.meta.env.PUBLIC_API_URL;
@@ -52,6 +53,10 @@ export async function fetchPost(slug: string): Promise<PublicPostDetail | null> 
 
 export function fetchCareers(): Promise<PublicJobOpeningSummary[]> {
   return getData<PublicJobOpeningSummary[]>('/public/careers');
+}
+
+export function fetchTestimonials(): Promise<PublicTestimonial[]> {
+  return getData<PublicTestimonial[]>('/public/testimonials');
 }
 
 export async function fetchCareer(slug: string): Promise<PublicJobOpeningDetail | null> {

@@ -10,12 +10,15 @@ import type {
   UpdatePortfolioItemInput,
   CreateJobOpeningInput,
   UpdateJobOpeningInput,
+  CreateTestimonialInput,
+  UpdateTestimonialInput,
 } from '@somwave/shared';
 import { AppError, sendData } from '../lib/http';
 import * as serviceService from '../services/service.service';
 import * as postService from '../services/post.service';
 import * as portfolioService from '../services/portfolio.service';
 import * as jobService from '../services/job.service';
+import * as testimonialService from '../services/testimonial.service';
 
 export async function listServices(
   _req: Request,
@@ -236,6 +239,63 @@ export async function deleteOpening(
     const { id } = req.params;
     if (!id) throw new AppError('NOT_FOUND', 404, 'Fursaddan shaqo lama helin');
     await jobService.deleteOpening(id);
+    sendData(res, { success: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ── Testimonials (W5.1) ───────────────────────────────────────────────────────
+
+export async function listTestimonials(
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    sendData(res, await testimonialService.listAllTestimonials());
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function createTestimonial(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const item = await testimonialService.createTestimonial(req.body as CreateTestimonialInput);
+    sendData(res, item, 201);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateTestimonial(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { id } = req.params;
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Marag-furkan lama helin');
+    const item = await testimonialService.updateTestimonial(id, req.body as UpdateTestimonialInput);
+    sendData(res, item);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteTestimonial(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { id } = req.params;
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Marag-furkan lama helin');
+    await testimonialService.deleteTestimonial(id);
     sendData(res, { success: true });
   } catch (err) {
     next(err);
