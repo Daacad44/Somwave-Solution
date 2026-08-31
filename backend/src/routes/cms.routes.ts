@@ -6,6 +6,8 @@ import {
   updateServiceSchema,
   createPostSchema,
   updatePostSchema,
+  createPortfolioItemSchema,
+  updatePortfolioItemSchema,
   PERMISSIONS,
 } from '@somwave/shared';
 import { requireAuth } from '../middleware/auth';
@@ -48,3 +50,18 @@ cmsRouter.patch(
   cmsController.updatePost,
 );
 cmsRouter.delete('/posts/:id', rbac(PERMISSIONS.CONTENT_DELETE), cmsController.deletePost);
+
+cmsRouter.get('/portfolio', rbac(PERMISSIONS.CONTENT_READ), cmsController.listPortfolio);
+cmsRouter.post(
+  '/portfolio',
+  rbac(PERMISSIONS.CONTENT_CREATE),
+  validate(createPortfolioItemSchema),
+  cmsController.createPortfolio,
+);
+cmsRouter.patch(
+  '/portfolio/:id',
+  rbac(PERMISSIONS.CONTENT_UPDATE),
+  validate(updatePortfolioItemSchema),
+  cmsController.updatePortfolio,
+);
+cmsRouter.delete('/portfolio/:id', rbac(PERMISSIONS.CONTENT_DELETE), cmsController.deletePortfolio);

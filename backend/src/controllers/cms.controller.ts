@@ -6,10 +6,13 @@ import type {
   UpdateServiceInput,
   CreatePostInput,
   UpdatePostInput,
+  CreatePortfolioItemInput,
+  UpdatePortfolioItemInput,
 } from '@somwave/shared';
 import { AppError, sendData } from '../lib/http';
 import * as serviceService from '../services/service.service';
 import * as postService from '../services/post.service';
+import * as portfolioService from '../services/portfolio.service';
 
 export async function listServices(
   _req: Request,
@@ -113,6 +116,66 @@ export async function deletePost(req: Request, res: Response, next: NextFunction
     const { id } = req.params;
     if (!id) throw new AppError('NOT_FOUND', 404, 'Maqaalkan lama helin');
     await postService.deletePost(id);
+    sendData(res, { success: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ── Portfolio (W4.3) ──────────────────────────────────────────────────────────
+
+export async function listPortfolio(
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    sendData(res, await portfolioService.listAllPortfolio());
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function createPortfolio(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const item = await portfolioService.createPortfolioItem(req.body as CreatePortfolioItemInput);
+    sendData(res, item, 201);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updatePortfolio(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { id } = req.params;
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Shaqadan lama helin');
+    const item = await portfolioService.updatePortfolioItem(
+      id,
+      req.body as UpdatePortfolioItemInput,
+    );
+    sendData(res, item);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deletePortfolio(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { id } = req.params;
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Shaqadan lama helin');
+    await portfolioService.deletePortfolioItem(id);
     sendData(res, { success: true });
   } catch (err) {
     next(err);
