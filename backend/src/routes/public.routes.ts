@@ -20,6 +20,7 @@ publicRouter.get('/posts/:slug', publicController.getPost);
 
 publicRouter.get('/testimonials', publicController.getTestimonials);
 publicRouter.get('/team', publicController.getTeam);
+publicRouter.get('/faqs', publicController.getFaqs);
 
 publicRouter.get('/careers', publicController.getCareers);
 publicRouter.get('/careers/:slug', publicController.getCareer);

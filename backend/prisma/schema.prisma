@@ -369,3 +369,18 @@ model TeamMember {
   @@index([isPublished, order])
   @@map("team_members")
 }
+
+// ── Website: FAQ (web.prisma domain, §7) ─────────────────────────────────────
+
+model Faq {
+  id          String   @id @default(cuid())
+  question    String
+  answer      String
+  order       Int      @default(0)
+  isPublished Boolean  @default(true) @map("is_published")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([isPublished, order])
+  @@map("faqs")
+}

@@ -14,6 +14,8 @@ import {
   updateTestimonialSchema,
   createTeamMemberSchema,
   updateTeamMemberSchema,
+  createFaqSchema,
+  updateFaqSchema,
   PERMISSIONS,
 } from '@somwave/shared';
 import { requireAuth } from '../middleware/auth';
@@ -120,3 +122,18 @@ cmsRouter.patch(
   cmsController.updateTeamMember,
 );
 cmsRouter.delete('/team/:id', rbac(PERMISSIONS.CONTENT_DELETE), cmsController.deleteTeamMember);
+
+cmsRouter.get('/faqs', rbac(PERMISSIONS.CONTENT_READ), cmsController.listFaqs);
+cmsRouter.post(
+  '/faqs',
+  rbac(PERMISSIONS.CONTENT_CREATE),
+  validate(createFaqSchema),
+  cmsController.createFaq,
+);
+cmsRouter.patch(
+  '/faqs/:id',
+  rbac(PERMISSIONS.CONTENT_UPDATE),
+  validate(updateFaqSchema),
+  cmsController.updateFaq,
+);
+cmsRouter.delete('/faqs/:id', rbac(PERMISSIONS.CONTENT_DELETE), cmsController.deleteFaq);

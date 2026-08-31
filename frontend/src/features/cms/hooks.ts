@@ -13,6 +13,8 @@ import type {
   UpdateTestimonialInput,
   CreateTeamMemberInput,
   UpdateTeamMemberInput,
+  CreateFaqInput,
+  UpdateFaqInput,
 } from '@somwave/shared';
 import {
   listServices,
@@ -40,6 +42,10 @@ import {
   createTeamMember,
   updateTeamMember,
   deleteTeamMember,
+  listFaqs,
+  createFaq,
+  updateFaq,
+  deleteFaq,
 } from './api';
 
 const SERVICES_KEY = ['cms', 'services'] as const;
@@ -49,6 +55,7 @@ const PORTFOLIO_KEY = ['cms', 'portfolio'] as const;
 const CAREERS_KEY = ['cms', 'careers'] as const;
 const TESTIMONIALS_KEY = ['cms', 'testimonials'] as const;
 const TEAM_KEY = ['cms', 'team'] as const;
+const FAQS_KEY = ['cms', 'faqs'] as const;
 
 export function useCmsServices() {
   return useQuery({ queryKey: SERVICES_KEY, queryFn: listServices });
@@ -234,5 +241,35 @@ export function useDeleteTeamMember() {
   return useMutation({
     mutationFn: (id: string) => deleteTeamMember(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: TEAM_KEY }),
+  });
+}
+
+// ── FAQ (W5.3) ────────────────────────────────────────────────────────────────
+
+export function useCmsFaqs() {
+  return useQuery({ queryKey: FAQS_KEY, queryFn: listFaqs });
+}
+
+export function useCreateFaq() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateFaqInput) => createFaq(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: FAQS_KEY }),
+  });
+}
+
+export function useUpdateFaq() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateFaqInput }) => updateFaq(id, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: FAQS_KEY }),
+  });
+}
+
+export function useDeleteFaq() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteFaq(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: FAQS_KEY }),
   });
 }

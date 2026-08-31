@@ -219,6 +219,26 @@ async function main(): Promise<void> {
     });
   }
 
+  // FAQ (W5.3) — seeded once, only when none exist yet.
+  if ((await prisma.faq.count()) === 0) {
+    await prisma.faq.createMany({
+      data: [
+        {
+          question: 'Intee in le’eg ayay qaadataa in website la dhiso?',
+          answer:
+            'Waqtigu wuxuu ku xiran yahay baaxadda mashruuca — website fudud 2–4 toddobaad, nidaam buuxana wax ka badan.',
+          order: 1,
+        },
+        {
+          question: 'Ma bixisaan taageero ka dib markii la dhammeeyo?',
+          answer:
+            'Haa, waxaan bixinaa taageero iyo dayactir joogto ah si mashruucaagu si fiican u shaqeeyo.',
+          order: 2,
+        },
+      ],
+    });
+  }
+
   // Super-admin user — only when a password is provided; never a hardcoded one.
   const email = process.env.SEED_ADMIN_EMAIL ?? 'admin@somwave.com';
   const password = process.env.SEED_ADMIN_PASSWORD;

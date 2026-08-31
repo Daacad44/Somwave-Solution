@@ -19,6 +19,9 @@ import type {
   AdminTeamMember,
   CreateTeamMemberInput,
   UpdateTeamMemberInput,
+  AdminFaq,
+  CreateFaqInput,
+  UpdateFaqInput,
 } from '@somwave/shared';
 import { apiFetch } from '../../lib/apiClient';
 
@@ -166,4 +169,22 @@ export function updateTeamMember(
 
 export function deleteTeamMember(id: string): Promise<{ success: boolean }> {
   return apiFetch<{ success: boolean }>(`/cms/team/${id}`, { method: 'DELETE' });
+}
+
+// ── FAQ (W5.3) ────────────────────────────────────────────────────────────────
+
+export function listFaqs(): Promise<AdminFaq[]> {
+  return apiFetch<AdminFaq[]>('/cms/faqs');
+}
+
+export function createFaq(input: CreateFaqInput): Promise<AdminFaq> {
+  return apiFetch<AdminFaq>('/cms/faqs', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export function updateFaq(id: string, input: UpdateFaqInput): Promise<AdminFaq> {
+  return apiFetch<AdminFaq>(`/cms/faqs/${id}`, { method: 'PATCH', body: JSON.stringify(input) });
+}
+
+export function deleteFaq(id: string): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/cms/faqs/${id}`, { method: 'DELETE' });
 }
