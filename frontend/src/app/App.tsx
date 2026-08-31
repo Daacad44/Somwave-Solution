@@ -39,6 +39,9 @@ const TestimonialsAdminPage = lazy(() =>
     default: m.TestimonialsAdminPage,
   })),
 );
+const TeamAdminPage = lazy(() =>
+  import('../features/cms/TeamAdminPage').then((m) => ({ default: m.TeamAdminPage })),
+);
 
 // Placeholder authenticated landing. Real feature routes (lazy) mount under the
 // AppShell as they land (SYSTEM_PROMPT §6, §16).
@@ -136,6 +139,14 @@ export function App(): ReactNode {
             element={
               <Suspense fallback={<LoadingState rows={6} />}>
                 <TestimonialsAdminPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/cms/team"
+            element={
+              <Suspense fallback={<LoadingState rows={6} />}>
+                <TeamAdminPage />
               </Suspense>
             }
           />

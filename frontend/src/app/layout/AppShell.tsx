@@ -92,6 +92,11 @@ export function AppShell(): ReactNode {
               CMS · Marag-furka
             </NavLink>
           ) : null}
+          {canReadContent ? (
+            <NavLink to="/cms/team" className={navLinkClass}>
+              CMS · Kooxda
+            </NavLink>
+          ) : null}
           {canReadUsers ? (
             <NavLink to="/users" className={navLinkClass}>
               Isticmaalayaasha

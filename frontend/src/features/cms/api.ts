@@ -16,6 +16,9 @@ import type {
   AdminTestimonial,
   CreateTestimonialInput,
   UpdateTestimonialInput,
+  AdminTeamMember,
+  CreateTeamMemberInput,
+  UpdateTeamMemberInput,
 } from '@somwave/shared';
 import { apiFetch } from '../../lib/apiClient';
 
@@ -139,4 +142,28 @@ export function updateTestimonial(
 
 export function deleteTestimonial(id: string): Promise<{ success: boolean }> {
   return apiFetch<{ success: boolean }>(`/cms/testimonials/${id}`, { method: 'DELETE' });
+}
+
+// ── Team members (W5.2) ───────────────────────────────────────────────────────
+
+export function listTeam(): Promise<AdminTeamMember[]> {
+  return apiFetch<AdminTeamMember[]>('/cms/team');
+}
+
+export function createTeamMember(input: CreateTeamMemberInput): Promise<AdminTeamMember> {
+  return apiFetch<AdminTeamMember>('/cms/team', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export function updateTeamMember(
+  id: string,
+  input: UpdateTeamMemberInput,
+): Promise<AdminTeamMember> {
+  return apiFetch<AdminTeamMember>(`/cms/team/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteTeamMember(id: string): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/cms/team/${id}`, { method: 'DELETE' });
 }
