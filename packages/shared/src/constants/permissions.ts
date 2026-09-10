@@ -24,6 +24,22 @@ export const PERMISSIONS = {
   CONTENT_CREATE: 'content.create',
   CONTENT_UPDATE: 'content.update',
   CONTENT_DELETE: 'content.delete',
+  LEADS_READ: 'leads.read',
+  LEADS_UPDATE: 'leads.update',
+  APPLICATIONS_READ: 'applications.read',
+  APPLICATIONS_UPDATE: 'applications.update',
+  CLIENTS_READ: 'clients.read',
+  CLIENTS_CREATE: 'clients.create',
+  CLIENTS_UPDATE: 'clients.update',
+  TIMESHEETS_READ: 'timesheets.read',
+  TIMESHEETS_CREATE: 'timesheets.create',
+  TIMESHEETS_UPDATE: 'timesheets.update',
+  INVOICES_READ: 'invoices.read',
+  INVOICES_CREATE: 'invoices.create',
+  TICKETS_READ: 'tickets.read',
+  TICKETS_CREATE: 'tickets.create',
+  TICKETS_UPDATE: 'tickets.update',
+  PORTAL_READ: 'portal.read',
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

@@ -11,6 +11,7 @@ import {
 } from '@somwave/shared';
 import { Modal } from '../../../components/ui/Modal';
 import { Input } from '../../../components/ui/Input';
+import { DatePicker } from '../../../components/ui/DatePicker';
 import { Select } from '../../../components/ui/Select';
 import { Button } from '../../../components/ui/Button';
 import { ApiError } from '../../../lib/apiClient';
@@ -122,15 +123,13 @@ export function ProjectFormModal({ open, onClose, project }: ProjectFormModalPro
         />
 
         <div className="grid grid-cols-2 gap-3">
-          <Input
+          <DatePicker
             label="Taariikhda bilowga"
-            type="date"
             error={errors.startDate?.message}
             {...register('startDate')}
           />
-          <Input
+          <DatePicker
             label="Taariikhda dhammaadka"
-            type="date"
             error={errors.dueDate?.message}
             {...register('dueDate')}
           />

@@ -24,3 +24,7 @@ export * from './schemas/testimonial';
 export * from './schemas/team';
 export * from './schemas/faq';
 export * from './schemas/subscriber';
+export * from './schemas/client';
+export * from './schemas/timesheet';
+export * from './schemas/invoice';
+export * from './schemas/ticket';

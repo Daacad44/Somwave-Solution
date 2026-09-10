@@ -8,6 +8,7 @@ declare global {
       id: string;
       roles: string[];
       permissions: string[];
+      clientId: string | null;
     }
     interface Request {
       authUser?: AuthUserContext;

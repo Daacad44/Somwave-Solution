@@ -20,6 +20,7 @@ export const LOCALE_NAMES: Record<Locale, string> = {
 export const chrome: Record<Locale, Record<string, string>> = {
   so: {
     'nav.home': 'Guriga',
+    'nav.about': 'Ku saabsan',
     'nav.services': 'Adeegyada',
     'nav.portfolio': 'Shaqooyinka',
     'nav.blog': 'Maqaallada',
@@ -39,6 +40,7 @@ export const chrome: Record<Locale, Record<string, string>> = {
   },
   en: {
     'nav.home': 'Home',
+    'nav.about': 'About',
     'nav.services': 'Services',
     'nav.portfolio': 'Portfolio',
     'nav.blog': 'Blog',
@@ -58,6 +60,7 @@ export const chrome: Record<Locale, Record<string, string>> = {
   },
   ar: {
     'nav.home': 'الرئيسية',
+    'nav.about': 'من نحن',
     'nav.services': 'الخدمات',
     'nav.portfolio': 'الأعمال',
     'nav.blog': 'المدونة',

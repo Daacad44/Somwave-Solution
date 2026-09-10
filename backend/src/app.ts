@@ -17,6 +17,15 @@ import { projectsRouter } from './routes/project.routes';
 import { tasksRouter } from './routes/task.routes';
 import { milestonesRouter } from './routes/milestone.routes';
 import { cmsRouter } from './routes/cms.routes';
+import {
+  leadsRouter,
+  applicationsRouter,
+  clientsRouter,
+  timesheetsRouter,
+  invoicesRouter,
+  ticketsRouter,
+  portalRouter,
+} from './routes/platform.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 export function createApp(): Express {
@@ -46,6 +55,13 @@ export function createApp(): Express {
   app.use('/api/v1/tasks', tasksRouter);
   app.use('/api/v1/milestones', milestonesRouter);
   app.use('/api/v1/cms', cmsRouter);
+  app.use('/api/v1/leads', leadsRouter);
+  app.use('/api/v1/job-applications', applicationsRouter);
+  app.use('/api/v1/clients', clientsRouter);
+  app.use('/api/v1/timesheets', timesheetsRouter);
+  app.use('/api/v1/invoices', invoicesRouter);
+  app.use('/api/v1/support-tickets', ticketsRouter);
+  app.use('/api/v1/portal', portalRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

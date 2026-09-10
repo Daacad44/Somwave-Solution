@@ -15,6 +15,15 @@ import { AppError } from '../lib/http';
 const CACHE_KEY = 'public:services';
 const CACHE_TTL_SECONDS = 300;
 
+export async function getPublishedServiceBySlug(
+  slug: string,
+): Promise<import('@somwave/shared').PublicServiceDetail | null> {
+  return prisma.service.findFirst({
+    where: { slug, isPublished: true },
+    select: { id: true, slug: true, title: true, summary: true, description: true, order: true },
+  });
+}
+
 export async function listPublishedServices(): Promise<PublicService[]> {
   const cached = await readCache();
   if (cached) return cached;
