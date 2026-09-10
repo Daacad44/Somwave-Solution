@@ -9,6 +9,7 @@ const user: AuthUser = {
   name: 'Cali',
   roles: [ROLES.STAFF],
   permissions: [PERMISSIONS.USERS_READ],
+  clientId: null,
 };
 
 describe('hasPermission', () => {

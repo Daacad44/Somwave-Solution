@@ -24,6 +24,7 @@ type UserWithRoles = {
   email: string;
   name: string;
   passwordHash: string;
+  clientId: string | null;
   roles: { role: { name: string; permissions: { key: string }[] } }[];
 };
 
@@ -36,7 +37,14 @@ function toAuthUser(user: UserWithRoles): AuthUser {
   const permissions = [
     ...new Set(user.roles.flatMap((ur) => ur.role.permissions.map((p) => p.key))),
   ];
-  return { id: user.id, email: user.email, name: user.name, roles, permissions };
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    roles,
+    permissions,
+    clientId: user.clientId,
+  };
 }
 
 async function issueSession(user: UserWithRoles): Promise<IssuedSession> {
@@ -121,14 +129,14 @@ export async function logout(rawToken: string | undefined): Promise<void> {
 
 export async function getUserAuthContext(
   userId: string,
-): Promise<{ id: string; roles: string[]; permissions: string[] } | null> {
+): Promise<{ id: string; roles: string[]; permissions: string[]; clientId: string | null } | null> {
   const user = await prisma.user.findFirst({
     where: { id: userId, isActive: true, deletedAt: null },
     include: userWithRolesInclude,
   });
   if (!user) return null;
-  const { id, roles, permissions } = toAuthUser(user);
-  return { id, roles, permissions };
+  const { id, roles, permissions, clientId } = toAuthUser(user);
+  return { id, roles, permissions, clientId };
 }
 
 // Exposed for the seed and future user-management service.

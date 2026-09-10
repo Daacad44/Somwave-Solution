@@ -11,6 +11,12 @@ export const publicServiceSchema = z.object({
 
 export type PublicService = z.infer<typeof publicServiceSchema>;
 
+export const publicServiceDetailSchema = publicServiceSchema.extend({
+  description: z.string().nullable(),
+});
+
+export type PublicServiceDetail = z.infer<typeof publicServiceDetailSchema>;
+
 // Full shape shown in the CMS (W4) — includes unpublished fields (§9).
 export const adminServiceSchema = z.object({
   id: z.string(),

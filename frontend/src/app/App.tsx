@@ -3,7 +3,6 @@ import { Route, Routes } from 'react-router-dom';
 import { LoginPage } from '../features/auth/LoginPage';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { AppShell } from './layout/AppShell';
-import { useCurrentUser } from '../features/auth/hooks';
 import { LoadingState } from '../components/states';
 
 // Feature routes are lazy (SYSTEM_PROMPT §4: React Router v6 lazy routes).
@@ -50,17 +49,33 @@ const SubscribersAdminPage = lazy(() =>
     default: m.SubscribersAdminPage,
   })),
 );
+const DashboardPage = lazy(() =>
+  import('../features/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })),
+);
+const LeadsPage = lazy(() =>
+  import('../features/ops/LeadsPage').then((m) => ({ default: m.LeadsPage })),
+);
+const ApplicationsPage = lazy(() =>
+  import('../features/ops/ApplicationsPage').then((m) => ({ default: m.ApplicationsPage })),
+);
+const ClientsPage = lazy(() =>
+  import('../features/ops/ClientsPage').then((m) => ({ default: m.ClientsPage })),
+);
+const TimesheetsPage = lazy(() =>
+  import('../features/ops/TimesheetsPage').then((m) => ({ default: m.TimesheetsPage })),
+);
+const InvoicesPage = lazy(() =>
+  import('../features/ops/InvoicesPage').then((m) => ({ default: m.InvoicesPage })),
+);
+const TicketsPage = lazy(() =>
+  import('../features/ops/TicketsPage').then((m) => ({ default: m.TicketsPage })),
+);
+const PortalProjectsPage = lazy(() =>
+  import('../features/ops/PortalProjectsPage').then((m) => ({ default: m.PortalProjectsPage })),
+);
 
-// Placeholder authenticated landing. Real feature routes (lazy) mount under the
-// AppShell as they land (SYSTEM_PROMPT §6, §16).
-function Dashboard(): ReactNode {
-  const { data: user } = useCurrentUser();
-  return (
-    <section>
-      <h1 className="text-2xl font-semibold text-ink">Welcome, {user?.name}</h1>
-      <p className="mt-1 text-base text-muted">Your workspace is ready.</p>
-    </section>
-  );
+function LazyPage({ children }: { children: ReactNode }): ReactNode {
+  return <Suspense fallback={<LoadingState rows={6} />}>{children}</Suspense>;
 }
 
 export function App(): ReactNode {
@@ -69,109 +84,172 @@ export function App(): ReactNode {
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
-          <Route path="/" element={<Dashboard />} />
+          <Route
+            path="/"
+            element={
+              <LazyPage>
+                <DashboardPage />
+              </LazyPage>
+            }
+          />
           <Route
             path="/users"
             element={
-              <Suspense fallback={<LoadingState rows={6} />}>
+              <LazyPage>
                 <UsersPage />
-              </Suspense>
+              </LazyPage>
             }
           />
           <Route
             path="/roles"
             element={
-              <Suspense fallback={<LoadingState rows={6} />}>
+              <LazyPage>
                 <RolesPage />
-              </Suspense>
+              </LazyPage>
             }
           />
           <Route
             path="/projects"
             element={
-              <Suspense fallback={<LoadingState rows={6} />}>
+              <LazyPage>
                 <ProjectsPage />
-              </Suspense>
+              </LazyPage>
             }
           />
           <Route
             path="/tasks"
             element={
-              <Suspense fallback={<LoadingState rows={6} />}>
+              <LazyPage>
                 <TasksPage />
-              </Suspense>
+              </LazyPage>
             }
           />
           <Route
             path="/milestones"
             element={
-              <Suspense fallback={<LoadingState rows={6} />}>
+              <LazyPage>
                 <MilestonesPage />
-              </Suspense>
+              </LazyPage>
             }
           />
           <Route
             path="/cms/services"
             element={
-              <Suspense fallback={<LoadingState rows={6} />}>
+              <LazyPage>
                 <ServicesAdminPage />
-              </Suspense>
+              </LazyPage>
             }
           />
           <Route
             path="/cms/posts"
             element={
-              <Suspense fallback={<LoadingState rows={6} />}>
+              <LazyPage>
                 <PostsAdminPage />
-              </Suspense>
+              </LazyPage>
             }
           />
           <Route
             path="/cms/portfolio"
             element={
-              <Suspense fallback={<LoadingState rows={6} />}>
+              <LazyPage>
                 <PortfolioAdminPage />
-              </Suspense>
+              </LazyPage>
             }
           />
           <Route
             path="/cms/careers"
             element={
-              <Suspense fallback={<LoadingState rows={6} />}>
+              <LazyPage>
                 <CareersAdminPage />
-              </Suspense>
+              </LazyPage>
             }
           />
           <Route
             path="/cms/testimonials"
             element={
-              <Suspense fallback={<LoadingState rows={6} />}>
+              <LazyPage>
                 <TestimonialsAdminPage />
-              </Suspense>
+              </LazyPage>
             }
           />
           <Route
             path="/cms/team"
             element={
-              <Suspense fallback={<LoadingState rows={6} />}>
+              <LazyPage>
                 <TeamAdminPage />
-              </Suspense>
+              </LazyPage>
             }
           />
           <Route
             path="/cms/faqs"
             element={
-              <Suspense fallback={<LoadingState rows={6} />}>
+              <LazyPage>
                 <FaqAdminPage />
-              </Suspense>
+              </LazyPage>
             }
           />
           <Route
             path="/cms/subscribers"
             element={
-              <Suspense fallback={<LoadingState rows={6} />}>
+              <LazyPage>
                 <SubscribersAdminPage />
-              </Suspense>
+              </LazyPage>
+            }
+          />
+          <Route
+            path="/leads"
+            element={
+              <LazyPage>
+                <LeadsPage />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="/applications"
+            element={
+              <LazyPage>
+                <ApplicationsPage />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="/clients"
+            element={
+              <LazyPage>
+                <ClientsPage />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="/timesheets"
+            element={
+              <LazyPage>
+                <TimesheetsPage />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="/invoices"
+            element={
+              <LazyPage>
+                <InvoicesPage />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="/tickets"
+            element={
+              <LazyPage>
+                <TicketsPage />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="/portal/projects"
+            element={
+              <LazyPage>
+                <PortalProjectsPage />
+              </LazyPage>
             }
           />
         </Route>

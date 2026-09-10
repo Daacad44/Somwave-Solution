@@ -1,10 +1,8 @@
-// Public website controller (SYSTEM_PROMPT §5). Unauthenticated; delegates to
-// services and returns the standard envelope.
 import type { NextFunction, Request, Response } from 'express';
 import type { CreateInquiryInput, CreateJobApplicationInput } from '@somwave/shared';
 import { AppError, sendData } from '../lib/http';
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from '@somwave/shared';
-import { listPublishedServices } from '../services/service.service';
+import { listPublishedServices, getPublishedServiceBySlug } from '../services/service.service';
 import { createInquiry as createInquiryService } from '../services/inquiry.service';
 import { listPublishedPortfolio, getPortfolioBySlug } from '../services/portfolio.service';
 import { listPublishedPosts, getPostBySlug } from '../services/post.service';
@@ -23,6 +21,17 @@ function parsePositiveInt(value: unknown, fallback: number): number {
 export async function getServices(_req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     sendData(res, await listPublishedServices());
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getService(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { slug } = req.params;
+    const service = slug ? await getPublishedServiceBySlug(slug) : null;
+    if (!service) throw new AppError('NOT_FOUND', 404, 'Adeegan lama helin');
+    sendData(res, service);
   } catch (err) {
     next(err);
   }

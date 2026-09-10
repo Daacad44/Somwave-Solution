@@ -36,6 +36,82 @@ async function main(): Promise<void> {
     data: { permissions: { set: contentPermissions.map((permission) => ({ id: permission.id })) } },
   });
 
+  const byPrefix = (...prefixes: string[]): typeof permissions =>
+    permissions.filter((p) => prefixes.some((prefix) => p.key.startsWith(prefix)));
+
+  await prisma.role.update({
+    where: { name: ROLES.ADMIN },
+    data: {
+      permissions: {
+        set: permissions
+          .filter((p) => p.key !== PERMISSIONS.ROLES_MANAGE)
+          .map((permission) => ({ id: permission.id })),
+      },
+    },
+  });
+
+  await prisma.role.update({
+    where: { name: ROLES.MANAGER },
+    data: {
+      permissions: {
+        set: byPrefix(
+          'projects.',
+          'tasks.',
+          'milestones.',
+          'leads.',
+          'applications.',
+          'timesheets.',
+          'invoices.',
+          'tickets.',
+          'clients.',
+        ).map((permission) => ({ id: permission.id })),
+      },
+    },
+  });
+
+  const staffKeys = new Set<string>([
+    PERMISSIONS.PROJECTS_READ,
+    PERMISSIONS.TASKS_READ,
+    PERMISSIONS.TASKS_CREATE,
+    PERMISSIONS.TASKS_UPDATE,
+    PERMISSIONS.MILESTONES_READ,
+    PERMISSIONS.TIMESHEETS_READ,
+    PERMISSIONS.TIMESHEETS_CREATE,
+  ]);
+  await prisma.role.update({
+    where: { name: ROLES.STAFF },
+    data: {
+      permissions: {
+        set: permissions
+          .filter((p) => staffKeys.has(p.key))
+          .map((permission) => ({ id: permission.id })),
+      },
+    },
+  });
+
+  const clientKeys = new Set<string>([
+    PERMISSIONS.PORTAL_READ,
+    PERMISSIONS.TICKETS_READ,
+    PERMISSIONS.TICKETS_CREATE,
+    PERMISSIONS.INVOICES_READ,
+  ]);
+  await prisma.role.update({
+    where: { name: ROLES.CLIENT },
+    data: {
+      permissions: {
+        set: permissions
+          .filter((p) => clientKeys.has(p.key))
+          .map((permission) => ({ id: permission.id })),
+      },
+    },
+  });
+
+  if ((await prisma.client.count()) === 0) {
+    await prisma.client.create({
+      data: { companyName: 'Macmiil Tusaale', email: 'client@example.com', status: 'ACTIVE' },
+    });
+  }
+
   // Website services shown on the public site (managed from the CMS later).
   const services = [
     {

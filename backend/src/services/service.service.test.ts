@@ -4,6 +4,7 @@ vi.mock('../lib/prisma', () => ({
   prisma: {
     service: {
       findMany: vi.fn(),
+      findFirst: vi.fn(),
       findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
@@ -17,6 +18,7 @@ import { prisma } from '../lib/prisma';
 import { redis } from '../lib/redis';
 import {
   listPublishedServices,
+  getPublishedServiceBySlug,
   createService,
   updateService,
   deleteService,
@@ -70,6 +72,25 @@ describe('listPublishedServices', () => {
     const result = await listPublishedServices();
 
     expect(result).toEqual(rows);
+  });
+});
+
+describe('getPublishedServiceBySlug', () => {
+  it('returns a published service with description', async () => {
+    const detail = { ...rows[0], description: 'Faahfaahin' };
+    vi.mocked(prisma.service.findFirst).mockResolvedValue(detail as never);
+
+    const result = await getPublishedServiceBySlug('web');
+
+    expect(result).toEqual(detail);
+    expect(prisma.service.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { slug: 'web', isPublished: true } }),
+    );
+  });
+
+  it('returns null when the slug is missing or unpublished', async () => {
+    vi.mocked(prisma.service.findFirst).mockResolvedValue(null as never);
+    expect(await getPublishedServiceBySlug('missing')).toBeNull();
   });
 });
 
