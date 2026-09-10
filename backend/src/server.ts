@@ -8,8 +8,9 @@ import { prisma } from './lib/prisma';
 
 const app = createApp();
 
-const server = app.listen(env.PORT, () => {
-  logger.info(`Somwave API listening on :${env.PORT} (${env.NODE_ENV})`);
+// Bind 0.0.0.0 so Traefik/Coolify can reach the process (not loopback-only).
+const server = app.listen(env.PORT, '0.0.0.0', () => {
+  logger.info(`Somwave API listening on 0.0.0.0:${env.PORT} (${env.NODE_ENV})`);
 });
 
 function shutdown(signal: string): void {
