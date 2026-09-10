@@ -1,17 +1,25 @@
 # syntax=docker/dockerfile:1
 #
-# Alias for Coolify when Dockerfile Location is /Dockerfile (repository root).
-# Keep in sync with backend/Dockerfile. Build context MUST be the monorepo root.
+# Somwave API — production image for Coolify (Dockerfile build pack).
 #
-# Production image for @somwave/backend (Express + Prisma + tsx).
+# Build context MUST be the monorepo root. @somwave/backend depends on the
+# workspace package @somwave/shared (packages/shared). Docker cannot COPY
+# files outside the context, so Base Directory must NOT be /backend.
 #
-#   docker build -f Dockerfile -t somwave-api .
-#   docker build -f backend/Dockerfile -t somwave-api .
+#   docker build -t somwave-api .
 #
-# Coolify:
-#   Build Pack: Dockerfile
-#   Base Directory: /
-#   Dockerfile Location: /Dockerfile   (this file)  OR  /backend/Dockerfile
+# Coolify (this is the only supported path):
+#   Build Pack:           Dockerfile
+#   Base Directory:       /          (repository root, empty/default)
+#   Dockerfile Location:  /Dockerfile
+#   Port:                 4000
+#   Domain:               https://api.somwave.botandev.com
+#
+# Runtime env (Coolify Runtime — never baked in):
+#   NODE_ENV, PORT, DATABASE_URL, REDIS_URL, JWT_SECRET, CORS_ORIGINS
+#
+# `npm run build` is `tsc --noEmit` (no dist/). Start is `tsx src/server.ts`.
+# Prisma Client is generated at build; `prisma migrate deploy` runs at startup.
 
 FROM node:20-bookworm AS builder
 
@@ -29,6 +37,8 @@ COPY frontend/package.json ./frontend/
 COPY web/package.json ./web/
 COPY backend/prisma ./backend/prisma
 
+# postinstall = prisma generate. Generate does not connect; this URL is only
+# for the RUN layer and is not the runtime DATABASE_URL.
 RUN DATABASE_URL="postgresql://127.0.0.1:5432/build" \
   npm ci --workspace=@somwave/backend --workspace=@somwave/shared --include-workspace-root
 
@@ -63,6 +73,7 @@ WORKDIR /app/backend
 
 EXPOSE 4000
 
+# Existing route: GET /health (pings Postgres + Redis).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||4000)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
