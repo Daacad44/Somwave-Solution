@@ -42,10 +42,7 @@ describe('apiFetch', () => {
   });
 
   it('maps a network failure to INTERNAL_ERROR', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockRejectedValue(new TypeError('Failed to fetch')),
-    );
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
     await expect(apiFetch('/auth/login')).rejects.toMatchObject({
       name: 'ApiError',
       code: 'INTERNAL_ERROR',

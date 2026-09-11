@@ -130,8 +130,7 @@ export const homeTestimonials = [
     author: 'Axmed Nuur',
     role: 'Milkiile',
     company: 'Shirkad Dhaqaale',
-    quote:
-      'App-ka ay noo sameeyeen macaamiisheena aad buu u helay — lacag-bixintu way fududaatay.',
+    quote: 'App-ka ay noo sameeyeen macaamiisheena aad buu u helay — lacag-bixintu way fududaatay.',
     rating: 5,
   },
   {
