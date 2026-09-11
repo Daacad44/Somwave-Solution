@@ -1,4 +1,12 @@
-# Build context is the monorepo root (Dockerfile at /Dockerfile).
+# Shared by every image built from the monorepo root:
+#   docker build -f Dockerfile            → backend API  (Coolify Location /Dockerfile)
+#   docker build -f frontend/Dockerfile   → React SPA    (Coolify Location /frontend/Dockerfile)
+#
+# Context MUST be the repository root so both images can COPY packages/shared.
+# Do NOT exclude frontend/ or packages/shared/ (SPA build).
+# Do NOT exclude backend/ (API build).
+# Do NOT set Coolify Base Directory to /frontend or /backend.
+
 .git
 .github
 **/.env
@@ -17,13 +25,6 @@ logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-frontend/src
-frontend/index.html
-frontend/public
-frontend/vite.config.ts
-frontend/tailwind.config.ts
-frontend/postcss.config.js
-frontend/tsconfig.json
 web/src
 web/astro.config.mjs
 web/tailwind.config.ts
