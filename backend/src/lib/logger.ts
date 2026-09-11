@@ -15,6 +15,7 @@ export const logger = pino({
       '*.secret',
       'DATABASE_URL',
       'REDIS_URL',
+      'REDIS_PASSWORD',
       'JWT_SECRET',
     ],
     remove: true,

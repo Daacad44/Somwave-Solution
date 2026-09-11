@@ -9,6 +9,10 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
   DATABASE_URL: z.string().url(),
   REDIS_URL: z.string().url(),
+  // Coolify Redis is password-protected. The URL is often host-only
+  // (`redis://uuid:6379`); AUTH then comes from this sibling var.
+  REDIS_PASSWORD: z.string().optional(),
+  REDIS_USERNAME: z.string().optional(),
   JWT_SECRET: z.string().min(32, 'must be at least 32 characters'),
   CORS_ORIGINS: z.string().min(1, 'comma-separated list of allowed origins is required'),
 });

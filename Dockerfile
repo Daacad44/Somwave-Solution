@@ -16,7 +16,10 @@
 #   Domain:               https://api.somwave.botandev.com
 #
 # Runtime env (Coolify Runtime — never baked in):
-#   NODE_ENV, PORT, DATABASE_URL, REDIS_URL, JWT_SECRET, CORS_ORIGINS
+#   NODE_ENV, PORT, DATABASE_URL, REDIS_URL, REDIS_PASSWORD, JWT_SECRET, CORS_ORIGINS
+#
+# Coolify Redis requires AUTH. Host-only REDIS_URL → NOAUTH → /health 503.
+# Set REDIS_PASSWORD (or REDIS_URL=redis://:PASSWORD@<redis-uuid>:6379).
 #
 # `npm run build` is `tsc --noEmit` (no dist/). Start is `tsx src/server.ts`.
 # Prisma Client is generated at build; `prisma migrate deploy` runs at startup.
