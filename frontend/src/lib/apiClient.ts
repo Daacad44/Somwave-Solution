@@ -23,11 +23,16 @@ async function request<T>(
   path: string,
   init?: RequestInit,
 ): Promise<{ data: T; meta?: PaginationMeta }> {
-  const res = await fetch(`${import.meta.env.VITE_API_URL}${path}`, {
-    ...init,
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${import.meta.env.VITE_API_URL}${path}`, {
+      ...init,
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...init?.headers },
+    });
+  } catch {
+    throw new ApiError('INTERNAL_ERROR', 'Network error');
+  }
   const body = (await res.json().catch(() => null)) as {
     data?: T;
     meta?: PaginationMeta;
