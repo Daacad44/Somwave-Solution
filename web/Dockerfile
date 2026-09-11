@@ -59,7 +59,9 @@ RUN if [ -z "$PUBLIC_SITE_URL" ] || [ -z "$PUBLIC_API_URL" ]; then \
     fi \
   && npm run build --workspace=@somwave/web \
   && npm run typecheck --workspace=@somwave/shared \
-  && npm prune --omit=dev --workspace=@somwave/web --workspace=@somwave/shared --include-workspace-root
+  && npm prune --omit=dev --workspace=@somwave/web --workspace=@somwave/shared --include-workspace-root \
+  && test -d web/node_modules/send \
+  && test -d web/node_modules/cookie
 
 FROM node:20-bookworm-slim AS runner
 
@@ -78,6 +80,21 @@ COPY --from=builder --chown=node:node /app/node_modules ./node_modules
 COPY --from=builder --chown=node:node /app/packages ./packages
 COPY --from=builder --chown=node:node /app/web/package.json ./web/
 COPY --from=builder --chown=node:node /app/web/dist ./web/dist
+# Nested workspace installs. The lockfile cannot hoist send@1.2.1 or
+# cookie@1.1.1 to /app/node_modules because Express pins send@0.19 and
+# cookie@0.7 at the repo root. Those packages therefore live under
+# web/node_modules. Astro's SSR adapter emits bare `import 'send'` /
+# `import 'cookie'` from dist/server/chunks — Node walks up from that
+# file and never looks inside astro/node_modules or
+# @astrojs/node/node_modules. Omitting this COPY is the Coolify
+# ERR_MODULE_NOT_FOUND for `send`.
+COPY --from=builder --chown=node:node /app/web/node_modules ./web/node_modules
+
+# Resolve the adapter externals from the same directory as the generated
+# chunk, so a missing runtime package fails `docker build` instead of the
+# Coolify healthcheck.
+WORKDIR /app/web/dist/server/chunks
+RUN node --input-type=module -e "import 'send'; import 'cookie'; import 'server-destroy';"
 
 USER node
 WORKDIR /app/web
