@@ -1,0 +1,125 @@
+---
+type Scene = 'shop' | 'school' | 'travel' | 'estate' | 'logo' | 'app' | 'code';
+interface Props {
+  scene: Scene;
+  label: string;
+}
+const { scene, label } = Astro.props;
+---
+
+<div class:list={['scene', `scene-${scene}`]} role="img" aria-label={label}>
+  <div class="scene-desk"></div>
+  <div class="scene-window">
+    <span class="scene-bar"></span>
+    <span class="scene-row"></span>
+    <span class="scene-row short"></span>
+  </div>
+  <div class="scene-phone">
+    <span></span>
+    <span></span>
+  </div>
+</div>
+
+<style>
+  .scene {
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+    min-height: 168px;
+    background:
+      radial-gradient(
+        80% 70% at 80% 20%,
+        color-mix(in srgb, var(--color-brand) 12%, transparent),
+        transparent 60%
+      ),
+      linear-gradient(180deg, var(--color-brand-soft), var(--color-surface-alt));
+  }
+  .scene-desk {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 22%;
+    background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+  }
+  .scene-window {
+    position: absolute;
+    inset: 22% 28% 20% 12%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-radius: 10px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-md);
+    padding: 10px;
+  }
+  .scene-bar {
+    height: 8px;
+    width: 46%;
+    border-radius: 99px;
+    background: var(--color-brand);
+    opacity: 0.8;
+  }
+  .scene-row {
+    height: 28%;
+    border-radius: 6px;
+    background: var(--color-brand-soft);
+  }
+  .scene-row.short {
+    width: 70%;
+  }
+  .scene-phone {
+    position: absolute;
+    right: 12%;
+    bottom: 12%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 44px;
+    height: 76px;
+    border-radius: 10px;
+    background: var(--color-ink);
+    box-shadow: var(--shadow-md);
+    padding: 8px 6px;
+  }
+  .scene-phone span {
+    flex: 1;
+    border-radius: 4px;
+    background: var(--color-brand-soft);
+  }
+  .scene-school .scene-window {
+    inset: 20% 16% 22% 16%;
+  }
+  .scene-school .scene-phone {
+    display: none;
+  }
+  .scene-travel .scene-window {
+    inset: 28% 36% 18% 10%;
+  }
+  .scene-estate .scene-phone {
+    width: 36px;
+    height: 64px;
+    right: 18%;
+  }
+  .scene-logo .scene-window,
+  .scene-app .scene-window {
+    display: none;
+  }
+  .scene-logo .scene-phone,
+  .scene-app .scene-phone {
+    inset: auto 50% 16% auto;
+    width: 58px;
+    height: 104px;
+    transform: translateX(50%);
+  }
+  .scene-code .scene-phone {
+    display: none;
+  }
+  .scene-code .scene-window {
+    inset: 16% 12% 16% 12%;
+  }
+  .scene-code .scene-row {
+    height: 10px;
+    width: 88%;
+  }
+</style>

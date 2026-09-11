@@ -11,7 +11,8 @@ interface Props {
 const { title, description = 'Somwave — shirkad teknoolajiyad oo dhisa xalal dijital ah.' } =
   Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
-const siteName = 'Somwave';
+const siteName = 'Somwave Solution';
+const logoUrl = new URL('/brand/somwave-logo.png', Astro.site);
 
 // Organization structured data (JSON-LD) — helps search engines and rich results.
 const organizationSchema = {
@@ -19,6 +20,7 @@ const organizationSchema = {
   '@type': 'Organization',
   name: siteName,
   url: Astro.site?.toString(),
+  logo: logoUrl.toString(),
   description,
 };
 ---
@@ -38,11 +40,13 @@ const organizationSchema = {
     <meta property="og:type" content="website" />
     <meta property="og:url" content={canonical} />
     <meta property="og:locale" content="so_SO" />
+    <meta property="og:image" content={logoUrl.toString()} />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={logoUrl.toString()} />
 
     <meta name="generator" content={Astro.generator} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />

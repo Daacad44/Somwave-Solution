@@ -1,0 +1,47 @@
+---
+import { homeProjects } from '../../lib/homeContent';
+import SceneCover from './SceneCover.astro';
+---
+
+<section id="shaqooyinkayaga" class="bg-surface" aria-labelledby="portfolio-heading">
+  <div class="mx-auto max-w-site px-4 py-20 sm:px-6">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p class="text-sm font-semibold text-brand">Shaqooyinkayaga</p>
+        <h2
+          id="portfolio-heading"
+          class="mt-2 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl"
+        >
+          Mashaariic Aan Ku Faanno
+        </h2>
+      </div>
+      <a
+        href="/shaqooyinka"
+        class="inline-flex h-12 w-fit items-center rounded-md border border-border px-5 text-sm font-semibold text-ink transition-colors hover:border-brand hover:text-brand"
+      >
+        Dhamaan shaqooyinka
+      </a>
+    </div>
+
+    <div class="mt-10 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      {
+        homeProjects.map((item) => (
+          <a
+            href={item.href}
+            class="group overflow-hidden rounded-lg border border-border bg-surface shadow-sm transition-shadow hover:shadow-md"
+          >
+            <div class="aspect-[16/10] overflow-hidden">
+              <div class="h-full transition-transform duration-300 group-hover:scale-[1.03]">
+                <SceneCover scene={item.scene} label={item.title} />
+              </div>
+            </div>
+            <div class="p-5">
+              <h3 class="text-base font-semibold text-ink">{item.title}</h3>
+              <p class="mt-1 text-sm text-muted">{item.category}</p>
+            </div>
+          </a>
+        ))
+      }
+    </div>
+  </div>
+</section>

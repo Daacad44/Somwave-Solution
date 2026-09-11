@@ -7,6 +7,11 @@ export default {
     extend: {
       colors: {
         primary: { DEFAULT: 'var(--color-primary)', 600: 'var(--color-primary-600)' },
+        brand: {
+          DEFAULT: 'var(--color-brand)',
+          600: 'var(--color-brand-600)',
+          soft: 'var(--color-brand-soft)',
+        },
         accent: { DEFAULT: 'var(--color-accent)', 600: 'var(--color-accent-600)' },
         success: 'var(--color-success)',
         warning: 'var(--color-warning)',
@@ -33,6 +38,7 @@ export default {
       },
       maxWidth: {
         content: '1120px',
+        site: '1200px',
       },
     },
   },

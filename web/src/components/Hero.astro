@@ -1,38 +1,304 @@
 ---
-// Homepage hero (SYSTEM_PROMPT §6). Navy ground, amber accent — on the shared
-// tokens. Amber carries text only on the dark ground here, which is AA-safe (§8).
+import HomeIcon from './home/HomeIcon.astro';
 ---
 
-<section class="relative overflow-hidden bg-primary text-surface">
-  <div
-    class="pointer-events-none absolute inset-0 opacity-70"
-    style="background: radial-gradient(60% 60% at 85% 0%, rgb(245 158 11 / 0.18), transparent 60%), radial-gradient(50% 60% at 0% 100%, rgb(22 50 79 / 0.9), transparent 70%);"
-    aria-hidden="true"
-  >
-  </div>
+<section class="relative overflow-hidden bg-surface">
+  <div class="hero-wash pointer-events-none absolute inset-0" aria-hidden="true"></div>
+  <div class="hero-rings pointer-events-none absolute -end-16 top-8 h-[420px] w-[420px] sm:end-8" aria-hidden="true"></div>
 
-  <div class="relative mx-auto max-w-content px-4 py-24 sm:px-6 md:py-32">
-    <p class="text-sm font-semibold uppercase tracking-[0.16em] text-accent">Somwave</p>
-    <h1 class="mt-4 max-w-3xl text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl md:text-6xl">
-      Xalal dijital ah oo ganacsigaaga horumariya.
-    </h1>
-    <p class="mt-6 max-w-xl text-lg leading-relaxed text-surface/80">
-      Waxaan dhisnaa website-yo dhaqso ah, nidaamyo gudaha ah, iyo barnaamijyo mobil oo shaqadaada
-      fududeeya — naqshad casri ah iyo tayo lagu kalsoonaan karo.
-    </p>
-    <div class="mt-9 flex flex-wrap gap-3">
-      <a
-        href="/nala-soo-xiriir"
-        class="inline-flex h-12 items-center rounded-md bg-accent px-6 text-base font-semibold text-primary transition-colors hover:bg-accent-600"
+  <div
+    class="relative mx-auto grid max-w-site items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.02fr_1fr] lg:gap-10 lg:py-20"
+  >
+    <div>
+      <p
+        class="inline-flex min-h-11 items-center rounded-full bg-brand-soft px-4 text-xs font-semibold text-brand"
       >
-        Mashruuc bilow
-      </a>
-      <a
-        href="/adeegyada"
-        class="inline-flex h-12 items-center rounded-md border border-surface/30 px-6 text-base font-semibold text-surface transition-colors hover:bg-surface/10"
+        Xalal Digital ah oo ka Dhanaan Ganacsigaaga
+      </p>
+      <h1
+        class="mt-5 max-w-xl text-[2.35rem] font-extrabold leading-[1.08] tracking-tight text-ink sm:text-5xl lg:text-[3.25rem]"
       >
-        Arag adeegyada
+        Teknoolojiyad<br />Hor u marinaysa<br />Mustaqbalkaaga
+      </h1>
+      <p class="mt-5 max-w-lg text-base leading-relaxed text-muted sm:text-lg">
+        Somwave Solution waxay bixisaa xalal digital ah oo casri ah, la isku halayn karo, kana
+        caawiya ganacsiyada inay gaaraan yoolalkooda.
+      </p>
+      <div class="mt-8 flex flex-wrap items-center gap-3">
+        <a
+          href="/nala-soo-xiriir"
+          class="inline-flex h-12 items-center rounded-md bg-brand px-6 text-sm font-semibold text-surface transition-colors hover:bg-brand-600"
+        >
+          Nala soo xiriir
+        </a>
+        <a
+          href="/shaqooyinka"
+          class="inline-flex h-12 items-center rounded-md border border-border bg-surface px-6 text-sm font-semibold text-ink transition-colors hover:border-brand hover:text-brand"
+        >
+          Eeg shaqooyinkayaga
+        </a>
+      </div>
+      <a
+        href="#shaqooyinkayaga"
+        class="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-ink"
+      >
+        <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand text-surface">
+          <HomeIcon name="play" class="h-3.5 w-3.5" />
+        </span>
+        Daawo muuqaal
       </a>
+    </div>
+
+    <div class="relative mx-auto w-full max-w-md lg:max-w-none">
+      <div class="hero-laptop" aria-hidden="true">
+        <div class="hero-laptop-lid">
+          <div class="hero-screen">
+            <aside class="hero-side">
+              <span class="hero-side-dot"></span>
+              <span></span><span></span><span></span><span></span>
+            </aside>
+            <div class="hero-main">
+              <div class="hero-topbar">
+                <span></span>
+                <span></span>
+              </div>
+              <div class="hero-metrics">
+                <b></b><b></b><b></b>
+              </div>
+              <div class="hero-chart">
+                <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="hero-laptop-base"></div>
+        <div class="hero-laptop-lip"></div>
+      </div>
+
+      <div class="hero-phone" aria-hidden="true">
+        <div class="hero-phone-notch"></div>
+        <div class="hero-phone-ui">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
+
+      <div class="hero-float hero-float-a">
+        <span class="hero-float-dot"></span>
+        Dashboard Horumarin
+      </div>
+      <div class="hero-float hero-float-b">
+        <span class="hero-float-dot"></span>
+        24/7 Taageero
+      </div>
     </div>
   </div>
 </section>
+
+<style>
+  .hero-wash {
+    background:
+      radial-gradient(
+        70% 55% at 88% 20%,
+        color-mix(in srgb, var(--color-brand) 12%, transparent),
+        transparent 62%
+      ),
+      radial-gradient(
+        40% 36% at 8% 88%,
+        color-mix(in srgb, var(--color-brand) 6%, transparent),
+        transparent 70%
+      );
+  }
+  .hero-rings {
+    background:
+      radial-gradient(circle at 50% 50%, transparent 28%, color-mix(in srgb, var(--color-brand) 10%, transparent) 29%, transparent 31%),
+      radial-gradient(circle at 50% 50%, transparent 40%, color-mix(in srgb, var(--color-brand) 9%, transparent) 41%, transparent 43%),
+      radial-gradient(circle at 50% 50%, transparent 52%, color-mix(in srgb, var(--color-brand) 7%, transparent) 53%, transparent 55%),
+      radial-gradient(circle at 50% 50%, transparent 64%, color-mix(in srgb, var(--color-brand) 6%, transparent) 65%, transparent 67%);
+  }
+  .hero-laptop {
+    position: relative;
+    z-index: 1;
+    padding-inline-end: 12%;
+  }
+  .hero-laptop-lid {
+    border-radius: 16px 16px 8px 8px;
+    background: var(--color-ink);
+    padding: 10px 10px 8px;
+    box-shadow: var(--shadow-lg);
+  }
+  .hero-screen {
+    display: grid;
+    grid-template-columns: 42px 1fr;
+    min-height: 236px;
+    overflow: hidden;
+    border-radius: 8px;
+    background: var(--color-surface);
+  }
+  .hero-side {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 8px;
+    background: var(--color-primary);
+  }
+  .hero-side-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 99px;
+    background: var(--color-brand);
+    margin-bottom: 6px;
+  }
+  .hero-side span {
+    display: block;
+    height: 6px;
+    border-radius: 99px;
+    background: color-mix(in srgb, var(--color-surface) 28%, transparent);
+  }
+  .hero-main {
+    padding: 12px;
+  }
+  .hero-topbar {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .hero-topbar span {
+    height: 8px;
+    border-radius: 99px;
+    background: var(--color-brand-soft);
+  }
+  .hero-topbar span:first-child {
+    width: 42%;
+    background: var(--color-brand);
+    opacity: 0.85;
+  }
+  .hero-topbar span:last-child {
+    width: 18%;
+  }
+  .hero-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .hero-metrics b {
+    display: block;
+    height: 42px;
+    border-radius: 6px;
+    background: var(--color-brand-soft);
+    border: 1px solid var(--color-border);
+  }
+  .hero-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 92px;
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: 8px;
+    background: var(--color-surface-alt);
+    border: 1px solid var(--color-border);
+  }
+  .hero-chart i {
+    flex: 1;
+    border-radius: 4px 4px 0 0;
+    background: color-mix(in srgb, var(--color-brand) 55%, var(--color-brand-soft));
+  }
+  .hero-chart i:nth-child(1) { height: 38%; }
+  .hero-chart i:nth-child(2) { height: 56%; }
+  .hero-chart i:nth-child(3) { height: 44%; }
+  .hero-chart i:nth-child(4) { height: 78%; }
+  .hero-chart i:nth-child(5) { height: 62%; }
+  .hero-chart i:nth-child(6) { height: 90%; }
+  .hero-chart i:nth-child(7) { height: 70%; }
+  .hero-laptop-base {
+    height: 10px;
+    margin: 0 auto;
+    width: 92%;
+    border-radius: 0 0 8px 8px;
+    background: color-mix(in srgb, var(--color-ink) 18%, var(--color-border));
+  }
+  .hero-laptop-lip {
+    height: 4px;
+    width: 28%;
+    margin: 0 auto;
+    border-radius: 0 0 8px 8px;
+    background: var(--color-border);
+  }
+  .hero-phone {
+    position: absolute;
+    right: 0;
+    bottom: 6%;
+    z-index: 2;
+    width: 96px;
+    border-radius: 18px;
+    background: var(--color-ink);
+    padding: 8px 7px 10px;
+    box-shadow: var(--shadow-lg);
+  }
+  .hero-phone-notch {
+    height: 6px;
+    width: 30px;
+    margin: 0 auto 8px;
+    border-radius: 99px;
+    background: color-mix(in srgb, var(--color-surface) 28%, transparent);
+  }
+  .hero-phone-ui {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 140px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, var(--color-brand-soft), var(--color-surface));
+    padding: 10px 8px;
+  }
+  .hero-phone-ui span {
+    display: block;
+    height: 28px;
+    border-radius: 6px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+  }
+  .hero-float {
+    position: absolute;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 999px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-md);
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+  .hero-float-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 99px;
+    background: var(--color-brand);
+  }
+  .hero-float-a {
+    top: 8%;
+    right: 0;
+  }
+  .hero-float-b {
+    left: 0;
+    bottom: 16%;
+  }
+  @media (max-width: 640px) {
+    .hero-phone {
+      width: 74px;
+    }
+    .hero-phone-ui {
+      min-height: 110px;
+    }
+    .hero-screen {
+      min-height: 188px;
+    }
+  }
+</style>

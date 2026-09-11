@@ -1,0 +1,50 @@
+---
+import { homeTestimonials } from '../../lib/homeContent';
+import HomeIcon from './HomeIcon.astro';
+---
+
+<section id="marag-furka-home" class="bg-surface" aria-labelledby="testimonials-heading">
+  <div class="mx-auto max-w-site px-4 py-20 sm:px-6">
+    <p class="text-sm font-semibold text-brand">Marag-furka</p>
+    <h2
+      id="testimonials-heading"
+      class="mt-2 max-w-xl text-3xl font-extrabold tracking-tight text-ink sm:text-4xl"
+    >
+      Macaamiisheenu<br />Maxay Ka Yiraahdeen?
+    </h2>
+
+    <div class="mt-10 grid gap-5 md:grid-cols-3">
+      {
+        homeTestimonials.map((item) => (
+          <figure class="flex h-full flex-col rounded-lg border border-border bg-surface p-6 shadow-sm">
+            <HomeIcon name="quote" class="h-7 w-7 text-brand" />
+            <blockquote class="mt-4 flex-1 text-[15px] leading-relaxed text-ink">
+              “{item.quote}”
+            </blockquote>
+            <figcaption class="mt-5 flex items-center gap-3">
+              <span
+                class="flex h-11 w-11 items-center justify-center rounded-full bg-brand-soft text-sm font-semibold text-brand"
+                aria-hidden="true"
+              >
+                {item.author.charAt(0)}
+              </span>
+              <div>
+                <p class="text-sm font-semibold text-ink">{item.author}</p>
+                <p class="text-xs text-muted">
+                  {item.role} · {item.company}
+                </p>
+                <div class="mt-1 flex gap-0.5" aria-label={`${item.rating} xiddigood`}>
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <span class={i < item.rating ? 'text-brand' : 'text-border'} aria-hidden="true">
+                      ★
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </figcaption>
+          </figure>
+        ))
+      }
+    </div>
+  </div>
+</section>

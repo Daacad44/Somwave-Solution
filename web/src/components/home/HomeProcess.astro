@@ -1,0 +1,36 @@
+---
+import { processSteps } from '../../lib/homeContent';
+---
+
+<section id="habka-shaqada" class="bg-surface" aria-labelledby="process-heading">
+  <div class="mx-auto max-w-site px-4 py-20 sm:px-6">
+    <p class="text-sm font-semibold text-brand">Sida Aan U Shaqayno</p>
+    <h2
+      id="process-heading"
+      class="mt-2 max-w-xl text-3xl font-extrabold tracking-tight text-ink sm:text-4xl"
+    >
+      Habka Aan U Gaarsiino<br />Guushaada
+    </h2>
+
+    <ol class="relative mt-12 grid gap-8 md:grid-cols-4">
+      <span
+        class="pointer-events-none absolute top-5 hidden h-px bg-border md:block md:inset-x-[10%]"
+        aria-hidden="true"
+      >
+      </span>
+      {
+        processSteps.map((step) => (
+          <li class="relative">
+            <span
+              class="relative z-[1] flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface text-sm font-bold text-brand shadow-sm"
+            >
+              {step.n}
+            </span>
+            <h3 class="mt-4 text-lg font-semibold text-ink">{step.title}</h3>
+            <p class="mt-2 text-[15px] leading-relaxed text-muted">{step.description}</p>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</section>

@@ -1,11 +1,11 @@
 ---
-// Site header + primary navigation (SYSTEM_PROMPT §6). Uses logical properties so
-// it flips cleanly for Arabic (RTL, §12). Labels carry a data-i18n key: the
-// server renders Somali (default) and the language switcher swaps them (W5.5).
+import BrandLogo from './BrandLogo.astro';
 import LanguageSwitcher from './LanguageSwitcher.astro';
+import HomeIcon from './home/HomeIcon.astro';
 import { chrome, DEFAULT_LOCALE } from '../lib/i18n';
 
 const t = chrome[DEFAULT_LOCALE];
+const path = Astro.url.pathname;
 const links = [
   { href: '/', key: 'nav.home' },
   { href: '/adeegyada', key: 'nav.services' },
@@ -18,26 +18,35 @@ const links = [
   { href: '/nala-soo-xiriir', key: 'nav.contact' },
 ];
 const portalUrl = 'https://app.somwave.botandev.com';
+
+function isActive(href: string): boolean {
+  if (href === '/') return path === '/';
+  return path === href || path.startsWith(`${href}/`);
+}
 ---
 
-<header class="sticky top-0 z-40 border-b border-border bg-surface/90 backdrop-blur">
+<header class="sticky top-0 z-40 border-b border-border bg-surface">
   <nav
-    class="mx-auto flex h-16 max-w-content items-center justify-between gap-4 px-4 sm:px-6"
+    class="mx-auto flex h-[72px] max-w-site items-center justify-between gap-3 px-4 sm:px-6"
     aria-label="Navigation-ka weyn"
   >
-    <a href="/" class="flex items-center gap-2 text-lg font-extrabold tracking-tight text-primary">
-      <span class="inline-block h-3 w-3 rounded-full bg-accent" aria-hidden="true"></span>
-      Somwave
+    <a href="/" class="flex min-h-11 shrink-0 items-center">
+      <span class="sm:hidden"><BrandLogo size="sm" /></span>
+      <span class="hidden sm:inline-flex"><BrandLogo size="md" /></span>
     </a>
 
-    <ul class="hidden items-center gap-7 md:flex">
+    <ul class="hidden min-w-0 items-center justify-center gap-x-3 xl:flex">
       {
         links.map((link) => (
           <li>
             <a
               href={link.href}
               data-i18n={link.key}
-              class="text-sm font-medium text-muted transition-colors hover:text-primary"
+              class:list={[
+                'inline-flex min-h-11 items-center whitespace-nowrap text-[12.5px] font-medium transition-colors hover:text-brand',
+                isActive(link.href) ? 'text-brand' : 'text-ink/75',
+              ]}
+              aria-current={isActive(link.href) ? 'page' : undefined}
             >
               {t[link.key]}
             </a>
@@ -46,15 +55,79 @@ const portalUrl = 'https://app.somwave.botandev.com';
       }
     </ul>
 
-    <div class="flex items-center gap-3">
-      <LanguageSwitcher />
+    <div class="flex items-center gap-2">
+      <div class="hidden xl:block">
+        <LanguageSwitcher />
+      </div>
       <a
         href={portalUrl}
         data-i18n="cta.portal"
-        class="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-semibold text-surface transition-colors hover:bg-primary-600"
+        class="hidden h-11 shrink-0 items-center whitespace-nowrap rounded-md bg-brand px-4 text-sm font-semibold text-surface transition-colors hover:bg-brand-600 sm:inline-flex"
       >
         {t['cta.portal']}
       </a>
+      <button
+        type="button"
+        id="nav-toggle"
+        class="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border text-ink xl:hidden"
+        aria-controls="mobile-nav"
+        aria-expanded="false"
+        aria-label="Fur liiska"
+      >
+        <HomeIcon name="menu" class="nav-open-icon h-5 w-5" />
+        <HomeIcon name="close" class="nav-close-icon hidden h-5 w-5" />
+      </button>
     </div>
   </nav>
+
+  <div id="mobile-nav" class="hidden border-t border-border bg-surface xl:hidden" hidden>
+    <ul class="mx-auto flex max-w-site flex-col gap-1 px-4 py-3 sm:px-6">
+      {
+        links.map((link) => (
+          <li>
+            <a
+              href={link.href}
+              data-i18n={link.key}
+              class:list={[
+                'flex min-h-11 items-center rounded-md px-3 text-sm font-medium',
+                isActive(link.href) ? 'bg-brand-soft text-brand' : 'text-ink hover:bg-surface-alt',
+              ]}
+            >
+              {t[link.key]}
+            </a>
+          </li>
+        ))
+      }
+      <li class="px-3 py-3">
+        <LanguageSwitcher />
+      </li>
+      <li class="px-3 pb-2 sm:hidden">
+        <a
+          href={portalUrl}
+          data-i18n="cta.portal"
+          class="inline-flex h-11 w-full items-center justify-center rounded-md bg-brand px-4 text-sm font-semibold text-surface"
+        >
+          {t['cta.portal']}
+        </a>
+      </li>
+    </ul>
+  </div>
 </header>
+
+<script>
+  const toggle = document.getElementById('nav-toggle');
+  const panel = document.getElementById('mobile-nav');
+  const openIcon = toggle?.querySelector('.nav-open-icon');
+  const closeIcon = toggle?.querySelector('.nav-close-icon');
+  if (toggle && panel) {
+    toggle.addEventListener('click', () => {
+      const open = toggle.getAttribute('aria-expanded') === 'true';
+      toggle.setAttribute('aria-expanded', String(!open));
+      toggle.setAttribute('aria-label', open ? 'Fur liiska' : 'Xir liiska');
+      panel.hidden = open;
+      panel.classList.toggle('hidden', open);
+      openIcon?.classList.toggle('hidden', !open);
+      closeIcon?.classList.toggle('hidden', open);
+    });
+  }
+</script>
