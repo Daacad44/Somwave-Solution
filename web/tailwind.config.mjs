@@ -38,7 +38,7 @@ export default {
       },
       maxWidth: {
         content: '1120px',
-        site: '1200px',
+        site: '1240px',
       },
     },
   },

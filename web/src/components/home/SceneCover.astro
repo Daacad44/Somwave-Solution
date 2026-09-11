@@ -8,15 +8,21 @@ const { scene, label } = Astro.props;
 ---
 
 <div class:list={['scene', `scene-${scene}`]} role="img" aria-label={label}>
-  <div class="scene-desk"></div>
-  <div class="scene-window">
-    <span class="scene-bar"></span>
-    <span class="scene-row"></span>
-    <span class="scene-row short"></span>
+  <div class="scene-glow"></div>
+  <div class="scene-laptop">
+    <div class="scene-lid">
+      <div class="scene-screen">
+        <span class="s-nav"></span>
+        <span class="s-hero"></span>
+        <span class="s-grid"></span>
+      </div>
+    </div>
+    <div class="scene-base"></div>
   </div>
   <div class="scene-phone">
-    <span></span>
-    <span></span>
+    <span class="p-notch"></span>
+    <span class="p-block"></span>
+    <span class="p-block short"></span>
   </div>
 </div>
 
@@ -26,100 +32,130 @@ const { scene, label } = Astro.props;
     overflow: hidden;
     height: 100%;
     min-height: 168px;
-    background:
-      radial-gradient(
-        80% 70% at 80% 20%,
-        color-mix(in srgb, var(--color-brand) 12%, transparent),
-        transparent 60%
-      ),
-      linear-gradient(180deg, var(--color-brand-soft), var(--color-surface-alt));
+    background: linear-gradient(180deg, var(--color-brand-soft), var(--color-surface-alt));
   }
-  .scene-desk {
+  .scene-glow {
     position: absolute;
-    inset-inline: 0;
-    bottom: 0;
-    height: 22%;
-    background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+    inset: auto -10% -30% 40%;
+    height: 80%;
+    border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--color-brand) 16%, transparent), transparent 70%);
   }
-  .scene-window {
+  .scene-laptop {
     position: absolute;
-    inset: 22% 28% 20% 12%;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    border-radius: 10px;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
+    inset: 18% 22% 16% 10%;
+  }
+  .scene-lid {
+    height: 86%;
+    border-radius: 8px 8px 4px 4px;
+    background: var(--color-ink);
+    padding: 5px 5px 4px;
     box-shadow: var(--shadow-md);
-    padding: 10px;
   }
-  .scene-bar {
-    height: 8px;
-    width: 46%;
-    border-radius: 99px;
-    background: var(--color-brand);
-    opacity: 0.8;
-  }
-  .scene-row {
-    height: 28%;
-    border-radius: 6px;
-    background: var(--color-brand-soft);
-  }
-  .scene-row.short {
-    width: 70%;
-  }
-  .scene-phone {
-    position: absolute;
-    right: 12%;
-    bottom: 12%;
+  .scene-screen {
     display: flex;
+    height: 100%;
     flex-direction: column;
     gap: 6px;
-    width: 44px;
-    height: 76px;
-    border-radius: 10px;
-    background: var(--color-ink);
-    box-shadow: var(--shadow-md);
-    padding: 8px 6px;
+    overflow: hidden;
+    border-radius: 4px;
+    background: var(--color-surface);
+    padding: 7px;
   }
-  .scene-phone span {
-    flex: 1;
+  .s-nav {
+    height: 6px;
+    width: 38%;
+    border-radius: 99px;
+    background: var(--color-brand);
+    opacity: 0.85;
+  }
+  .s-hero {
+    height: 34%;
     border-radius: 4px;
     background: var(--color-brand-soft);
   }
-  .scene-school .scene-window {
-    inset: 20% 16% 22% 16%;
+  .s-grid {
+    flex: 1;
+    border-radius: 4px;
+    background:
+      linear-gradient(90deg, var(--color-border) 31%, transparent 31% 34.5%, var(--color-border) 34.5% 65.5%, transparent 65.5% 69%, var(--color-border) 69%),
+      linear-gradient(var(--color-surface-alt), var(--color-surface-alt));
+    background-size: 100% 100%;
+  }
+  .scene-base {
+    height: 8%;
+    width: 88%;
+    margin: 0 auto;
+    border-radius: 0 0 5px 5px;
+    background: color-mix(in srgb, var(--color-ink) 20%, var(--color-border));
+  }
+  .scene-phone {
+    position: absolute;
+    right: 10%;
+    bottom: 10%;
+    display: flex;
+    width: 40px;
+    height: 70px;
+    flex-direction: column;
+    gap: 5px;
+    border-radius: 9px;
+    background: var(--color-ink);
+    box-shadow: var(--shadow-md);
+    padding: 7px 6px;
+  }
+  .p-notch {
+    height: 4px;
+    width: 14px;
+    margin: 0 auto;
+    border-radius: 99px;
+    background: color-mix(in srgb, var(--color-surface) 30%, transparent);
+  }
+  .p-block {
+    flex: 1;
+    border-radius: 3px;
+    background: var(--color-brand-soft);
+  }
+  .p-block.short {
+    flex: 0.55;
   }
   .scene-school .scene-phone {
     display: none;
   }
-  .scene-travel .scene-window {
-    inset: 28% 36% 18% 10%;
+  .scene-school .scene-laptop {
+    inset: 16% 14% 16% 14%;
   }
-  .scene-estate .scene-phone {
-    width: 36px;
-    height: 64px;
-    right: 18%;
+  .scene-travel .scene-laptop {
+    inset: 22% 30% 14% 8%;
   }
-  .scene-logo .scene-window,
-  .scene-app .scene-window {
+  .scene-estate .s-hero {
+    height: 48%;
+  }
+  .scene-logo .scene-laptop,
+  .scene-app .scene-laptop {
     display: none;
   }
   .scene-logo .scene-phone,
   .scene-app .scene-phone {
-    inset: auto 50% 16% auto;
-    width: 58px;
-    height: 104px;
-    transform: translateX(50%);
+    inset: 14% auto 12% 50%;
+    width: 56px;
+    height: 100px;
+    transform: translateX(-50%);
   }
   .scene-code .scene-phone {
     display: none;
   }
-  .scene-code .scene-window {
-    inset: 16% 12% 16% 12%;
+  .scene-code .scene-laptop {
+    inset: 14% 10% 14% 10%;
   }
-  .scene-code .scene-row {
-    height: 10px;
-    width: 88%;
+  .scene-code .s-hero {
+    display: none;
+  }
+  .scene-code .s-grid {
+    background:
+      repeating-linear-gradient(
+        180deg,
+        var(--color-brand-soft) 0 6px,
+        transparent 6px 12px
+      );
   }
 </style>
