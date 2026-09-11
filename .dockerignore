@@ -1,11 +1,12 @@
 # Shared by every image built from the monorepo root:
 #   docker build -f Dockerfile            → backend API  (Coolify Location /Dockerfile)
 #   docker build -f frontend/Dockerfile   → React SPA    (Coolify Location /frontend/Dockerfile)
+#   docker build -f web/Dockerfile        → Astro site   (Coolify Location /web/Dockerfile)
 #
-# Context MUST be the repository root so both images can COPY packages/shared.
-# Do NOT exclude frontend/ or packages/shared/ (SPA build).
+# Context MUST be the repository root so images can COPY packages/shared.
+# Do NOT exclude frontend/, web/, or packages/shared/.
 # Do NOT exclude backend/ (API build).
-# Do NOT set Coolify Base Directory to /frontend or /backend.
+# Do NOT set Coolify Base Directory to /frontend, /web, or /backend.
 
 .git
 .github
@@ -25,10 +26,6 @@ logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-web/src
-web/astro.config.mjs
-web/tailwind.config.ts
-web/tsconfig.json
 docs
 *.md
 .cursor
