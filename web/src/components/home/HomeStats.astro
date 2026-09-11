@@ -1,0 +1,25 @@
+---
+import { homeStats } from '../../lib/homeContent';
+---
+
+<section class="bg-primary text-surface" aria-labelledby="stats-heading">
+  <div class="mx-auto max-w-site px-4 py-20 sm:px-6">
+    <h2
+      id="stats-heading"
+      class="max-w-lg text-3xl font-extrabold tracking-tight sm:text-4xl"
+    >
+      Tirooyinka<br />Waxay Sheegaan Xaqiiqda
+    </h2>
+    <dl class="mt-12 grid grid-cols-2 gap-8 lg:grid-cols-4">
+      {
+        homeStats.map((stat) => (
+          <div>
+            <dt class="sr-only">{stat.label}</dt>
+            <dd class="text-4xl font-extrabold tracking-tight sm:text-5xl">{stat.value}</dd>
+            <p class="mt-2 text-sm text-surface/70">{stat.label}</p>
+          </div>
+        ))
+      }
+    </dl>
+  </div>
+</section>

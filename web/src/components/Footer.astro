@@ -1,124 +1,137 @@
 ---
-// Footer (SYSTEM_PROMPT §6). Chrome headings carry a data-i18n key so the
-// language switcher (W5.5) can translate them; the server renders Somali.
+import BrandLogo from './BrandLogo.astro';
 import { chrome, DEFAULT_LOCALE } from '../lib/i18n';
 
 const t = chrome[DEFAULT_LOCALE];
 const year = new Date().getFullYear();
-const columns = [
-  {
-    key: 'footer.services',
-    links: [
-      { href: '/#adeegyada', label: 'Horumarinta Websaydka' },
-      { href: '/#adeegyada', label: 'Abaabulka Nidaamyada' },
-      { href: '/#adeegyada', label: 'Barnaamijyada Mobilada' },
-    ],
-  },
-  {
-    key: 'footer.company',
-    links: [
-      { href: '/#habka-shaqada', label: 'Habka shaqada' },
-      { href: '/nala-soo-xiriir', label: 'Nala soo xiriir' },
-    ],
-  },
+const quick = [
+  { href: '/', key: 'nav.home' },
+  { href: '/adeegyada', key: 'nav.services' },
+  { href: '/shaqooyinka', key: 'nav.portfolio' },
+  { href: '/blog', key: 'nav.blog' },
+  { href: '/kooxda', key: 'nav.team' },
+];
+const support = [
+  { href: '/su-aalaha', key: 'nav.faq' },
+  { href: '/fursado-shaqo', key: 'nav.careers' },
+  { href: '/nala-soo-xiriir', key: 'nav.contact' },
+  { href: 'https://app.somwave.botandev.com', key: 'cta.portal' },
 ];
 ---
 
-<footer class="mt-24 border-t border-border bg-surface-alt">
-  <div class="mx-auto grid max-w-content gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.5fr_1fr_1fr]">
+<footer class="mt-0 border-t border-border bg-surface">
+  <div
+    class="mx-auto grid max-w-site gap-10 px-4 py-14 sm:px-6 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.1fr]"
+  >
     <div>
-      <div class="flex items-center gap-2 text-lg font-extrabold text-primary">
-        <span class="inline-block h-3 w-3 rounded-full bg-accent" aria-hidden="true"></span>
-        Somwave
-      </div>
-      <p class="mt-3 max-w-xs text-sm leading-relaxed text-muted">
-        Waxaan u dhisnaa ganacsiyada xalal dijital ah oo casri ah — website, nidaamyo gudaha ah, iyo
+      <a href="/" class="inline-flex min-h-11 items-center">
+        <BrandLogo size="md" />
+      </a>
+      <p class="mt-4 max-w-xs text-sm leading-relaxed text-muted">
+        Waxaan u dhisnaa ganacsiyada xalal digital ah oo casri ah — website, nidaamyo gudaha ah, iyo
         barnaamijyo mobil.
       </p>
+      <ul class="mt-5 flex items-center gap-2" aria-label="Shabakadaha bulshada">
+        {
+          [
+            { label: 'Facebook', d: 'M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z' },
+            { label: 'X', d: 'M4 4l7.2 8.2L4.4 20H7l5-5.8L16.8 20H20l-7.3-8.4L19.5 4H17l-4.6 5.4L8 4z' },
+            {
+              label: 'LinkedIn',
+              d: 'M6 9H2v12h4V9Zm.1-5.2A2.2 2.2 0 1 1 1.7 3.8a2.2 2.2 0 0 1 4.4 0ZM22 13.3c0-3.5-1.9-5.3-4.4-5.3-2 0-3.1 1.1-3.6 2.1V8.9h-4V21h4v-6.4c0-1.7.3-3.3 2.4-3.3s2.2 1.9 2.2 3.4V21h4v-7.7Z',
+            },
+          ].map((item) => (
+            <li>
+              <a
+                href="/nala-soo-xiriir"
+                class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border text-muted transition-colors hover:border-brand hover:text-brand"
+                aria-label={item.label}
+              >
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d={item.d} />
+                </svg>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
     </div>
 
-    {
-      columns.map((column) => (
-        <div>
-          <h2 class="text-sm font-semibold text-ink" data-i18n={column.key}>
-            {t[column.key]}
-          </h2>
-          <ul class="mt-3 space-y-2">
-            {column.links.map((link) => (
-              <li>
-                <a href={link.href} class="text-sm text-muted transition-colors hover:text-primary">
-                  {link.label}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))
-    }
+    <div>
+      <h2 class="text-sm font-semibold text-ink" data-i18n="footer.quick">{t['footer.quick']}</h2>
+      <ul class="mt-4 space-y-2">
+        {
+          quick.map((link) => (
+            <li>
+              <a
+                href={link.href}
+                data-i18n={link.key}
+                class="inline-flex min-h-11 items-center text-sm text-muted transition-colors hover:text-brand"
+              >
+                {t[link.key]}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+
+    <div>
+      <h2 class="text-sm font-semibold text-ink" data-i18n="footer.support">{t['footer.support']}</h2>
+      <ul class="mt-4 space-y-2">
+        {
+          support.map((link) => (
+            <li>
+              <a
+                href={link.href}
+                data-i18n={link.key}
+                class="inline-flex min-h-11 items-center text-sm text-muted transition-colors hover:text-brand"
+              >
+                {t[link.key]}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+
+    <div>
+      <h2 class="text-sm font-semibold text-ink" data-i18n="footer.contact">{t['footer.contact']}</h2>
+      <ul class="mt-4 space-y-3 text-sm leading-relaxed text-muted">
+        <li>Mogadishu, Soomaaliya</li>
+        <li>
+          <a class="hover:text-brand" href="mailto:info@somwave.so">info@somwave.so</a>
+        </li>
+        <li>
+          <a class="hover:text-brand" href="tel:+252612345678">+252 61 234 5678</a>
+        </li>
+        <li>Isniin - Jimco: 8:00 - 17:00</li>
+      </ul>
+    </div>
   </div>
 
   <div class="border-t border-border">
-    <div class="mx-auto max-w-content px-4 py-8 sm:px-6">
-      <h2 class="text-sm font-semibold text-ink" data-i18n="footer.newsletter.title">
-        {t['footer.newsletter.title']}
-      </h2>
-      <p class="mt-1 max-w-md text-sm text-muted" data-i18n="footer.newsletter.desc">
-        {t['footer.newsletter.desc']}
+    <div
+      class="mx-auto flex max-w-site flex-col gap-3 px-4 py-5 text-sm text-muted sm:flex-row sm:items-center sm:justify-between sm:px-6"
+    >
+      <p>
+        © {year} Somwave Solution. <span data-i18n="footer.rights">{t['footer.rights']}</span>
       </p>
-      <form id="subscribe-form" class="mt-3 flex max-w-md flex-wrap gap-2" novalidate>
-        <input
-          type="email"
-          name="email"
-          required
-          autocomplete="email"
-          placeholder="iimaylkaaga@tusaale.com"
-          aria-label="Iimaylkaaga"
-          class="h-11 min-w-56 flex-1 rounded-md border border-border bg-surface px-3 text-base text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-        />
-        <button
-          type="submit"
-          data-i18n="footer.newsletter.button"
-          class="inline-flex h-11 items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-surface transition-colors hover:bg-primary-600 disabled:opacity-50"
-        >
-          {t['footer.newsletter.button']}
-        </button>
-      </form>
-      <p id="subscribe-status" class="mt-2 text-sm text-muted" role="status" aria-live="polite"></p>
+      <ul class="flex flex-wrap gap-x-5 gap-y-2">
+        <li>
+          <a href="/su-aalaha" class="hover:text-brand" data-i18n="footer.privacy"
+            >{t['footer.privacy']}</a
+          >
+        </li>
+        <li>
+          <a href="/su-aalaha" class="hover:text-brand" data-i18n="footer.terms">{t['footer.terms']}</a>
+        </li>
+        <li>
+          <a href="/su-aalaha" class="hover:text-brand" data-i18n="footer.cookies"
+            >{t['footer.cookies']}</a
+          >
+        </li>
+      </ul>
     </div>
-  </div>
-
-  <div class="border-t border-border">
-    <p class="mx-auto max-w-content px-4 py-6 text-sm text-muted sm:px-6">
-      © {year} Somwave. <span data-i18n="footer.rights">{t['footer.rights']}</span>
-    </p>
   </div>
 </footer>
-
-<script>
-  import { subscribe } from '../lib/api';
-
-  const form = document.getElementById('subscribe-form') as HTMLFormElement | null;
-  const statusEl = document.getElementById('subscribe-status');
-  if (form && statusEl) {
-    const button = form.querySelector<HTMLButtonElement>('button[type="submit"]');
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const email = String(new FormData(form).get('email') ?? '').trim();
-      if (button) button.disabled = true;
-      statusEl.textContent = 'Waa la diiwaangelinayaa…';
-      statusEl.style.color = 'var(--color-muted)';
-      try {
-        await subscribe(email);
-        form.reset();
-        statusEl.textContent = 'Waad ku mahadsan tahay! Waa lagu diiwaangeliyay.';
-        statusEl.style.color = 'var(--color-success)';
-      } catch (error) {
-        statusEl.textContent =
-          error instanceof Error ? error.message : 'Cilad ayaa dhacday. Fadlan mar kale isku day.';
-        statusEl.style.color = 'var(--color-error)';
-      } finally {
-        if (button) button.disabled = false;
-      }
-    });
-  }
-</script>

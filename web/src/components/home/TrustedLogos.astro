@@ -1,0 +1,20 @@
+---
+import { trustedClients } from '../../lib/homeContent';
+---
+
+<section class="border-y border-border bg-surface" aria-labelledby="trusted-heading">
+  <div class="mx-auto max-w-site px-4 py-10 sm:px-6">
+    <p id="trusted-heading" class="text-center text-sm font-medium text-muted">Waxaa nala kalsoon</p>
+    <ul
+      class="mt-6 grid grid-cols-2 items-center justify-items-center gap-x-8 gap-y-5 sm:grid-cols-3 lg:grid-cols-5"
+    >
+      {
+        trustedClients.map((name) => (
+          <li class="text-center text-[11px] font-extrabold uppercase tracking-[0.16em] text-ink/35 sm:text-xs">
+            {name}
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
