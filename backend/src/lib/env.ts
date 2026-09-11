@@ -2,6 +2,7 @@
 // failure exit loudly naming the offending variable — without ever printing a
 // value, so no secret leaks into logs.
 import { z } from 'zod';
+import { parseCorsOrigins } from './cors';
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -30,6 +31,4 @@ function loadEnv(): Env {
 export const env = loadEnv();
 
 // CORS is locked to an explicit allow-list, never "*" (§13).
-export const corsOrigins = env.CORS_ORIGINS.split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+export const corsOrigins = parseCorsOrigins(env.CORS_ORIGINS);
