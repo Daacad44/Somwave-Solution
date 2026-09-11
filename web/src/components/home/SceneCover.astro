@@ -5,157 +5,23 @@ interface Props {
   label: string;
 }
 const { scene, label } = Astro.props;
+const src: Record<Scene, string> = {
+  shop: '/images/portfolio-ecommerce.jpg',
+  school: '/images/portfolio-school.jpg',
+  travel: '/images/portfolio-travel.jpg',
+  estate: '/images/portfolio-estate.jpg',
+  logo: '/images/article-logo.jpg',
+  app: '/images/article-app.jpg',
+  code: '/images/article-code.jpg',
+};
 ---
 
-<div class:list={['scene', `scene-${scene}`]} role="img" aria-label={label}>
-  <div class="scene-glow"></div>
-  <div class="scene-laptop">
-    <div class="scene-lid">
-      <div class="scene-screen">
-        <span class="s-nav"></span>
-        <span class="s-hero"></span>
-        <span class="s-grid"></span>
-      </div>
-    </div>
-    <div class="scene-base"></div>
-  </div>
-  <div class="scene-phone">
-    <span class="p-notch"></span>
-    <span class="p-block"></span>
-    <span class="p-block short"></span>
-  </div>
-</div>
-
-<style>
-  .scene {
-    position: relative;
-    overflow: hidden;
-    height: 100%;
-    min-height: 168px;
-    background: linear-gradient(180deg, var(--color-brand-soft), var(--color-surface-alt));
-  }
-  .scene-glow {
-    position: absolute;
-    inset: auto -10% -30% 40%;
-    height: 80%;
-    border-radius: 50%;
-    background: radial-gradient(circle, color-mix(in srgb, var(--color-brand) 16%, transparent), transparent 70%);
-  }
-  .scene-laptop {
-    position: absolute;
-    inset: 18% 22% 16% 10%;
-  }
-  .scene-lid {
-    height: 86%;
-    border-radius: 8px 8px 4px 4px;
-    background: var(--color-ink);
-    padding: 5px 5px 4px;
-    box-shadow: var(--shadow-md);
-  }
-  .scene-screen {
-    display: flex;
-    height: 100%;
-    flex-direction: column;
-    gap: 6px;
-    overflow: hidden;
-    border-radius: 4px;
-    background: var(--color-surface);
-    padding: 7px;
-  }
-  .s-nav {
-    height: 6px;
-    width: 38%;
-    border-radius: 99px;
-    background: var(--color-brand);
-    opacity: 0.85;
-  }
-  .s-hero {
-    height: 34%;
-    border-radius: 4px;
-    background: var(--color-brand-soft);
-  }
-  .s-grid {
-    flex: 1;
-    border-radius: 4px;
-    background:
-      linear-gradient(90deg, var(--color-border) 31%, transparent 31% 34.5%, var(--color-border) 34.5% 65.5%, transparent 65.5% 69%, var(--color-border) 69%),
-      linear-gradient(var(--color-surface-alt), var(--color-surface-alt));
-    background-size: 100% 100%;
-  }
-  .scene-base {
-    height: 8%;
-    width: 88%;
-    margin: 0 auto;
-    border-radius: 0 0 5px 5px;
-    background: color-mix(in srgb, var(--color-ink) 20%, var(--color-border));
-  }
-  .scene-phone {
-    position: absolute;
-    right: 10%;
-    bottom: 10%;
-    display: flex;
-    width: 40px;
-    height: 70px;
-    flex-direction: column;
-    gap: 5px;
-    border-radius: 9px;
-    background: var(--color-ink);
-    box-shadow: var(--shadow-md);
-    padding: 7px 6px;
-  }
-  .p-notch {
-    height: 4px;
-    width: 14px;
-    margin: 0 auto;
-    border-radius: 99px;
-    background: color-mix(in srgb, var(--color-surface) 30%, transparent);
-  }
-  .p-block {
-    flex: 1;
-    border-radius: 3px;
-    background: var(--color-brand-soft);
-  }
-  .p-block.short {
-    flex: 0.55;
-  }
-  .scene-school .scene-phone {
-    display: none;
-  }
-  .scene-school .scene-laptop {
-    inset: 16% 14% 16% 14%;
-  }
-  .scene-travel .scene-laptop {
-    inset: 22% 30% 14% 8%;
-  }
-  .scene-estate .s-hero {
-    height: 48%;
-  }
-  .scene-logo .scene-laptop,
-  .scene-app .scene-laptop {
-    display: none;
-  }
-  .scene-logo .scene-phone,
-  .scene-app .scene-phone {
-    inset: 14% auto 12% 50%;
-    width: 56px;
-    height: 100px;
-    transform: translateX(-50%);
-  }
-  .scene-code .scene-phone {
-    display: none;
-  }
-  .scene-code .scene-laptop {
-    inset: 14% 10% 14% 10%;
-  }
-  .scene-code .s-hero {
-    display: none;
-  }
-  .scene-code .s-grid {
-    background:
-      repeating-linear-gradient(
-        180deg,
-        var(--color-brand-soft) 0 6px,
-        transparent 6px 12px
-      );
-  }
-</style>
+<img
+  src={src[scene]}
+  alt={label}
+  width="1280"
+  height="720"
+  loading="lazy"
+  decoding="async"
+  class="block h-full min-h-[168px] w-full object-cover"
+/>

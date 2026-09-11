@@ -35,7 +35,7 @@ function dateLabel(iso: string): string {
       {
         homeArticles.map((item) => (
           <article class="flex flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-sm transition-shadow hover:shadow-md">
-            <div class="aspect-[16/9]">
+            <div class="aspect-[16/9] overflow-hidden">
               <SceneCover scene={item.scene} label={item.title} />
             </div>
             <div class="flex flex-1 flex-col p-5">
