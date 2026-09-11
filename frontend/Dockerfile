@@ -17,10 +17,16 @@
 #
 # Do NOT set Dockerfile Location to /Dockerfile — that file is the API image.
 #
-# Buildtime env (Coolify Buildtime — Vite inlines VITE_* at `vite build`):
-#   VITE_API_URL=https://api.somwave.botandev.com/api/v1
+# Auth cookies must be first-party. This image's nginx proxies /api/ to
+# https://api.somwave.botandev.com, so the bundle MUST call /api/v1 (same origin).
+# An absolute VITE_API_URL to api.* makes login look like it works, then /auth/me
+# has no cookie and the SPA returns to /login.
 #
-# Runtime env is unused. Secrets must never be passed as VITE_*.
+# Coolify Buildtime: VITE_API_URL=/api/v1
+# (If the old absolute API origin is still set, this Dockerfile overrides it.)
+#
+# Runtime env is unused except nginx's outbound proxy to the API hostname.
+# Secrets must never be passed as VITE_*.
 
 FROM node:20-bookworm AS builder
 
@@ -40,9 +46,10 @@ RUN npm ci --workspace=@somwave/frontend --workspace=@somwave/shared --include-w
 COPY packages/shared ./packages/shared
 COPY frontend ./frontend
 
-# Vite inlines this into the bundle. Coolify must set it as Buildtime (or ARG).
-ARG VITE_API_URL=https://api.somwave.botandev.com/api/v1
-ENV VITE_API_URL=$VITE_API_URL
+# Always same-origin in this image. Coolify ARG/Buildtime cannot override —
+# an absolute api.* URL reintroduces the portal login cookie failure.
+ARG VITE_API_URL=/api/v1
+ENV VITE_API_URL=/api/v1
 
 RUN if [ -z "$VITE_API_URL" ]; then \
       echo "[frontend] VITE_API_URL is required at image build time" >&2; \
