@@ -56,6 +56,12 @@ const PORTAL_CARDS: Card[] = [
     permission: PERMISSIONS.PORTAL_READ,
   },
   {
+    to: '/portal/milestones',
+    title: 'Marxaladahayga',
+    description: 'Marxaladaha mashruucyadaada.',
+    permission: PERMISSIONS.PORTAL_READ,
+  },
+  {
     to: '/invoices',
     title: 'Biilasha',
     description: 'Liiska iyo qabyo-dhiska biilasha.',

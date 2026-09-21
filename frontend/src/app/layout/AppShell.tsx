@@ -33,6 +33,7 @@ const INTERNAL_LINKS: NavItem[] = [
 
 const PORTAL_LINKS: NavItem[] = [
   { to: '/portal/projects', label: 'Mashruucyadayda', permission: PERMISSIONS.PORTAL_READ },
+  { to: '/portal/milestones', label: 'Marxaladahayga', permission: PERMISSIONS.PORTAL_READ },
   { to: '/invoices', label: 'Biilasha', permission: PERMISSIONS.INVOICES_READ },
   { to: '/tickets', label: 'Tikidhada', permission: PERMISSIONS.TICKETS_READ },
 ];

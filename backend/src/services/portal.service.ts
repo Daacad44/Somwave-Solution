@@ -1,4 +1,4 @@
-import type { AdminProject } from '@somwave/shared';
+import type { AdminProject, AdminMilestone } from '@somwave/shared';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
 
@@ -36,4 +36,34 @@ export async function listPortalProjects(clientId: string | null): Promise<Admin
     include: { manager: { select: { id: true, name: true } } },
   });
   return rows.map(toProject);
+}
+
+export async function listPortalMilestones(clientId: string | null): Promise<AdminMilestone[]> {
+  if (!clientId) throw new AppError('NOT_FOUND', 404, 'Marxalad lama helin');
+  const rows = await prisma.milestone.findMany({
+    where: { deletedAt: null, project: { clientId, deletedAt: null } },
+    orderBy: [{ order: 'asc' }, { createdAt: 'desc' }],
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      status: true,
+      dueDate: true,
+      completedAt: true,
+      order: true,
+      createdAt: true,
+      project: { select: { id: true, name: true } },
+    },
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    status: row.status,
+    dueDate: row.dueDate?.toISOString() ?? null,
+    completedAt: row.completedAt?.toISOString() ?? null,
+    order: row.order,
+    project: row.project,
+    createdAt: row.createdAt.toISOString(),
+  }));
 }

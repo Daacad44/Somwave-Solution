@@ -14,6 +14,7 @@ import type {
   AdminTicket,
   CreateTicketInput,
   AdminProject,
+  AdminMilestone,
 } from '@somwave/shared';
 import { apiFetch } from '../../lib/apiClient';
 
@@ -89,4 +90,7 @@ export function createTicket(input: CreateTicketInput): Promise<AdminTicket> {
 
 export function listPortalProjects(): Promise<AdminProject[]> {
   return apiFetch<AdminProject[]>('/portal/projects');
+}
+export function listPortalMilestones(): Promise<AdminMilestone[]> {
+  return apiFetch<AdminMilestone[]>('/portal/milestones');
 }

@@ -79,6 +79,11 @@ const TicketsPage = lazy(() =>
 const PortalProjectsPage = lazy(() =>
   import('../features/ops/PortalProjectsPage').then((m) => ({ default: m.PortalProjectsPage })),
 );
+const PortalMilestonesPage = lazy(() =>
+  import('../features/ops/PortalMilestonesPage').then((m) => ({
+    default: m.PortalMilestonesPage,
+  })),
+);
 
 function LazyPage({ children }: { children: ReactNode }): ReactNode {
   return <Suspense fallback={<LoadingState rows={6} />}>{children}</Suspense>;
@@ -271,6 +276,14 @@ export function App(): ReactNode {
             element={
               <LazyPage>
                 <PortalProjectsPage />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="/portal/milestones"
+            element={
+              <LazyPage>
+                <PortalMilestonesPage />
               </LazyPage>
             }
           />
