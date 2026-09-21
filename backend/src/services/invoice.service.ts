@@ -1,49 +1,121 @@
 import { Prisma } from '@prisma/client';
-import type { AdminInvoice, CreateInvoiceInput } from '@somwave/shared';
+import type {
+  AdminInvoice,
+  CreateInvoiceInput,
+  InvoiceDetail,
+  InvoiceStatus,
+} from '@somwave/shared';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
 
-function toAdmin(row: {
+type InvoiceRow = {
   id: string;
   number: string;
-  status: AdminInvoice['status'];
+  status: InvoiceStatus;
   issueDate: Date;
   dueDate: Date;
+  subtotal: Prisma.Decimal;
+  tax: Prisma.Decimal;
+  discount: Prisma.Decimal;
   total: Prisma.Decimal;
   paidAmount: Prisma.Decimal;
   createdAt: Date;
   client: { id: string; companyName: string };
   project: { id: string; name: string } | null;
-}): AdminInvoice {
+};
+
+type InvoiceDetailRow = InvoiceRow & {
+  items: {
+    id: string;
+    description: string;
+    quantity: Prisma.Decimal;
+    unitPrice: Prisma.Decimal;
+    lineTotal: Prisma.Decimal;
+  }[];
+};
+
+const listInclude = {
+  client: { select: { id: true, companyName: true } },
+  project: { select: { id: true, name: true } },
+} as const;
+
+const detailInclude = {
+  ...listInclude,
+  items: { orderBy: { id: 'asc' as const } },
+};
+
+function money(value: Prisma.Decimal): string {
+  return value.toFixed(2);
+}
+
+function effectiveStatus(row: { status: InvoiceStatus; dueDate: Date }): InvoiceStatus {
+  if (row.status === 'SENT' && row.dueDate.getTime() < Date.now()) return 'OVERDUE';
+  return row.status;
+}
+
+function toAdmin(row: InvoiceRow): AdminInvoice {
   return {
     id: row.id,
     number: row.number,
-    status: row.status,
+    status: effectiveStatus(row),
     issueDate: row.issueDate.toISOString(),
     dueDate: row.dueDate.toISOString(),
-    total: row.total.toFixed(2),
-    paidAmount: row.paidAmount.toFixed(2),
+    subtotal: money(row.subtotal),
+    tax: money(row.tax),
+    discount: money(row.discount),
+    total: money(row.total),
+    paidAmount: money(row.paidAmount),
     createdAt: row.createdAt.toISOString(),
     client: row.client,
     project: row.project,
   };
 }
 
-const include = {
-  client: { select: { id: true, companyName: true } },
-  project: { select: { id: true, name: true } },
-} as const;
+function toDetail(row: InvoiceDetailRow): InvoiceDetail {
+  return {
+    ...toAdmin(row),
+    items: row.items.map((item) => ({
+      id: item.id,
+      description: item.description,
+      quantity: money(item.quantity),
+      unitPrice: money(item.unitPrice),
+      lineTotal: money(item.lineTotal),
+    })),
+  };
+}
+
+function ownerWhere(id: string, clientId?: string | null) {
+  return { id, deletedAt: null, ...(clientId ? { clientId } : {}) };
+}
+
+async function markOverdue(): Promise<void> {
+  await prisma.invoice.updateMany({
+    where: { deletedAt: null, status: 'SENT', dueDate: { lt: new Date() } },
+    data: { status: 'OVERDUE' },
+  });
+}
 
 export async function listInvoices(clientId?: string | null): Promise<AdminInvoice[]> {
+  await markOverdue();
   const rows = await prisma.invoice.findMany({
     where: { deletedAt: null, ...(clientId ? { clientId } : {}) },
     orderBy: { createdAt: 'desc' },
-    include,
+    include: listInclude,
   });
   return rows.map(toAdmin);
 }
 
-export async function createInvoice(input: CreateInvoiceInput): Promise<AdminInvoice> {
+export async function getInvoice(id: string, clientId?: string | null): Promise<InvoiceDetail> {
+  await markOverdue();
+  const row = await prisma.invoice.findFirst({
+    where: ownerWhere(id, clientId),
+    include: detailInclude,
+  });
+  if (!row) throw new AppError('NOT_FOUND', 404, 'Biilkan lama helin');
+  return toDetail(row);
+}
+
+export async function createInvoice(input: CreateInvoiceInput): Promise<InvoiceDetail> {
   const client = await prisma.client.findFirst({ where: { id: input.clientId, deletedAt: null } });
   if (!client) throw new AppError('VALIDATION_ERROR', 400, 'Macmiilkan lama helin');
   if (input.projectId) {
@@ -64,6 +136,12 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<AdminInv
     };
   });
   const subtotal = items.reduce((sum, item) => sum.add(item.lineTotal), new Prisma.Decimal(0));
+  const tax = new Prisma.Decimal(input.tax);
+  const discount = new Prisma.Decimal(input.discount);
+  const total = subtotal.add(tax).sub(discount);
+  if (total.lt(0)) {
+    throw new AppError('VALIDATION_ERROR', 400, 'Qiimo-dhimista kama badnaan karto wadarta');
+  }
 
   const year = new Date().getUTCFullYear();
   const count = await prisma.invoice.count();
@@ -77,10 +155,59 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<AdminInv
       issueDate: new Date(input.issueDate),
       dueDate: new Date(input.dueDate),
       subtotal,
-      total: subtotal,
+      tax,
+      discount,
+      total,
       items: { create: items },
     },
-    include,
+    include: detailInclude,
   });
-  return toAdmin(row);
+  return toDetail(row);
+}
+
+const SENDABLE: ReadonlySet<InvoiceStatus> = new Set(['DRAFT']);
+const ALREADY_SENT: ReadonlySet<InvoiceStatus> = new Set(['SENT', 'OVERDUE', 'PARTIAL', 'PAID']);
+const VOIDABLE: ReadonlySet<InvoiceStatus> = new Set(['DRAFT', 'SENT', 'OVERDUE', 'PARTIAL']);
+
+export async function sendInvoice(id: string, clientId?: string | null): Promise<InvoiceDetail> {
+  const existing = await prisma.invoice.findFirst({
+    where: ownerWhere(id, clientId),
+    include: detailInclude,
+  });
+  if (!existing) throw new AppError('NOT_FOUND', 404, 'Biilkan lama helin');
+
+  const status = effectiveStatus(existing);
+  if (ALREADY_SENT.has(status) || ALREADY_SENT.has(existing.status)) {
+    return toDetail({ ...existing, status });
+  }
+  if (!SENDABLE.has(existing.status)) {
+    throw new AppError('CONFLICT', 409, 'Biilkan lama diri karo');
+  }
+
+  const nextStatus: InvoiceStatus = existing.dueDate.getTime() < Date.now() ? 'OVERDUE' : 'SENT';
+  const row = await prisma.invoice.update({
+    where: { id: existing.id },
+    data: { status: nextStatus },
+    include: detailInclude,
+  });
+  return toDetail(row);
+}
+
+export async function voidInvoice(id: string, clientId?: string | null): Promise<InvoiceDetail> {
+  const existing = await prisma.invoice.findFirst({
+    where: ownerWhere(id, clientId),
+    include: detailInclude,
+  });
+  if (!existing) throw new AppError('NOT_FOUND', 404, 'Biilkan lama helin');
+  if (existing.status === 'VOID') return toDetail(existing);
+  if (existing.status === 'PAID' || !VOIDABLE.has(existing.status)) {
+    throw new AppError('CONFLICT', 409, 'Biilkan lama burin karo');
+  }
+
+  const row = await prisma.invoice.update({
+    where: { id: existing.id },
+    data: { status: 'VOID' },
+    include: detailInclude,
+  });
+  return toDetail(row);
 }

@@ -67,6 +67,12 @@ const TimesheetsPage = lazy(() =>
 const InvoicesPage = lazy(() =>
   import('../features/ops/InvoicesPage').then((m) => ({ default: m.InvoicesPage })),
 );
+const InvoiceDetailPage = lazy(() =>
+  import('../features/ops/InvoiceDetailPage').then((m) => ({ default: m.InvoiceDetailPage })),
+);
+const InvoicePrintPage = lazy(() =>
+  import('../features/ops/InvoicePrintPage').then((m) => ({ default: m.InvoicePrintPage })),
+);
 const TicketsPage = lazy(() =>
   import('../features/ops/TicketsPage').then((m) => ({ default: m.TicketsPage })),
 );
@@ -233,6 +239,22 @@ export function App(): ReactNode {
             element={
               <LazyPage>
                 <InvoicesPage />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="/invoices/:id/print"
+            element={
+              <LazyPage>
+                <InvoicePrintPage />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="/invoices/:id"
+            element={
+              <LazyPage>
+                <InvoiceDetailPage />
               </LazyPage>
             }
           />

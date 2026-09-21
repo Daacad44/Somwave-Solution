@@ -83,6 +83,9 @@ invoicesRouter.post(
   validate(createInvoiceSchema),
   invoiceController.create,
 );
+invoicesRouter.get('/:id', rbac(PERMISSIONS.INVOICES_READ), invoiceController.get);
+invoicesRouter.post('/:id/send', rbac(PERMISSIONS.INVOICES_UPDATE), invoiceController.send);
+invoicesRouter.post('/:id/void', rbac(PERMISSIONS.INVOICES_UPDATE), invoiceController.voidInvoice);
 
 export const ticketsRouter: Router = Router();
 ticketsRouter.use(requireAuth);
