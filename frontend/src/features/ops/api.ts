@@ -11,6 +11,8 @@ import type {
   AdminInvoice,
   InvoiceDetail,
   CreateInvoiceInput,
+  PaymentRecord,
+  RecordPaymentInput,
   AdminTicket,
   TicketDetail,
   CreateTicketInput,
@@ -81,6 +83,16 @@ export function voidInvoice(id: string): Promise<InvoiceDetail> {
   return apiFetch<InvoiceDetail>(`/invoices/${id}/void`, {
     method: 'POST',
     body: JSON.stringify({}),
+  });
+}
+export function recordPayment(
+  input: RecordPaymentInput,
+  idempotencyKey: string,
+): Promise<PaymentRecord> {
+  return apiFetch<PaymentRecord>('/payments', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify(input),
   });
 }
 

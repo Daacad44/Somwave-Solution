@@ -25,6 +25,7 @@ import {
   invoicesRouter,
   ticketsRouter,
   portalRouter,
+  paymentsRouter,
 } from './routes/platform.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
@@ -60,6 +61,7 @@ export function createApp(): Express {
   app.use('/api/v1/clients', clientsRouter);
   app.use('/api/v1/timesheets', timesheetsRouter);
   app.use('/api/v1/invoices', invoicesRouter);
+  app.use('/api/v1/payments', paymentsRouter);
   app.use('/api/v1/support-tickets', ticketsRouter);
   app.use('/api/v1/portal', portalRouter);
 
