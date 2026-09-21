@@ -26,6 +26,7 @@ import {
   listTickets,
   createTicket,
   listPortalProjects,
+  listPortalMilestones,
 } from './api';
 
 export function useLeads() {
@@ -137,4 +138,7 @@ export function useCreateTicket() {
 
 export function usePortalProjects() {
   return useQuery({ queryKey: ['portal-projects'], queryFn: listPortalProjects });
+}
+export function usePortalMilestones() {
+  return useQuery({ queryKey: ['portal-milestones'], queryFn: listPortalMilestones });
 }

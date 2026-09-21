@@ -106,3 +106,4 @@ ticketsRouter.patch(
 export const portalRouter: Router = Router();
 portalRouter.use(requireAuth);
 portalRouter.get('/projects', rbac(PERMISSIONS.PORTAL_READ), portalController.listProjects);
+portalRouter.get('/milestones', rbac(PERMISSIONS.PORTAL_READ), portalController.listMilestones);
