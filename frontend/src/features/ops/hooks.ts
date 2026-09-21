@@ -19,7 +19,10 @@ import {
   createTimesheet,
   updateTimesheet,
   listInvoices,
+  getInvoice,
   createInvoice,
+  sendInvoice,
+  voidInvoice,
   listTickets,
   createTicket,
   listPortalProjects,
@@ -85,11 +88,39 @@ export function useUpdateTimesheet() {
 export function useInvoices() {
   return useQuery({ queryKey: ['invoices'], queryFn: listInvoices });
 }
+export function useInvoice(id: string | undefined) {
+  return useQuery({
+    queryKey: ['invoices', id],
+    queryFn: () => getInvoice(id as string),
+    enabled: Boolean(id),
+  });
+}
 export function useCreateInvoice() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateInvoiceInput) => createInvoice(input),
     onSuccess: () => client.invalidateQueries({ queryKey: ['invoices'] }),
+  });
+}
+export function useSendInvoice() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, idempotencyKey }: { id: string; idempotencyKey: string }) =>
+      sendInvoice(id, idempotencyKey),
+    onSuccess: (_data, { id }) => {
+      void client.invalidateQueries({ queryKey: ['invoices'] });
+      void client.invalidateQueries({ queryKey: ['invoices', id] });
+    },
+  });
+}
+export function useVoidInvoice() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => voidInvoice(id),
+    onSuccess: (_data, id) => {
+      void client.invalidateQueries({ queryKey: ['invoices'] });
+      void client.invalidateQueries({ queryKey: ['invoices', id] });
+    },
   });
 }
 

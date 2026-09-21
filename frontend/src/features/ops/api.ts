@@ -9,6 +9,7 @@ import type {
   CreateTimesheetInput,
   UpdateTimesheetInput,
   AdminInvoice,
+  InvoiceDetail,
   CreateInvoiceInput,
   AdminTicket,
   CreateTicketInput,
@@ -59,8 +60,24 @@ export function updateTimesheet(id: string, input: UpdateTimesheetInput): Promis
 export function listInvoices(): Promise<AdminInvoice[]> {
   return apiFetch<AdminInvoice[]>('/invoices');
 }
-export function createInvoice(input: CreateInvoiceInput): Promise<AdminInvoice> {
-  return apiFetch<AdminInvoice>('/invoices', { method: 'POST', body: JSON.stringify(input) });
+export function getInvoice(id: string): Promise<InvoiceDetail> {
+  return apiFetch<InvoiceDetail>(`/invoices/${id}`);
+}
+export function createInvoice(input: CreateInvoiceInput): Promise<InvoiceDetail> {
+  return apiFetch<InvoiceDetail>('/invoices', { method: 'POST', body: JSON.stringify(input) });
+}
+export function sendInvoice(id: string, idempotencyKey: string): Promise<InvoiceDetail> {
+  return apiFetch<InvoiceDetail>(`/invoices/${id}/send`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify({}),
+  });
+}
+export function voidInvoice(id: string): Promise<InvoiceDetail> {
+  return apiFetch<InvoiceDetail>(`/invoices/${id}/void`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
 }
 
 export function listTickets(): Promise<AdminTicket[]> {
