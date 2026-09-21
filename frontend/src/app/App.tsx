@@ -76,6 +76,9 @@ const InvoicePrintPage = lazy(() =>
 const TicketsPage = lazy(() =>
   import('../features/ops/TicketsPage').then((m) => ({ default: m.TicketsPage })),
 );
+const TicketDetailPage = lazy(() =>
+  import('../features/ops/TicketDetailPage').then((m) => ({ default: m.TicketDetailPage })),
+);
 const PortalProjectsPage = lazy(() =>
   import('../features/ops/PortalProjectsPage').then((m) => ({ default: m.PortalProjectsPage })),
 );
@@ -268,6 +271,14 @@ export function App(): ReactNode {
             element={
               <LazyPage>
                 <TicketsPage />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="/tickets/:id"
+            element={
+              <LazyPage>
+                <TicketDetailPage />
               </LazyPage>
             }
           />

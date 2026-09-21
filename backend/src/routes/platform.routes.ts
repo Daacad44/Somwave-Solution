@@ -10,6 +10,7 @@ import {
   createInvoiceSchema,
   createTicketSchema,
   updateTicketSchema,
+  createTicketReplySchema,
 } from '@somwave/shared';
 import { requireAuth } from '../middleware/auth';
 import { rbac } from '../middleware/rbac';
@@ -90,17 +91,25 @@ invoicesRouter.post('/:id/void', rbac(PERMISSIONS.INVOICES_UPDATE), invoiceContr
 export const ticketsRouter: Router = Router();
 ticketsRouter.use(requireAuth);
 ticketsRouter.get('/', rbac(PERMISSIONS.TICKETS_READ), ticketController.list);
+ticketsRouter.get('/assignees', rbac(PERMISSIONS.TICKETS_UPDATE), ticketController.listAssignees);
 ticketsRouter.post(
   '/',
   rbac(PERMISSIONS.TICKETS_CREATE),
   validate(createTicketSchema),
   ticketController.create,
 );
+ticketsRouter.get('/:id', rbac(PERMISSIONS.TICKETS_READ), ticketController.get);
 ticketsRouter.patch(
   '/:id',
   rbac(PERMISSIONS.TICKETS_UPDATE),
   validate(updateTicketSchema),
   ticketController.update,
+);
+ticketsRouter.post(
+  '/:id/replies',
+  rbac(PERMISSIONS.TICKETS_READ),
+  validate(createTicketReplySchema),
+  ticketController.createReply,
 );
 
 export const portalRouter: Router = Router();
