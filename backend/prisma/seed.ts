@@ -62,6 +62,7 @@ async function main(): Promise<void> {
           'applications.',
           'timesheets.',
           'invoices.',
+          'payments.',
           'tickets.',
           'clients.',
         ).map((permission) => ({ id: permission.id })),

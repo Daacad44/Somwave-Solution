@@ -1,15 +1,24 @@
 import { type ReactNode, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { INVOICE_STATUS_LABELS, PERMISSIONS, type InvoiceStatus } from '@somwave/shared';
+import {
+  INVOICE_STATUS_LABELS,
+  PERMISSIONS,
+  recordPaymentSchema,
+  type InvoiceStatus,
+  type RecordPaymentInput,
+} from '@somwave/shared';
 import { Table, THead, TBody, Tr, Th, Td } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { LoadingState, ErrorState } from '../../components/states';
 import { useHasPermission } from '../../lib/rbac';
 import { formatDate } from '../../lib/date';
 import { ApiError } from '../../lib/apiClient';
-import { useInvoice, useSendInvoice, useVoidInvoice } from './hooks';
+import { useInvoice, useSendInvoice, useVoidInvoice, useRecordPayment } from './hooks';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 
 const STATUS_TONE: Record<InvoiceStatus, 'neutral' | 'info' | 'success' | 'warning' | 'error'> = {
   DRAFT: 'neutral',
@@ -26,10 +35,17 @@ export function InvoiceDetailPage(): ReactNode {
   const query = useInvoice(id);
   const send = useSendInvoice();
   const voidInv = useVoidInvoice();
+  const pay = useRecordPayment();
   const canUpdate = useHasPermission(PERMISSIONS.INVOICES_UPDATE);
+  const canPay = useHasPermission(PERMISSIONS.PAYMENTS_CREATE);
   const [confirmVoid, setConfirmVoid] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const sendKey = useRef(crypto.randomUUID());
+  const payKey = useRef(crypto.randomUUID());
+  const payForm = useForm<RecordPaymentInput>({
+    resolver: zodResolver(recordPaymentSchema),
+    defaultValues: { invoiceId: id ?? '', amount: '', method: 'BANK_TRANSFER', reference: '' },
+  });
 
   const invoice = query.data;
   const canSend = canUpdate && invoice?.status === 'DRAFT';
@@ -166,6 +182,45 @@ export function InvoiceDetailPage(): ReactNode {
           <p className="text-muted">La bixiyay: ${invoice.paidAmount}</p>
         </div>
       </div>
+
+      {canPay && invoice.status !== 'VOID' && invoice.status !== 'PAID' ? (
+        <form
+          className="mt-6 flex flex-col gap-3 rounded-lg border border-border bg-surface p-5"
+          onSubmit={payForm.handleSubmit(async (values) => {
+            setActionError(null);
+            try {
+              await pay.mutateAsync({
+                input: { ...values, invoiceId: invoice.id },
+                idempotencyKey: payKey.current,
+              });
+              payKey.current = crypto.randomUUID();
+              payForm.reset({
+                invoiceId: invoice.id,
+                amount: '',
+                method: 'BANK_TRANSFER',
+                reference: '',
+              });
+            } catch (err) {
+              payKey.current = crypto.randomUUID();
+              setActionError(err instanceof ApiError ? err.message : 'Wax baa qaldamay.');
+            }
+          })}
+          noValidate
+        >
+          <h2 className="text-lg font-semibold text-ink">Diiwaangeli wareejin bangiga</h2>
+          <Input
+            label="Qiimaha (USD)"
+            error={payForm.formState.errors.amount?.message}
+            {...payForm.register('amount')}
+          />
+          <Input label="Tixraac" {...payForm.register('reference')} />
+          <div className="flex justify-end">
+            <Button type="submit" isLoading={pay.isPending}>
+              Diiwaangeli lacagta
+            </Button>
+          </div>
+        </form>
+      ) : null}
 
       {actionError ? <p className="mt-4 text-sm text-error">{actionError}</p> : null}
 

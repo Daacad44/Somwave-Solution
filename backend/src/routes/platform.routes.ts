@@ -11,6 +11,7 @@ import {
   createTicketSchema,
   updateTicketSchema,
   createTicketReplySchema,
+  recordPaymentSchema,
 } from '@somwave/shared';
 import { requireAuth } from '../middleware/auth';
 import { rbac } from '../middleware/rbac';
@@ -22,6 +23,7 @@ import * as timesheetController from '../controllers/timesheet.controller';
 import * as invoiceController from '../controllers/invoice.controller';
 import * as ticketController from '../controllers/ticket.controller';
 import * as portalController from '../controllers/portal.controller';
+import * as paymentController from '../controllers/payment.controller';
 
 export const leadsRouter: Router = Router();
 leadsRouter.use(requireAuth);
@@ -116,3 +118,13 @@ export const portalRouter: Router = Router();
 portalRouter.use(requireAuth);
 portalRouter.get('/projects', rbac(PERMISSIONS.PORTAL_READ), portalController.listProjects);
 portalRouter.get('/milestones', rbac(PERMISSIONS.PORTAL_READ), portalController.listMilestones);
+
+export const paymentsRouter: Router = Router();
+paymentsRouter.use(requireAuth);
+paymentsRouter.get('/', rbac(PERMISSIONS.PAYMENTS_READ), paymentController.listForInvoice);
+paymentsRouter.post(
+  '/',
+  rbac(PERMISSIONS.PAYMENTS_CREATE),
+  validate(recordPaymentSchema),
+  paymentController.create,
+);
