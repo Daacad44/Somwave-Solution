@@ -1,6 +1,7 @@
 import { type ReactNode, lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { LoginPage } from '../features/auth/LoginPage';
+import { TwoFactorSetupPage } from '../features/auth/TwoFactorSetupPage';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { AppShell } from './layout/AppShell';
 import { LoadingState } from '../components/states';
@@ -98,6 +99,14 @@ export function App(): ReactNode {
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
+          <Route
+            path="/settings/2fa"
+            element={
+              <LazyPage>
+                <TwoFactorSetupPage />
+              </LazyPage>
+            }
+          />
           <Route
             path="/"
             element={

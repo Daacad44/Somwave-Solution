@@ -85,6 +85,9 @@ export function AppShell(): ReactNode {
           <NavLink to="/" end className={navLinkClass}>
             Dashboard
           </NavLink>
+          <NavLink to="/settings/2fa" className={navLinkClass}>
+            2FA
+          </NavLink>
           {GROUPS.map((group) => {
             const items = group.items.filter((item) => hasPermission(user, item.permission));
             if (items.length === 0) return null;
