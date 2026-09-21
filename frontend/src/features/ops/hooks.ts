@@ -6,6 +6,7 @@ import type {
   CreateTimesheetInput,
   UpdateTimesheetInput,
   CreateInvoiceInput,
+  RecordPaymentInput,
   CreateTicketInput,
   UpdateTicketInput,
   CreateTicketReplyInput,
@@ -25,6 +26,7 @@ import {
   createInvoice,
   sendInvoice,
   voidInvoice,
+  recordPayment,
   listTickets,
   getTicket,
   createTicket,
@@ -127,6 +129,22 @@ export function useVoidInvoice() {
     onSuccess: (_data, id) => {
       void client.invalidateQueries({ queryKey: ['invoices'] });
       void client.invalidateQueries({ queryKey: ['invoices', id] });
+    },
+  });
+}
+export function useRecordPayment() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      input,
+      idempotencyKey,
+    }: {
+      input: RecordPaymentInput;
+      idempotencyKey: string;
+    }) => recordPayment(input, idempotencyKey),
+    onSuccess: (_data, { input }) => {
+      void client.invalidateQueries({ queryKey: ['invoices'] });
+      void client.invalidateQueries({ queryKey: ['invoices', input.invoiceId] });
     },
   });
 }
