@@ -7,6 +7,8 @@ import type {
   UpdateTimesheetInput,
   CreateInvoiceInput,
   CreateTicketInput,
+  UpdateTicketInput,
+  CreateTicketReplyInput,
 } from '@somwave/shared';
 import {
   listLeads,
@@ -24,7 +26,11 @@ import {
   sendInvoice,
   voidInvoice,
   listTickets,
+  getTicket,
   createTicket,
+  updateTicket,
+  listTicketAssignees,
+  createTicketReply,
   listPortalProjects,
   listPortalMilestones,
 } from './api';
@@ -128,11 +134,46 @@ export function useVoidInvoice() {
 export function useTickets() {
   return useQuery({ queryKey: ['tickets'], queryFn: listTickets });
 }
+export function useTicket(id: string | undefined) {
+  return useQuery({
+    queryKey: ['tickets', id],
+    queryFn: () => getTicket(id as string),
+    enabled: Boolean(id),
+  });
+}
 export function useCreateTicket() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateTicketInput) => createTicket(input),
     onSuccess: () => client.invalidateQueries({ queryKey: ['tickets'] }),
+  });
+}
+export function useUpdateTicket() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateTicketInput }) =>
+      updateTicket(id, input),
+    onSuccess: (_data, { id }) => {
+      void client.invalidateQueries({ queryKey: ['tickets'] });
+      void client.invalidateQueries({ queryKey: ['tickets', id] });
+    },
+  });
+}
+export function useTicketAssignees(enabled: boolean) {
+  return useQuery({
+    queryKey: ['ticket-assignees'],
+    queryFn: listTicketAssignees,
+    enabled,
+  });
+}
+export function useCreateTicketReply() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: CreateTicketReplyInput }) =>
+      createTicketReply(id, input),
+    onSuccess: (_data, { id }) => {
+      void client.invalidateQueries({ queryKey: ['tickets', id] });
+    },
   });
 }
 

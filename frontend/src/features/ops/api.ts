@@ -12,7 +12,10 @@ import type {
   InvoiceDetail,
   CreateInvoiceInput,
   AdminTicket,
+  TicketDetail,
   CreateTicketInput,
+  UpdateTicketInput,
+  CreateTicketReplyInput,
   AdminProject,
   AdminMilestone,
 } from '@somwave/shared';
@@ -84,8 +87,29 @@ export function voidInvoice(id: string): Promise<InvoiceDetail> {
 export function listTickets(): Promise<AdminTicket[]> {
   return apiFetch<AdminTicket[]>('/support-tickets');
 }
+export function getTicket(id: string): Promise<TicketDetail> {
+  return apiFetch<TicketDetail>(`/support-tickets/${id}`);
+}
 export function createTicket(input: CreateTicketInput): Promise<AdminTicket> {
   return apiFetch<AdminTicket>('/support-tickets', { method: 'POST', body: JSON.stringify(input) });
+}
+export function updateTicket(id: string, input: UpdateTicketInput): Promise<AdminTicket> {
+  return apiFetch<AdminTicket>(`/support-tickets/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+export function listTicketAssignees(): Promise<{ id: string; name: string }[]> {
+  return apiFetch<{ id: string; name: string }[]>('/support-tickets/assignees');
+}
+export function createTicketReply(
+  id: string,
+  input: CreateTicketReplyInput,
+): Promise<{ id: string; body: string; createdAt: string; author: { id: string; name: string } }> {
+  return apiFetch(`/support-tickets/${id}/replies`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
 }
 
 export function listPortalProjects(): Promise<AdminProject[]> {

@@ -1,12 +1,15 @@
 import { type ReactNode, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   createTicketSchema,
   TICKET_STATUS_LABELS,
   TICKET_PRIORITY_LABELS,
+  TICKET_STATUSES,
   PERMISSIONS,
   type CreateTicketInput,
+  type TicketStatus,
 } from '@somwave/shared';
 import { Table, THead, TBody, Tr, Th, Td } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
@@ -19,13 +22,15 @@ import { useCurrentUser } from '../auth/hooks';
 import { useHasPermission } from '../../lib/rbac';
 import { formatDate } from '../../lib/date';
 import { ApiError } from '../../lib/apiClient';
-import { useTickets, useCreateTicket } from './hooks';
+import { useTickets, useCreateTicket, useUpdateTicket } from './hooks';
 
 export function TicketsPage(): ReactNode {
   const { data: user } = useCurrentUser();
   const query = useTickets();
   const create = useCreateTicket();
+  const update = useUpdateTicket();
   const canCreate = useHasPermission(PERMISSIONS.TICKETS_CREATE) && Boolean(user?.clientId);
+  const canUpdate = useHasPermission(PERMISSIONS.TICKETS_UPDATE);
   const [open, setOpen] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const form = useForm<CreateTicketInput>({
@@ -79,12 +84,35 @@ export function TicketsPage(): ReactNode {
             <TBody>
               {rows.map((row) => (
                 <Tr key={row.id}>
-                  <Td className="font-medium">{row.code}</Td>
+                  <Td className="font-medium">
+                    <Link
+                      to={`/tickets/${row.id}`}
+                      className="text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    >
+                      {row.code}
+                    </Link>
+                  </Td>
                   <Td>{row.subject}</Td>
                   <Td>{row.client.companyName}</Td>
                   <Td>{TICKET_PRIORITY_LABELS[row.priority]}</Td>
                   <Td>
-                    <Badge>{TICKET_STATUS_LABELS[row.status]}</Badge>
+                    {canUpdate ? (
+                      <Select
+                        options={TICKET_STATUSES.map((value) => ({
+                          value,
+                          label: TICKET_STATUS_LABELS[value],
+                        }))}
+                        value={row.status}
+                        onChange={(event) =>
+                          update.mutate({
+                            id: row.id,
+                            input: { status: event.target.value as TicketStatus },
+                          })
+                        }
+                      />
+                    ) : (
+                      <Badge>{TICKET_STATUS_LABELS[row.status]}</Badge>
+                    )}
                   </Td>
                   <Td className="text-muted">{formatDate(row.createdAt)}</Td>
                 </Tr>
