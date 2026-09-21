@@ -6,6 +6,8 @@ import type { CreateInquiryInput, AdminInquiry, InquiryStatus } from '@somwave/s
 import { prisma } from '../lib/prisma';
 import { redis } from '../lib/redis';
 import { AppError } from '../lib/http';
+import { notifyAddress, sendMail } from '../lib/mailer';
+import { ENQUIRY_NOTIFY_V1 } from '../mail/templates';
 
 const IDEMPOTENCY_TTL_SECONDS = 60 * 60 * 24; // 24h
 
@@ -29,6 +31,14 @@ export async function createInquiry(
   });
 
   await safeSet(cacheKey, inquiry.id);
+  const notifyTo = notifyAddress();
+  if (notifyTo) {
+    await sendMail({
+      to: notifyTo,
+      template: ENQUIRY_NOTIFY_V1,
+      vars: { name: input.name, email: input.email, message: input.message },
+    });
+  }
   return inquiry;
 }
 

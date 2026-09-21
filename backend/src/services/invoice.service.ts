@@ -7,6 +7,8 @@ import type {
 } from '@somwave/shared';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
+import { sendMail } from '../lib/mailer';
+import { INVOICE_SENT_V1 } from '../mail/templates';
 
 type InvoiceRow = {
   id: string;
@@ -190,7 +192,23 @@ export async function sendInvoice(id: string, clientId?: string | null): Promise
     data: { status: nextStatus },
     include: detailInclude,
   });
-  return toDetail(row);
+  const detail = toDetail(row);
+  const recipient = await prisma.client.findFirst({
+    where: { id: existing.clientId },
+    select: { email: true },
+  });
+  if (recipient?.email) {
+    await sendMail({
+      to: recipient.email,
+      template: INVOICE_SENT_V1,
+      vars: {
+        number: detail.number,
+        total: detail.total,
+        dueDate: detail.dueDate.slice(0, 10),
+      },
+    });
+  }
+  return detail;
 }
 
 export async function voidInvoice(id: string, clientId?: string | null): Promise<InvoiceDetail> {
