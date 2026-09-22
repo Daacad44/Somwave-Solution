@@ -97,6 +97,8 @@ async function main(): Promise<void> {
     PERMISSIONS.TICKETS_READ,
     PERMISSIONS.TICKETS_CREATE,
     PERMISSIONS.INVOICES_READ,
+    PERMISSIONS.PAYMENTS_READ,
+    PERMISSIONS.PAYMENTS_CREATE,
   ]);
   await prisma.role.update({
     where: { name: ROLES.CLIENT },

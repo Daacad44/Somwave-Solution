@@ -2,21 +2,28 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Prisma } from '@prisma/client';
 
 vi.mock('../lib/prisma', () => ({
-  prisma: {
+    prisma: {
     invoice: { findFirst: vi.fn(), update: vi.fn() },
-    payment: { findUnique: vi.fn(), create: vi.fn(), findMany: vi.fn() },
+    payment: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      findMany: vi.fn(),
+    },
     $transaction: vi.fn(),
   },
 }));
 
 import { prisma } from '../lib/prisma';
-import { recordPayment } from './payment.service';
+import { applyEvcWebhook, listPayments, recordPayment } from './payment.service';
 
 const invoice = {
   id: 'inv_1',
   status: 'SENT' as const,
   total: new Prisma.Decimal('30.00'),
   paidAmount: new Prisma.Decimal('0.00'),
+  clientId: 'cl_1',
   deletedAt: null,
 };
 
@@ -103,5 +110,68 @@ describe('recordPayment', () => {
     });
     expect(result.id).toBe('pay_1');
     expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('rejects EVC_PLUS on the manual endpoint', async () => {
+    await expect(
+      recordPayment({
+        invoiceId: 'inv_1',
+        amount: '10.00',
+        method: 'EVC_PLUS',
+        actorId: 'user_1',
+        idempotencyKey: 'pay-key-12345',
+      }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+  });
+});
+
+describe('listPayments', () => {
+  it('returns 404 when invoice is outside client scope', async () => {
+    vi.mocked(prisma.invoice.findFirst).mockResolvedValue(null as never);
+    await expect(listPayments('inv_1', 'cl_other')).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      status: 404,
+    });
+  });
+});
+
+describe('applyEvcWebhook', () => {
+  it('completes a pending EVC payment', async () => {
+    vi.mocked(prisma.payment.findFirst).mockResolvedValue({
+      id: 'pay_1',
+      invoiceId: 'inv_1',
+      amount: new Prisma.Decimal('10.00'),
+      method: 'EVC_PLUS',
+      status: 'PENDING',
+      reference: 'evc_tx',
+      gatewayRef: 'evc_tx',
+      createdAt: new Date(),
+    } as never);
+    vi.mocked(prisma.invoice.findFirst).mockResolvedValue({
+      id: 'inv_1',
+      status: 'SENT',
+      total: new Prisma.Decimal('30.00'),
+      paidAmount: new Prisma.Decimal('0.00'),
+    } as never);
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn) => {
+      const tx = {
+        payment: {
+          update: vi.fn().mockResolvedValue({
+            id: 'pay_1',
+            invoiceId: 'inv_1',
+            amount: new Prisma.Decimal('10.00'),
+            method: 'EVC_PLUS',
+            status: 'COMPLETED',
+            reference: 'evc_tx',
+            createdAt: new Date(),
+          }),
+        },
+        invoice: { update: vi.fn().mockResolvedValue({}) },
+      };
+      return fn(tx as never);
+    });
+
+    const result = await applyEvcWebhook({ transactionId: 'evc_tx', status: 'SUCCESS' });
+    expect(result?.status).toBe('COMPLETED');
   });
 });

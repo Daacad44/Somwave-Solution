@@ -38,3 +38,25 @@ export const recordPaymentSchema = z.object({
 });
 
 export type RecordPaymentInput = z.infer<typeof recordPaymentSchema>;
+
+/** Somali mobile formats: +25261xxxxxxx, 25261…, or 061… */
+export const evcPhoneSchema = z
+  .string()
+  .trim()
+  .regex(/^(\+252|252|0)?[67]\d{8}$/, 'Fadlan geli lambar EVC Plus sax ah');
+
+export const chargeEvcPaymentSchema = z.object({
+  invoiceId: z.string().min(1, 'Biilka waa waajib'),
+  amount: moneyString,
+  phone: evcPhoneSchema,
+});
+
+export type ChargeEvcPaymentInput = z.infer<typeof chargeEvcPaymentSchema>;
+
+export const evcWebhookPayloadSchema = z.object({
+  transactionId: z.string().min(1),
+  status: z.enum(['SUCCESS', 'FAILED']),
+  reference: z.string().optional(),
+});
+
+export type EvcWebhookPayload = z.infer<typeof evcWebhookPayloadSchema>;

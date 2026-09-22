@@ -385,6 +385,8 @@ model Payment {
   method         PaymentMethod
   status         PaymentStatus @default(COMPLETED)
   reference      String?
+  gatewayRef     String?       @map("gateway_ref")
+  payerPhone     String?       @map("payer_phone")
   recordedById   String?       @map("recorded_by_id")
   idempotencyKey String        @unique @map("idempotency_key")
   createdAt      DateTime      @default(now()) @map("created_at")
@@ -395,6 +397,7 @@ model Payment {
   recordedBy User?   @relation("PaymentRecorder", fields: [recordedById], references: [id], onDelete: SetNull)
 
   @@index([invoiceId])
+  @@index([gatewayRef])
   @@map("payments")
 }
 
