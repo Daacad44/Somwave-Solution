@@ -21,7 +21,7 @@ npm workspaces (`CLAUDE.md` §6):
 | `frontend`        | `@somwave/frontend` | React 18 + Vite                        | internal + CMS + portal shell             |
 | `backend`         | `@somwave/backend`  | Node 20 + Express                      | `/api/v1` + `/health`                     |
 
-Current implementation vs remaining work: [`docs/STATUS_REPORT.md`](./docs/STATUS_REPORT.md), [`docs/WORKLOG.md`](./docs/WORKLOG.md), [`docs/FRONTEND_VISIBILITY.md`](./docs/FRONTEND_VISIBILITY.md).
+Current implementation vs remaining work: [`docs/STATUS_REPORT.md`](./docs/STATUS_REPORT.md), [`docs/WORKLOG.md`](./docs/WORKLOG.md), [`docs/FRONTEND_VISIBILITY.md`](./docs/FRONTEND_VISIBILITY.md). **Build plan (approve before implementation):** [`docs/SOMWAVE_BUILD_PLAN.md`](./docs/SOMWAVE_BUILD_PLAN.md).
 
 ## Build order
 
