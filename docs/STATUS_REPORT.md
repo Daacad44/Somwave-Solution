@@ -1,19 +1,22 @@
 # Somwave — Status report
 
-Date: 10 September 2026. Sources: repository, PRs #1–#30, `CLAUDE.md`, `docs/Somwave_Blueprint_v3_2.docx`.
+**Date:** 22 September 2026.
 
-Somwave is three systems on one backend: Public Site (Astro), Internal + CMS (React), Client Portal (React). Mobile is later and must not start before P1–P4.
+Somwave is three systems on one backend: Public Site (Astro), Internal + CMS (React), Client Portal (React). Mobile remains out of scope until P1–P4 are stable.
 
-## Done before this branch
+## Snapshot
 
-F0 foundation (auth, RBAC, UI kit, CI). Public pages for home, services list, portfolio, blog, careers, contact, testimonials, team, FAQ, newsletter chrome. CMS for those content types. Internal users, roles, projects, tasks, milestones.
+**P0 platform integration** is on branch `cursor/p0-platform-integration-ae9d` (I4.1 invoice builder, P2.3 portal milestones, P3 ticket detail/replies, 2FA, SMTP + CMS dashboard UX, I4.2 manual payments, plus sync from `origin/main` for Coolify/CORS/cookies/homepage).
 
-## This branch
+For a full Somali implementation update vs the earlier ~55% project report, see **[SOMWAVE_IMPLEMENTATION_UPDATE.md](./SOMWAVE_IMPLEMENTATION_UPDATE.md)**.
 
-See [WORKLOG.md](./WORKLOG.md). Adds the date kit, About + service detail + legal pages, role-grouped AppShell, leads and recruitment inboxes, Client + portal shell, timesheets, invoice drafts, and support tickets.
+## Verification (integration branch, 22 Sep 2026)
 
-## Remaining
+- `npm run typecheck` — pass  
+- `npm test` — 232 tests pass  
 
-2FA flow, SMTP, S3 uploads, Kanban/Gantt, HR attendance/leave/payroll, full finance/accounting, payment gateways (blocked on a complete I4.1 + P4.1), CRM deals/quotations, documents/assets, executive BI, Expo mobile, Docker/Coolify deploy. Staging Gate 3 has not been accepted.
+## Still open
 
-README previously called workspaces a “shell”; that was stale.
+Gate 3 staging UAT and PM sign-off; P4.2 online gateways (EVC Plus); S3 uploads; HR/finance/CRM depth; Expo mobile.
+
+Sources: repository, `CLAUDE.md`, `docs/WORKLOG.md`, `docs/SOMWAVE_PROJECT_REPORT.md`.
