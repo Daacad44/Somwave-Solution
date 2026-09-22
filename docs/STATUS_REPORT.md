@@ -17,3 +17,5 @@ See [WORKLOG.md](./WORKLOG.md). Adds the date kit, About + service detail + lega
 2FA flow, SMTP, S3 uploads, Kanban/Gantt, HR attendance/leave/payroll, full finance/accounting, payment gateways (blocked on a complete I4.1 + P4.1), CRM deals/quotations, documents/assets, executive BI, Expo mobile, Docker/Coolify deploy. Staging Gate 3 has not been accepted.
 
 README previously called workspaces a “shell”; that was stale.
+
+**Qorshe ansixin (2026-09-22):** [`SOMWAVE_BUILD_PLAN.md`](./SOMWAVE_BUILD_PLAN.md) — hirgelin ma bilaabmo ilaa la ansixiyo.
