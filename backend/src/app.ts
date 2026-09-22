@@ -29,6 +29,7 @@ import {
   paymentsRouter,
 } from './routes/platform.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import { paymentWebhooksRouter } from './routes/payment.webhook.routes';
 
 export function createApp(): Express {
   const app = express();
@@ -42,6 +43,11 @@ export function createApp(): Express {
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   app.use(cors(buildCorsOptions(corsOrigins)));
   app.use(cookieParser());
+  app.use(
+    '/api/v1/payments/webhooks',
+    express.raw({ type: 'application/json', limit: '256kb' }),
+    paymentWebhooksRouter,
+  );
   app.use(express.json({ limit: '1mb' }));
   app.use(pinoHttp({ logger }));
 

@@ -13,6 +13,7 @@ import type {
   CreateInvoiceInput,
   PaymentRecord,
   RecordPaymentInput,
+  ChargeEvcPaymentInput,
   AdminTicket,
   TicketDetail,
   CreateTicketInput,
@@ -90,6 +91,17 @@ export function recordPayment(
   idempotencyKey: string,
 ): Promise<PaymentRecord> {
   return apiFetch<PaymentRecord>('/payments', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify(input),
+  });
+}
+
+export function chargeEvcPayment(
+  input: ChargeEvcPaymentInput,
+  idempotencyKey: string,
+): Promise<PaymentRecord> {
+  return apiFetch<PaymentRecord>('/payments/evc-plus', {
     method: 'POST',
     headers: { 'Idempotency-Key': idempotencyKey },
     body: JSON.stringify(input),

@@ -3,7 +3,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   INVOICE_STATUS_LABELS,
   PERMISSIONS,
+  ROLES,
+  chargeEvcPaymentSchema,
   recordPaymentSchema,
+  type ChargeEvcPaymentInput,
   type InvoiceStatus,
   type RecordPaymentInput,
 } from '@somwave/shared';
@@ -13,10 +16,17 @@ import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { LoadingState, ErrorState } from '../../components/states';
-import { useHasPermission } from '../../lib/rbac';
+import { hasRole, useHasPermission } from '../../lib/rbac';
+import { useCurrentUser } from '../auth/hooks';
 import { formatDate } from '../../lib/date';
 import { ApiError } from '../../lib/apiClient';
-import { useInvoice, useSendInvoice, useVoidInvoice, useRecordPayment } from './hooks';
+import {
+  useInvoice,
+  useSendInvoice,
+  useVoidInvoice,
+  useRecordPayment,
+  useChargeEvcPayment,
+} from './hooks';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
@@ -36,6 +46,9 @@ export function InvoiceDetailPage(): ReactNode {
   const send = useSendInvoice();
   const voidInv = useVoidInvoice();
   const pay = useRecordPayment();
+  const evcPay = useChargeEvcPayment();
+  const { data: currentUser } = useCurrentUser();
+  const isPortalClient = hasRole(currentUser, ROLES.CLIENT);
   const canUpdate = useHasPermission(PERMISSIONS.INVOICES_UPDATE);
   const canPay = useHasPermission(PERMISSIONS.PAYMENTS_CREATE);
   const [confirmVoid, setConfirmVoid] = useState(false);
@@ -45,6 +58,10 @@ export function InvoiceDetailPage(): ReactNode {
   const payForm = useForm<RecordPaymentInput>({
     resolver: zodResolver(recordPaymentSchema),
     defaultValues: { invoiceId: id ?? '', amount: '', method: 'BANK_TRANSFER', reference: '' },
+  });
+  const evcForm = useForm<ChargeEvcPaymentInput>({
+    resolver: zodResolver(chargeEvcPaymentSchema),
+    defaultValues: { invoiceId: id ?? '', amount: '', phone: '' },
   });
 
   const invoice = query.data;
@@ -184,42 +201,89 @@ export function InvoiceDetailPage(): ReactNode {
       </div>
 
       {canPay && invoice.status !== 'VOID' && invoice.status !== 'PAID' ? (
-        <form
-          className="mt-6 flex flex-col gap-3 rounded-lg border border-border bg-surface p-5"
-          onSubmit={payForm.handleSubmit(async (values) => {
-            setActionError(null);
-            try {
-              await pay.mutateAsync({
-                input: { ...values, invoiceId: invoice.id },
-                idempotencyKey: payKey.current,
-              });
-              payKey.current = crypto.randomUUID();
-              payForm.reset({
-                invoiceId: invoice.id,
-                amount: '',
-                method: 'BANK_TRANSFER',
-                reference: '',
-              });
-            } catch (err) {
-              payKey.current = crypto.randomUUID();
-              setActionError(err instanceof ApiError ? err.message : 'Wax baa qaldamay.');
-            }
-          })}
-          noValidate
-        >
-          <h2 className="text-lg font-semibold text-ink">Diiwaangeli wareejin bangiga</h2>
-          <Input
-            label="Qiimaha (USD)"
-            error={payForm.formState.errors.amount?.message}
-            {...payForm.register('amount')}
-          />
-          <Input label="Tixraac" {...payForm.register('reference')} />
-          <div className="flex justify-end">
-            <Button type="submit" isLoading={pay.isPending}>
-              Diiwaangeli lacagta
-            </Button>
-          </div>
-        </form>
+        isPortalClient ? (
+          <form
+            className="mt-6 flex flex-col gap-3 rounded-lg border border-border bg-surface p-5"
+            onSubmit={evcForm.handleSubmit(async (values) => {
+              setActionError(null);
+              try {
+                const result = await evcPay.mutateAsync({
+                  input: { ...values, invoiceId: invoice.id },
+                  idempotencyKey: payKey.current,
+                });
+                payKey.current = crypto.randomUUID();
+                evcForm.reset({ invoiceId: invoice.id, amount: '', phone: '' });
+                if (result.status === 'PENDING') {
+                  setActionError(
+                    'Codsiga EVC waa la diray. Sug xaqiijinta telefoonkaaga ama dib u cusboonaysii boggan.',
+                  );
+                }
+              } catch (err) {
+                payKey.current = crypto.randomUUID();
+                setActionError(err instanceof ApiError ? err.message : 'Wax baa qaldamay.');
+              }
+            })}
+            noValidate
+          >
+            <h2 className="text-lg font-semibold text-ink">Bixi EVC Plus</h2>
+            <p className="text-sm text-muted">
+              Hadhaaga: $
+              {(Number(invoice.total) - Number(invoice.paidAmount)).toFixed(2)}
+            </p>
+            <Input
+              label="Qiimaha (USD)"
+              error={evcForm.formState.errors.amount?.message}
+              {...evcForm.register('amount')}
+            />
+            <Input
+              label="Lambarka EVC Plus"
+              error={evcForm.formState.errors.phone?.message}
+              {...evcForm.register('phone')}
+            />
+            <div className="flex justify-end">
+              <Button type="submit" isLoading={evcPay.isPending}>
+                Bixi hadda
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <form
+            className="mt-6 flex flex-col gap-3 rounded-lg border border-border bg-surface p-5"
+            onSubmit={payForm.handleSubmit(async (values) => {
+              setActionError(null);
+              try {
+                await pay.mutateAsync({
+                  input: { ...values, invoiceId: invoice.id },
+                  idempotencyKey: payKey.current,
+                });
+                payKey.current = crypto.randomUUID();
+                payForm.reset({
+                  invoiceId: invoice.id,
+                  amount: '',
+                  method: 'BANK_TRANSFER',
+                  reference: '',
+                });
+              } catch (err) {
+                payKey.current = crypto.randomUUID();
+                setActionError(err instanceof ApiError ? err.message : 'Wax baa qaldamay.');
+              }
+            })}
+            noValidate
+          >
+            <h2 className="text-lg font-semibold text-ink">Diiwaangeli wareejin bangiga</h2>
+            <Input
+              label="Qiimaha (USD)"
+              error={payForm.formState.errors.amount?.message}
+              {...payForm.register('amount')}
+            />
+            <Input label="Tixraac" {...payForm.register('reference')} />
+            <div className="flex justify-end">
+              <Button type="submit" isLoading={pay.isPending}>
+                Diiwaangeli lacagta
+              </Button>
+            </div>
+          </form>
+        )
       ) : null}
 
       {actionError ? <p className="mt-4 text-sm text-error">{actionError}</p> : null}

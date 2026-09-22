@@ -2,6 +2,24 @@
 
 Every slice in this branch is recorded here. Status is about this change set, not the whole platform.
 
+## 2026-09-22 — Gate 3 staging prep (B) + P1 EVC Plus (`cursor/p1-evc-plus-ae9d`)
+
+| Step | Slice | Status |
+| --- | --- | --- |
+| B | `docs/STAGING_UAT_CHECKLIST.md` (Somali + Coolify env tables + UAT script) | ✅ |
+| C1 | Shared: `chargeEvcPaymentSchema`, `PaymentGateway` type, webhook payload | ✅ |
+| C2 | Prisma: `gateway_ref`, `payer_phone` on `payments` | ✅ |
+| C3 | Backend: EVC adapter, `/payments/evc-plus`, webhook, idempotency, client scoping | ✅ |
+| C4 | Frontend: portal macmiil — foom EVC on invoice detail | ✅ |
+| C5 | Seed: `payments.*` for `CLIENT` role | ✅ |
+| C6 | Tests: payment service + EVC client signature | ✅ |
+
+**Verification (local):** `npm run typecheck`, `lint`, `test`, `build` — run on branch before push.
+
+**Pending (not this slice):** S3 uploads, SLA/assignment depth, staging UAT on Coolify (PM).
+
+---
+
 ## 2026-09-22 — P0 platform integration (`cursor/p0-platform-integration-ae9d`)
 
 | Step | Slice | Source branch | Status |

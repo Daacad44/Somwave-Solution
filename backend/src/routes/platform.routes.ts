@@ -12,6 +12,7 @@ import {
   updateTicketSchema,
   createTicketReplySchema,
   recordPaymentSchema,
+  chargeEvcPaymentSchema,
 } from '@somwave/shared';
 import { requireAuth } from '../middleware/auth';
 import { rbac } from '../middleware/rbac';
@@ -127,4 +128,10 @@ paymentsRouter.post(
   rbac(PERMISSIONS.PAYMENTS_CREATE),
   validate(recordPaymentSchema),
   paymentController.create,
+);
+paymentsRouter.post(
+  '/evc-plus',
+  rbac(PERMISSIONS.PAYMENTS_CREATE),
+  validate(chargeEvcPaymentSchema),
+  paymentController.chargeEvc,
 );

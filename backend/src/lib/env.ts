@@ -22,6 +22,10 @@ const envSchema = z
     SMTP_PASS: z.string().min(1).optional(),
     SMTP_FROM: z.string().email().optional(),
     SMTP_NOTIFY_TO: z.string().email().optional(),
+    PAYMENT_EVC_API_URL: z.string().url().optional(),
+    PAYMENT_EVC_API_KEY: z.string().min(8).optional(),
+    PAYMENT_EVC_MERCHANT_ID: z.string().min(1).optional(),
+    PAYMENT_EVC_WEBHOOK_SECRET: z.string().min(16).optional(),
   })
   .superRefine((value, ctx) => {
     if (!value.SMTP_HOST) return;
@@ -31,6 +35,24 @@ const envSchema = z
         path: ['SMTP_FROM'],
         message: 'required when SMTP_HOST is set',
       });
+    }
+    const evcKeys = [
+      'PAYMENT_EVC_API_URL',
+      'PAYMENT_EVC_API_KEY',
+      'PAYMENT_EVC_MERCHANT_ID',
+      'PAYMENT_EVC_WEBHOOK_SECRET',
+    ] as const;
+    const set = evcKeys.filter((key) => value[key] !== undefined);
+    if (set.length > 0 && set.length < evcKeys.length) {
+      for (const key of evcKeys) {
+        if (!value[key]) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [key],
+            message: 'required when any PAYMENT_EVC_* variable is set',
+          });
+        }
+      }
     }
   });
 

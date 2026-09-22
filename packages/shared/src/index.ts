@@ -29,3 +29,4 @@ export * from './schemas/timesheet';
 export * from './schemas/invoice';
 export * from './schemas/ticket';
 export * from './schemas/payment';
+export * from './types/paymentGateway';
