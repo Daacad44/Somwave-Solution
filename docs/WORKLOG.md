@@ -20,3 +20,11 @@ Every slice in this branch is recorded here. Status is about this change set, no
 | P3.1 | Support tickets list + create (client-scoped) | portal + internal | This PR |
 
 Not in this PR (still remaining): 2FA enrolment, SMTP, S3/CV, Kanban, Gantt, payroll, full accounting, payment gateways, mobile, Dockerfile/Coolify, URL-based i18n, media library.
+
+## 2026-09-22 — Full project report (`cursor/project-status-report-8485`)
+
+| ID | Slice | Surfaces | Status |
+| --- | --- | --- | --- |
+| DOC-02 | Somali full report + English status refresh | `docs/WARBIXIN_MASHRUUC.md`, `docs/STATUS_REPORT.md` | This PR |
+
+Snapshot of the whole platform (done / in flight / remaining), including the `main` ↔ session split and draft PRs #43–#48 / #49. Not a product feature.
