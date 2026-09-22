@@ -1,4 +1,5 @@
 import { type ReactNode, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -6,6 +7,7 @@ import {
   INVOICE_STATUS_LABELS,
   PERMISSIONS,
   type CreateInvoiceInput,
+  type InvoiceStatus,
 } from '@somwave/shared';
 import { Table, THead, TBody, Tr, Th, Td } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
@@ -20,6 +22,15 @@ import { formatDate } from '../../lib/date';
 import { ApiError } from '../../lib/apiClient';
 import { useInvoices, useCreateInvoice, useClients } from './hooks';
 
+const STATUS_TONE: Record<InvoiceStatus, 'neutral' | 'info' | 'success' | 'warning' | 'error'> = {
+  DRAFT: 'neutral',
+  SENT: 'info',
+  PARTIAL: 'warning',
+  PAID: 'success',
+  OVERDUE: 'error',
+  VOID: 'neutral',
+};
+
 export function InvoicesPage(): ReactNode {
   const query = useInvoices();
   const create = useCreateInvoice();
@@ -33,6 +44,8 @@ export function InvoicesPage(): ReactNode {
       clientId: '',
       issueDate: '',
       dueDate: '',
+      tax: '0',
+      discount: '0',
       items: [{ description: '', quantity: '1', unitPrice: '0' }],
     },
   });
@@ -42,6 +55,14 @@ export function InvoicesPage(): ReactNode {
     setServerError(null);
     try {
       await create.mutateAsync(values);
+      form.reset({
+        clientId: '',
+        issueDate: '',
+        dueDate: '',
+        tax: '0',
+        discount: '0',
+        items: [{ description: '', quantity: '1', unitPrice: '0' }],
+      });
       setOpen(false);
     } catch (err) {
       setServerError(err instanceof ApiError ? err.message : 'Wax baa qaldamay.');
@@ -53,7 +74,7 @@ export function InvoicesPage(): ReactNode {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-ink">Biilasha</h1>
-          <p className="mt-1 text-base text-muted">Qabyo-dhis iyo liiska biilasha.</p>
+          <p className="mt-1 text-base text-muted">Qabyo-dhis, dirid, iyo liiska biilasha.</p>
         </div>
         {canCreate ? <Button onClick={() => setOpen(true)}>Biil cusub</Button> : null}
       </div>
@@ -63,7 +84,12 @@ export function InvoicesPage(): ReactNode {
         ) : query.isError ? (
           <ErrorState description="Biilasha lama soo rari karin." onRetry={() => query.refetch()} />
         ) : rows.length === 0 ? (
-          <EmptyState title="Biil majiro" />
+          <EmptyState
+            title="Biil majiro"
+            action={
+              canCreate ? <Button onClick={() => setOpen(true)}>Biil cusub</Button> : undefined
+            }
+          />
         ) : (
           <Table>
             <THead>
@@ -78,12 +104,21 @@ export function InvoicesPage(): ReactNode {
             <TBody>
               {rows.map((row) => (
                 <Tr key={row.id}>
-                  <Td className="font-medium">{row.number}</Td>
+                  <Td className="font-medium">
+                    <Link
+                      to={`/invoices/${row.id}`}
+                      className="text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    >
+                      {row.number}
+                    </Link>
+                  </Td>
                   <Td>{row.client.companyName}</Td>
                   <Td>${row.total}</Td>
                   <Td>{formatDate(row.dueDate)}</Td>
                   <Td>
-                    <Badge>{INVOICE_STATUS_LABELS[row.status]}</Badge>
+                    <Badge tone={STATUS_TONE[row.status]}>
+                      {INVOICE_STATUS_LABELS[row.status]}
+                    </Badge>
                   </Td>
                 </Tr>
               ))}
@@ -119,6 +154,16 @@ export function InvoicesPage(): ReactNode {
           />
           <Input label="Tirada" {...form.register('items.0.quantity')} />
           <Input label="Qiimaha (USD)" {...form.register('items.0.unitPrice')} />
+          <Input
+            label="Canshuur (USD)"
+            error={form.formState.errors.tax?.message}
+            {...form.register('tax')}
+          />
+          <Input
+            label="Qiimo-dhimis (USD)"
+            error={form.formState.errors.discount?.message}
+            {...form.register('discount')}
+          />
           {serverError ? <p className="text-sm text-error">{serverError}</p> : null}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>

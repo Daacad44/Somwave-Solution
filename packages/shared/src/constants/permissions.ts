@@ -36,6 +36,7 @@ export const PERMISSIONS = {
   TIMESHEETS_UPDATE: 'timesheets.update',
   INVOICES_READ: 'invoices.read',
   INVOICES_CREATE: 'invoices.create',
+  INVOICES_UPDATE: 'invoices.update',
   TICKETS_READ: 'tickets.read',
   TICKETS_CREATE: 'tickets.create',
   TICKETS_UPDATE: 'tickets.update',

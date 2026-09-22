@@ -13,6 +13,48 @@ const CMS_CARDS: Card[] = [
     description: 'Maamul nuxurka websaydka.',
     permission: PERMISSIONS.CONTENT_READ,
   },
+  {
+    to: '/cms/posts',
+    title: 'CMS · Maqaallada',
+    description: 'Qoraallada blog-ga.',
+    permission: PERMISSIONS.CONTENT_READ,
+  },
+  {
+    to: '/cms/portfolio',
+    title: 'CMS · Shaqooyinka',
+    description: 'Tusaalooyinka shaqada.',
+    permission: PERMISSIONS.CONTENT_READ,
+  },
+  {
+    to: '/cms/careers',
+    title: 'CMS · Fursadaha',
+    description: 'Shaqooyinka furan.',
+    permission: PERMISSIONS.CONTENT_READ,
+  },
+  {
+    to: '/cms/testimonials',
+    title: 'CMS · Marag-furka',
+    description: 'Faallooyinka macaamiisha.',
+    permission: PERMISSIONS.CONTENT_READ,
+  },
+  {
+    to: '/cms/team',
+    title: 'CMS · Kooxda',
+    description: 'Xubnaha kooxda.',
+    permission: PERMISSIONS.CONTENT_READ,
+  },
+  {
+    to: '/cms/faqs',
+    title: 'CMS · Su’aalaha',
+    description: 'Su’aalaha la is weydiiyo.',
+    permission: PERMISSIONS.CONTENT_READ,
+  },
+  {
+    to: '/cms/subscribers',
+    title: 'CMS · Warsidaha',
+    description: 'Liiska warsidaha.',
+    permission: PERMISSIONS.CONTENT_READ,
+  },
 ];
 
 const INTERNAL_CARDS: Card[] = [
@@ -56,9 +98,15 @@ const PORTAL_CARDS: Card[] = [
     permission: PERMISSIONS.PORTAL_READ,
   },
   {
+    to: '/portal/milestones',
+    title: 'Marxaladahayga',
+    description: 'Marxaladaha mashruucyadaada.',
+    permission: PERMISSIONS.PORTAL_READ,
+  },
+  {
     to: '/invoices',
     title: 'Biilasha',
-    description: 'Liiska iyo qabyo-dhiska biilasha.',
+    description: 'Liiska, faahfaahinta, iyo diridda biilasha.',
     permission: PERMISSIONS.INVOICES_READ,
   },
   {

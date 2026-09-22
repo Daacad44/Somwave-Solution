@@ -33,6 +33,7 @@ const INTERNAL_LINKS: NavItem[] = [
 
 const PORTAL_LINKS: NavItem[] = [
   { to: '/portal/projects', label: 'Mashruucyadayda', permission: PERMISSIONS.PORTAL_READ },
+  { to: '/portal/milestones', label: 'Marxaladahayga', permission: PERMISSIONS.PORTAL_READ },
   { to: '/invoices', label: 'Biilasha', permission: PERMISSIONS.INVOICES_READ },
   { to: '/tickets', label: 'Tikidhada', permission: PERMISSIONS.TICKETS_READ },
 ];
@@ -61,7 +62,7 @@ export function AppShell(): ReactNode {
 
   return (
     <div className="min-h-screen bg-surface-alt">
-      <header className="flex items-center justify-between gap-4 bg-primary px-4 py-3 text-surface">
+      <header className="flex items-center justify-between gap-4 bg-primary px-4 py-3 text-surface print:hidden">
         <span className="text-lg font-semibold">Somwave</span>
         <div className="flex items-center gap-3">
           <span className="text-sm">{user?.name}</span>
@@ -77,9 +78,15 @@ export function AppShell(): ReactNode {
         </div>
       </header>
       <div className="mx-auto flex w-full max-w-6xl gap-6 p-4 md:p-6">
-        <nav className="hidden w-52 shrink-0 flex-col gap-1 md:flex" aria-label="Navigation">
+        <nav
+          className="hidden w-52 shrink-0 flex-col gap-1 print:hidden md:flex"
+          aria-label="Navigation"
+        >
           <NavLink to="/" end className={navLinkClass}>
             Dashboard
+          </NavLink>
+          <NavLink to="/settings/2fa" className={navLinkClass}>
+            2FA
           </NavLink>
           {GROUPS.map((group) => {
             const items = group.items.filter((item) => hasPermission(user, item.permission));
