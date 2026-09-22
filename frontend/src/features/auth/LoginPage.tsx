@@ -20,8 +20,12 @@ export function LoginPage(): ReactNode {
   } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
 
   const onSubmit = handleSubmit(async (values) => {
-    await loginMutation.mutateAsync(values);
-    navigate('/', { replace: true });
+    try {
+      await loginMutation.mutateAsync(values);
+      navigate('/', { replace: true });
+    } catch {
+      // Mutation error is rendered below; do not let RHF treat it as unhandled.
+    }
   });
 
   const serverError =

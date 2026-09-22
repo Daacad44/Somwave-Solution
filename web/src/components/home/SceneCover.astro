@@ -1,0 +1,27 @@
+---
+type Scene = 'shop' | 'school' | 'travel' | 'estate' | 'logo' | 'app' | 'code';
+interface Props {
+  scene: Scene;
+  label: string;
+}
+const { scene, label } = Astro.props;
+const src: Record<Scene, string> = {
+  shop: '/images/portfolio-ecommerce.jpg',
+  school: '/images/portfolio-school.jpg',
+  travel: '/images/portfolio-travel.jpg',
+  estate: '/images/portfolio-estate.jpg',
+  logo: '/images/article-logo.jpg',
+  app: '/images/article-app.jpg',
+  code: '/images/article-code.jpg',
+};
+---
+
+<img
+  src={src[scene]}
+  alt={label}
+  width="1280"
+  height="720"
+  loading="lazy"
+  decoding="async"
+  class="block h-full min-h-[168px] w-full object-cover"
+/>
