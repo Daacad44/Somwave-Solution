@@ -6,9 +6,13 @@ declare global {
   namespace Express {
     interface AuthUserContext {
       id: string;
+      email: string;
+      name: string;
       roles: string[];
       permissions: string[];
       clientId: string | null;
+      twoFactorEnabled: boolean;
+      twoFactorRequired: boolean;
     }
     interface Request {
       authUser?: AuthUserContext;

@@ -9,10 +9,17 @@ import type {
   CreateTimesheetInput,
   UpdateTimesheetInput,
   AdminInvoice,
+  InvoiceDetail,
   CreateInvoiceInput,
+  PaymentRecord,
+  RecordPaymentInput,
   AdminTicket,
+  TicketDetail,
   CreateTicketInput,
+  UpdateTicketInput,
+  CreateTicketReplyInput,
   AdminProject,
+  AdminMilestone,
 } from '@somwave/shared';
 import { apiFetch } from '../../lib/apiClient';
 
@@ -59,17 +66,67 @@ export function updateTimesheet(id: string, input: UpdateTimesheetInput): Promis
 export function listInvoices(): Promise<AdminInvoice[]> {
   return apiFetch<AdminInvoice[]>('/invoices');
 }
-export function createInvoice(input: CreateInvoiceInput): Promise<AdminInvoice> {
-  return apiFetch<AdminInvoice>('/invoices', { method: 'POST', body: JSON.stringify(input) });
+export function getInvoice(id: string): Promise<InvoiceDetail> {
+  return apiFetch<InvoiceDetail>(`/invoices/${id}`);
+}
+export function createInvoice(input: CreateInvoiceInput): Promise<InvoiceDetail> {
+  return apiFetch<InvoiceDetail>('/invoices', { method: 'POST', body: JSON.stringify(input) });
+}
+export function sendInvoice(id: string, idempotencyKey: string): Promise<InvoiceDetail> {
+  return apiFetch<InvoiceDetail>(`/invoices/${id}/send`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify({}),
+  });
+}
+export function voidInvoice(id: string): Promise<InvoiceDetail> {
+  return apiFetch<InvoiceDetail>(`/invoices/${id}/void`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+export function recordPayment(
+  input: RecordPaymentInput,
+  idempotencyKey: string,
+): Promise<PaymentRecord> {
+  return apiFetch<PaymentRecord>('/payments', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify(input),
+  });
 }
 
 export function listTickets(): Promise<AdminTicket[]> {
   return apiFetch<AdminTicket[]>('/support-tickets');
 }
+export function getTicket(id: string): Promise<TicketDetail> {
+  return apiFetch<TicketDetail>(`/support-tickets/${id}`);
+}
 export function createTicket(input: CreateTicketInput): Promise<AdminTicket> {
   return apiFetch<AdminTicket>('/support-tickets', { method: 'POST', body: JSON.stringify(input) });
+}
+export function updateTicket(id: string, input: UpdateTicketInput): Promise<AdminTicket> {
+  return apiFetch<AdminTicket>(`/support-tickets/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+export function listTicketAssignees(): Promise<{ id: string; name: string }[]> {
+  return apiFetch<{ id: string; name: string }[]>('/support-tickets/assignees');
+}
+export function createTicketReply(
+  id: string,
+  input: CreateTicketReplyInput,
+): Promise<{ id: string; body: string; createdAt: string; author: { id: string; name: string } }> {
+  return apiFetch(`/support-tickets/${id}/replies`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
 }
 
 export function listPortalProjects(): Promise<AdminProject[]> {
   return apiFetch<AdminProject[]>('/portal/projects');
+}
+export function listPortalMilestones(): Promise<AdminMilestone[]> {
+  return apiFetch<AdminMilestone[]>('/portal/milestones');
 }

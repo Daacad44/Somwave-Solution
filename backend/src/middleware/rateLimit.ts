@@ -9,10 +9,13 @@ const rateLimitedHandler: Options['handler'] = (_req, res) => {
   sendError(res, 'RATE_LIMITED', 429, 'Too many requests, please try again later');
 };
 
+const skipPreflight = (req: Request): boolean => req.method === 'OPTIONS';
+
 const shared = {
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   handler: rateLimitedHandler,
+  skip: skipPreflight,
 } as const;
 
 export const apiRateLimiter = rateLimit({ windowMs: 60_000, limit: 100, ...shared });
@@ -35,5 +38,6 @@ export const loginAccountRateLimiter = rateLimit({
     const email = typeof req.body?.email === 'string' ? req.body.email.toLowerCase() : '';
     return `acct:${email}`;
   },
-  skip: (req: Request) => typeof req.body?.email !== 'string' || req.body.email.length === 0,
+  skip: (req: Request) =>
+    skipPreflight(req) || typeof req.body?.email !== 'string' || req.body.email.length === 0,
 });

@@ -23,12 +23,25 @@ export const invoiceItemInputSchema = z.object({
 
 export type InvoiceItemInput = z.infer<typeof invoiceItemInputSchema>;
 
+export const invoiceItemSchema = z.object({
+  id: z.string(),
+  description: z.string(),
+  quantity: z.string(),
+  unitPrice: z.string(),
+  lineTotal: z.string(),
+});
+
+export type InvoiceItem = z.infer<typeof invoiceItemSchema>;
+
 export const adminInvoiceSchema = z.object({
   id: z.string(),
   number: z.string(),
   status: invoiceStatusSchema,
   issueDate: z.string(),
   dueDate: z.string(),
+  subtotal: z.string(),
+  tax: z.string(),
+  discount: z.string(),
   total: z.string(),
   paidAmount: z.string(),
   client: z.object({ id: z.string(), companyName: z.string() }),
@@ -38,11 +51,19 @@ export const adminInvoiceSchema = z.object({
 
 export type AdminInvoice = z.infer<typeof adminInvoiceSchema>;
 
+export const invoiceDetailSchema = adminInvoiceSchema.extend({
+  items: z.array(invoiceItemSchema),
+});
+
+export type InvoiceDetail = z.infer<typeof invoiceDetailSchema>;
+
 export const createInvoiceSchema = z.object({
   clientId: z.string().min(1, 'Macmiilka waa waajib'),
   projectId: z.string().optional(),
   issueDate: z.string().refine((v) => !Number.isNaN(Date.parse(v)), 'Taariikh aan sax ahayn'),
   dueDate: z.string().refine((v) => !Number.isNaN(Date.parse(v)), 'Taariikh aan sax ahayn'),
+  tax: moneyString.default('0'),
+  discount: moneyString.default('0'),
   items: z.array(invoiceItemInputSchema).min(1, 'Ugu yaraan hal sadar'),
 });
 

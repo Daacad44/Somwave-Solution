@@ -1,0 +1,39 @@
+---
+import { homeServices } from '../../lib/homeContent';
+import HomeIcon from './HomeIcon.astro';
+---
+
+<section id="adeegyada" class="bg-surface" aria-labelledby="services-heading">
+  <div class="mx-auto max-w-site px-4 py-20 sm:px-6">
+    <p class="text-sm font-semibold text-brand">Adeegyada</p>
+    <h2
+      id="services-heading"
+      class="mt-2 max-w-xl text-3xl font-extrabold tracking-tight text-ink sm:text-4xl"
+    >
+      Xalal dhamaystiran<br />Ganacsiyada Casriga ah
+    </h2>
+
+    <div class="mt-10 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      {
+        homeServices.map((item) => (
+          <article class="flex flex-col rounded-lg border border-border bg-surface p-6 shadow-sm transition-shadow hover:shadow-md">
+            <div
+              class="mb-5 flex h-11 w-11 items-center justify-center rounded-md bg-brand-soft text-brand"
+            >
+              <HomeIcon name={item.icon} />
+            </div>
+            <h3 class="text-lg font-semibold text-ink">{item.title}</h3>
+            <p class="mt-2 flex-1 text-[15px] leading-relaxed text-muted">{item.description}</p>
+            <a
+              href={item.href}
+              class="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-brand"
+            >
+              Wax badan ka ogow
+              <HomeIcon name="arrow" class="h-4 w-4" />
+            </a>
+          </article>
+        ))
+      }
+    </div>
+  </div>
+</section>

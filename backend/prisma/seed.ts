@@ -62,6 +62,7 @@ async function main(): Promise<void> {
           'applications.',
           'timesheets.',
           'invoices.',
+          'payments.',
           'tickets.',
           'clients.',
         ).map((permission) => ({ id: permission.id })),
@@ -77,6 +78,8 @@ async function main(): Promise<void> {
     PERMISSIONS.MILESTONES_READ,
     PERMISSIONS.TIMESHEETS_READ,
     PERMISSIONS.TIMESHEETS_CREATE,
+    PERMISSIONS.TICKETS_READ,
+    PERMISSIONS.TICKETS_UPDATE,
   ]);
   await prisma.role.update({
     where: { name: ROLES.STAFF },

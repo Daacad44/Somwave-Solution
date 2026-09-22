@@ -43,7 +43,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       )}
       {...props}
     >
-      {isLoading ? 'Please wait…' : children}
+      {isLoading ? 'Fadlan sug…' : children}
     </button>
   );
 });

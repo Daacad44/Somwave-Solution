@@ -1,0 +1,63 @@
+---
+import { homeArticles } from '../../lib/homeContent';
+import SceneCover from './SceneCover.astro';
+import HomeIcon from './HomeIcon.astro';
+
+function dateLabel(iso: string): string {
+  return new Intl.DateTimeFormat('so', {
+    dateStyle: 'long',
+    timeZone: 'Africa/Mogadishu',
+  }).format(new Date(`${iso}T00:00:00Z`));
+}
+---
+
+<section class="bg-surface" aria-labelledby="articles-heading">
+  <div class="mx-auto max-w-site px-4 py-20 sm:px-6">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p class="text-sm font-semibold text-brand">Maqaallada Ugu Dambeeya</p>
+        <h2
+          id="articles-heading"
+          class="mt-2 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl"
+        >
+          Aqoonta Waa Horumar
+        </h2>
+      </div>
+      <a
+        href="/blog"
+        class="inline-flex h-12 w-fit items-center rounded-md border border-border px-5 text-sm font-semibold text-ink transition-colors hover:border-brand hover:text-brand"
+      >
+        Dhammaan maqaallada
+      </a>
+    </div>
+
+    <div class="mt-10 grid gap-5 md:grid-cols-3">
+      {
+        homeArticles.map((item) => (
+          <article class="flex flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-sm transition-shadow hover:shadow-md">
+            <div class="aspect-[16/9] overflow-hidden">
+              <SceneCover scene={item.scene} label={item.title} />
+            </div>
+            <div class="flex flex-1 flex-col p-5">
+              <h3 class="text-lg font-semibold text-ink">
+                <a href={item.href} class="hover:text-brand">
+                  {item.title}
+                </a>
+              </h3>
+              <time class="mt-2 text-xs font-medium text-muted" datetime={item.date}>
+                {dateLabel(item.date)}
+              </time>
+              <a
+                href={item.href}
+                class="mt-4 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-brand"
+              >
+                Wax ka akhri
+                <HomeIcon name="arrow" class="h-4 w-4" />
+              </a>
+            </div>
+          </article>
+        ))
+      }
+    </div>
+  </div>
+</section>

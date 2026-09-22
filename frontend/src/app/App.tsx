@@ -1,6 +1,7 @@
 import { type ReactNode, lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { LoginPage } from '../features/auth/LoginPage';
+import { TwoFactorSetupPage } from '../features/auth/TwoFactorSetupPage';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { AppShell } from './layout/AppShell';
 import { LoadingState } from '../components/states';
@@ -67,11 +68,25 @@ const TimesheetsPage = lazy(() =>
 const InvoicesPage = lazy(() =>
   import('../features/ops/InvoicesPage').then((m) => ({ default: m.InvoicesPage })),
 );
+const InvoiceDetailPage = lazy(() =>
+  import('../features/ops/InvoiceDetailPage').then((m) => ({ default: m.InvoiceDetailPage })),
+);
+const InvoicePrintPage = lazy(() =>
+  import('../features/ops/InvoicePrintPage').then((m) => ({ default: m.InvoicePrintPage })),
+);
 const TicketsPage = lazy(() =>
   import('../features/ops/TicketsPage').then((m) => ({ default: m.TicketsPage })),
 );
+const TicketDetailPage = lazy(() =>
+  import('../features/ops/TicketDetailPage').then((m) => ({ default: m.TicketDetailPage })),
+);
 const PortalProjectsPage = lazy(() =>
   import('../features/ops/PortalProjectsPage').then((m) => ({ default: m.PortalProjectsPage })),
+);
+const PortalMilestonesPage = lazy(() =>
+  import('../features/ops/PortalMilestonesPage').then((m) => ({
+    default: m.PortalMilestonesPage,
+  })),
 );
 
 function LazyPage({ children }: { children: ReactNode }): ReactNode {
@@ -84,6 +99,14 @@ export function App(): ReactNode {
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
+          <Route
+            path="/settings/2fa"
+            element={
+              <LazyPage>
+                <TwoFactorSetupPage />
+              </LazyPage>
+            }
+          />
           <Route
             path="/"
             element={
@@ -237,6 +260,22 @@ export function App(): ReactNode {
             }
           />
           <Route
+            path="/invoices/:id/print"
+            element={
+              <LazyPage>
+                <InvoicePrintPage />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="/invoices/:id"
+            element={
+              <LazyPage>
+                <InvoiceDetailPage />
+              </LazyPage>
+            }
+          />
+          <Route
             path="/tickets"
             element={
               <LazyPage>
@@ -245,10 +284,26 @@ export function App(): ReactNode {
             }
           />
           <Route
+            path="/tickets/:id"
+            element={
+              <LazyPage>
+                <TicketDetailPage />
+              </LazyPage>
+            }
+          />
+          <Route
             path="/portal/projects"
             element={
               <LazyPage>
                 <PortalProjectsPage />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="/portal/milestones"
+            element={
+              <LazyPage>
+                <PortalMilestonesPage />
               </LazyPage>
             }
           />

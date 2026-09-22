@@ -6,7 +6,10 @@ import type {
   CreateTimesheetInput,
   UpdateTimesheetInput,
   CreateInvoiceInput,
+  RecordPaymentInput,
   CreateTicketInput,
+  UpdateTicketInput,
+  CreateTicketReplyInput,
 } from '@somwave/shared';
 import {
   listLeads,
@@ -19,10 +22,19 @@ import {
   createTimesheet,
   updateTimesheet,
   listInvoices,
+  getInvoice,
   createInvoice,
+  sendInvoice,
+  voidInvoice,
+  recordPayment,
   listTickets,
+  getTicket,
   createTicket,
+  updateTicket,
+  listTicketAssignees,
+  createTicketReply,
   listPortalProjects,
+  listPortalMilestones,
 } from './api';
 
 export function useLeads() {
@@ -85,6 +97,13 @@ export function useUpdateTimesheet() {
 export function useInvoices() {
   return useQuery({ queryKey: ['invoices'], queryFn: listInvoices });
 }
+export function useInvoice(id: string | undefined) {
+  return useQuery({
+    queryKey: ['invoices', id],
+    queryFn: () => getInvoice(id as string),
+    enabled: Boolean(id),
+  });
+}
 export function useCreateInvoice() {
   const client = useQueryClient();
   return useMutation({
@@ -92,9 +111,53 @@ export function useCreateInvoice() {
     onSuccess: () => client.invalidateQueries({ queryKey: ['invoices'] }),
   });
 }
+export function useSendInvoice() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, idempotencyKey }: { id: string; idempotencyKey: string }) =>
+      sendInvoice(id, idempotencyKey),
+    onSuccess: (_data, { id }) => {
+      void client.invalidateQueries({ queryKey: ['invoices'] });
+      void client.invalidateQueries({ queryKey: ['invoices', id] });
+    },
+  });
+}
+export function useVoidInvoice() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => voidInvoice(id),
+    onSuccess: (_data, id) => {
+      void client.invalidateQueries({ queryKey: ['invoices'] });
+      void client.invalidateQueries({ queryKey: ['invoices', id] });
+    },
+  });
+}
+export function useRecordPayment() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      input,
+      idempotencyKey,
+    }: {
+      input: RecordPaymentInput;
+      idempotencyKey: string;
+    }) => recordPayment(input, idempotencyKey),
+    onSuccess: (_data, { input }) => {
+      void client.invalidateQueries({ queryKey: ['invoices'] });
+      void client.invalidateQueries({ queryKey: ['invoices', input.invoiceId] });
+    },
+  });
+}
 
 export function useTickets() {
   return useQuery({ queryKey: ['tickets'], queryFn: listTickets });
+}
+export function useTicket(id: string | undefined) {
+  return useQuery({
+    queryKey: ['tickets', id],
+    queryFn: () => getTicket(id as string),
+    enabled: Boolean(id),
+  });
 }
 export function useCreateTicket() {
   const client = useQueryClient();
@@ -103,7 +166,38 @@ export function useCreateTicket() {
     onSuccess: () => client.invalidateQueries({ queryKey: ['tickets'] }),
   });
 }
+export function useUpdateTicket() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateTicketInput }) =>
+      updateTicket(id, input),
+    onSuccess: (_data, { id }) => {
+      void client.invalidateQueries({ queryKey: ['tickets'] });
+      void client.invalidateQueries({ queryKey: ['tickets', id] });
+    },
+  });
+}
+export function useTicketAssignees(enabled: boolean) {
+  return useQuery({
+    queryKey: ['ticket-assignees'],
+    queryFn: listTicketAssignees,
+    enabled,
+  });
+}
+export function useCreateTicketReply() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: CreateTicketReplyInput }) =>
+      createTicketReply(id, input),
+    onSuccess: (_data, { id }) => {
+      void client.invalidateQueries({ queryKey: ['tickets', id] });
+    },
+  });
+}
 
 export function usePortalProjects() {
   return useQuery({ queryKey: ['portal-projects'], queryFn: listPortalProjects });
+}
+export function usePortalMilestones() {
+  return useQuery({ queryKey: ['portal-milestones'], queryFn: listPortalMilestones });
 }

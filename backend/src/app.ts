@@ -7,6 +7,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { pinoHttp } from 'pino-http';
 import { corsOrigins } from './lib/env';
+import { buildCorsOptions } from './lib/cors';
 import { logger } from './lib/logger';
 import { apiRateLimiter } from './middleware/rateLimit';
 import { healthRouter } from './routes/health.routes';
@@ -25,6 +26,7 @@ import {
   invoicesRouter,
   ticketsRouter,
   portalRouter,
+  paymentsRouter,
 } from './routes/platform.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
@@ -35,8 +37,10 @@ export function createApp(): Express {
   // client IP rather than the proxy's (§13).
   app.set('trust proxy', 1);
 
-  app.use(helmet());
-  app.use(cors({ origin: corsOrigins, credentials: true }));
+  // API is consumed by the dashboard on another origin; helmet's default
+  // Cross-Origin-Resource-Policy: same-origin would block that read.
+  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+  app.use(cors(buildCorsOptions(corsOrigins)));
   app.use(cookieParser());
   app.use(express.json({ limit: '1mb' }));
   app.use(pinoHttp({ logger }));
@@ -60,6 +64,7 @@ export function createApp(): Express {
   app.use('/api/v1/clients', clientsRouter);
   app.use('/api/v1/timesheets', timesheetsRouter);
   app.use('/api/v1/invoices', invoicesRouter);
+  app.use('/api/v1/payments', paymentsRouter);
   app.use('/api/v1/support-tickets', ticketsRouter);
   app.use('/api/v1/portal', portalRouter);
 

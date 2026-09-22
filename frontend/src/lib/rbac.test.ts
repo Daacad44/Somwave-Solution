@@ -10,6 +10,8 @@ const user: AuthUser = {
   roles: [ROLES.STAFF],
   permissions: [PERMISSIONS.USERS_READ],
   clientId: null,
+  twoFactorEnabled: false,
+  twoFactorRequired: false,
 };
 
 describe('hasPermission', () => {
