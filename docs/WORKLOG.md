@@ -20,3 +20,9 @@ Every slice in this branch is recorded here. Status is about this change set, no
 | P3.1 | Support tickets list + create (client-scoped) | portal + internal | This PR |
 
 Not in this PR (still remaining): 2FA enrolment, SMTP, S3/CV, Kanban, Gantt, payroll, full accounting, payment gateways, mobile, Dockerfile/Coolify, URL-based i18n, media library.
+
+## 2026-09-22 — Status report refresh (`cursor/status-report-so-2466`)
+
+Full project report in Somali: [WARBIXIN_MASHRUUC.md](./WARBIXIN_MASHRUUC.md). Snapshot: [STATUS_REPORT.md](./STATUS_REPORT.md).
+
+Documents the merged platform through PR #35, Coolify/homepage work on `main` (#36–#42), and the 21 September stacked PRs (#43–#49) that are not yet on the working branch.
