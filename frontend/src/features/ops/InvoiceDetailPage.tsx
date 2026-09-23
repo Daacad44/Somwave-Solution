@@ -227,8 +227,7 @@ export function InvoiceDetailPage(): ReactNode {
           >
             <h2 className="text-lg font-semibold text-ink">Bixi EVC Plus</h2>
             <p className="text-sm text-muted">
-              Hadhaaga: $
-              {(Number(invoice.total) - Number(invoice.paidAmount)).toFixed(2)}
+              Hadhaaga: ${(Number(invoice.total) - Number(invoice.paidAmount)).toFixed(2)}
             </p>
             <Input
               label="Qiimaha (USD)"

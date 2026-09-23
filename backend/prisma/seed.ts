@@ -339,12 +339,9 @@ const DEV_SUPER_ADMIN_PASSWORD = 'changeme';
  */
 async function seedSuperAdminUser(): Promise<void> {
   const email =
-    process.env.SEED_SUPER_ADMIN_EMAIL ??
-    process.env.SEED_ADMIN_EMAIL ??
-    'admin@somwave.com';
+    process.env.SEED_SUPER_ADMIN_EMAIL ?? process.env.SEED_ADMIN_EMAIL ?? 'admin@somwave.com';
 
-  const passwordFromEnv =
-    process.env.SEED_SUPER_ADMIN_PASSWORD ?? process.env.SEED_ADMIN_PASSWORD;
+  const passwordFromEnv = process.env.SEED_SUPER_ADMIN_PASSWORD ?? process.env.SEED_ADMIN_PASSWORD;
 
   const isProduction = process.env.NODE_ENV === 'production';
   const password = passwordFromEnv ?? (isProduction ? undefined : DEV_SUPER_ADMIN_PASSWORD);

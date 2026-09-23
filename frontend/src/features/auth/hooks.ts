@@ -1,9 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type {
-  AuthUser,
-  ConfirmTwoFactorInput,
-  VerifyTwoFactorInput,
-} from '@somwave/shared';
+import type { AuthUser, ConfirmTwoFactorInput, VerifyTwoFactorInput } from '@somwave/shared';
 import {
   confirmTwoFactorSetup,
   fetchCurrentUser,
