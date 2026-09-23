@@ -1,24 +1,16 @@
 import { type ReactNode } from 'react';
 import { cn } from '../../lib/cn';
 
-// Official wordmark. The source canvas is mostly empty, so the frame zooms to
-// the mark the same way the public site does. `inverted` is for the navy sidebar.
-export function BrandLogo({
-  className,
-  inverted = false,
-  mark = false,
-}: {
-  className?: string;
-  inverted?: boolean;
-  mark?: boolean;
-}): ReactNode {
+// The original Somwave Solution wordmark. Rendered as the supplied image only:
+// no crop, no recolor, no filter, and the file's own aspect ratio.
+export function BrandLogo({ className }: { className?: string }): ReactNode {
   return (
-    <span className={cn('brand-logo', mark ? 'brand-logo-mark' : 'brand-logo-word', className)}>
-      <img
-        src="/brand/somwave-logo.png"
-        alt="Somwave Solution"
-        className={cn('brand-logo-img', inverted && 'brand-logo-invert')}
-      />
-    </span>
+    <img
+      src="/brand/somwave-solution-logo.png"
+      alt="Somwave Solution"
+      width={2000}
+      height={667}
+      className={cn('h-auto max-w-full object-contain', className)}
+    />
   );
 }

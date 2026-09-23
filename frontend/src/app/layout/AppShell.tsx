@@ -117,8 +117,8 @@ export function AppShell(): ReactNode {
           open ? 'flex' : 'hidden',
         )}
       >
-        <div className="flex h-16 items-center px-5">
-          <BrandLogo inverted />
+        <div className="flex items-center px-4 py-4">
+          <BrandLogo className="w-[200px]" />
         </div>
         <nav
           className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 pb-4"
@@ -161,9 +161,9 @@ export function AppShell(): ReactNode {
           })}
         </nav>
         <div className="p-3">
-          <div className="flex items-center gap-3 rounded-lg bg-white/5 px-3 py-3">
-            <BrandLogo inverted mark />
-            <p className="text-xs leading-5 text-sidebar-muted">
+          <div className="rounded-lg bg-white/5 px-3 py-3">
+            <BrandLogo className="w-[168px]" />
+            <p className="mt-2 text-xs leading-5 text-sidebar-muted">
               Building a brighter tomorrow with technology.
             </p>
           </div>
