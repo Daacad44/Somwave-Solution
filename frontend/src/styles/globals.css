@@ -43,4 +43,45 @@
   .modal-overlay {
     background: rgb(15 23 42 / 0.5);
   }
+
+  .shell-scrim {
+    background: rgb(6 30 66 / 0.45);
+  }
+
+  .brand-logo {
+    position: relative;
+    display: inline-block;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .brand-logo-word {
+    width: 168px;
+    height: 44px;
+  }
+
+  .brand-logo-mark {
+    width: 36px;
+    height: 36px;
+  }
+
+  .brand-logo-img {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: auto;
+    max-width: none;
+    height: 229%;
+    transform: translate(-50%, -50%);
+  }
+
+  .brand-logo-mark .brand-logo-img {
+    left: 18%;
+    height: 140%;
+    transform: translate(-10%, -50%);
+  }
+
+  .brand-logo-invert {
+    filter: brightness(0) invert(1);
+  }
 }
