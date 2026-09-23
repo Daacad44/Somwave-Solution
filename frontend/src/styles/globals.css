@@ -43,4 +43,8 @@
   .modal-overlay {
     background: rgb(15 23 42 / 0.5);
   }
+
+  .shell-scrim {
+    background: rgb(6 30 66 / 0.45);
+  }
 }

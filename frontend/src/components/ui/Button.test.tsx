@@ -16,6 +16,6 @@ describe('Button', () => {
     render(<Button isLoading>Save</Button>);
     const button = screen.getByRole('button');
     expect(button).toBeDisabled();
-    expect(button).toHaveTextContent('Fadlan sug');
+    expect(button).toHaveTextContent('Please wait');
   });
 });

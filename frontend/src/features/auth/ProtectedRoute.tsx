@@ -8,7 +8,7 @@ export function ProtectedRoute(): ReactNode {
   const location = useLocation();
 
   if (isLoading) {
-    return <LoadingState label="Waa la hubinayaa fadhigaga" />;
+    return <LoadingState label="Checking your session" />;
   }
   if (isError || !user) {
     return <Navigate to="/login" replace />;
