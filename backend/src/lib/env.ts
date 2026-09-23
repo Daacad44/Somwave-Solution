@@ -4,18 +4,57 @@
 import { z } from 'zod';
 import { parseCorsOrigins } from './cors';
 
-const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().positive().default(4000),
-  DATABASE_URL: z.string().url(),
-  REDIS_URL: z.string().url(),
-  // Coolify Redis is password-protected. The URL is often host-only
-  // (`redis://uuid:6379`); AUTH then comes from this sibling var.
-  REDIS_PASSWORD: z.string().optional(),
-  REDIS_USERNAME: z.string().optional(),
-  JWT_SECRET: z.string().min(32, 'must be at least 32 characters'),
-  CORS_ORIGINS: z.string().min(1, 'comma-separated list of allowed origins is required'),
-});
+const envSchema = z
+  .object({
+    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    PORT: z.coerce.number().int().positive().default(4000),
+    DATABASE_URL: z.string().url(),
+    REDIS_URL: z.string().url(),
+    // Coolify Redis is password-protected. The URL is often host-only
+    // (`redis://uuid:6379`); AUTH then comes from this sibling var.
+    REDIS_PASSWORD: z.string().optional(),
+    REDIS_USERNAME: z.string().optional(),
+    JWT_SECRET: z.string().min(32, 'must be at least 32 characters'),
+    CORS_ORIGINS: z.string().min(1, 'comma-separated list of allowed origins is required'),
+    SMTP_HOST: z.string().min(1).optional(),
+    SMTP_PORT: z.coerce.number().int().positive().optional(),
+    SMTP_USER: z.string().min(1).optional(),
+    SMTP_PASS: z.string().min(1).optional(),
+    SMTP_FROM: z.string().email().optional(),
+    SMTP_NOTIFY_TO: z.string().email().optional(),
+    PAYMENT_EVC_API_URL: z.string().url().optional(),
+    PAYMENT_EVC_API_KEY: z.string().min(8).optional(),
+    PAYMENT_EVC_MERCHANT_ID: z.string().min(1).optional(),
+    PAYMENT_EVC_WEBHOOK_SECRET: z.string().min(16).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (!value.SMTP_HOST) return;
+    if (!value.SMTP_FROM) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['SMTP_FROM'],
+        message: 'required when SMTP_HOST is set',
+      });
+    }
+    const evcKeys = [
+      'PAYMENT_EVC_API_URL',
+      'PAYMENT_EVC_API_KEY',
+      'PAYMENT_EVC_MERCHANT_ID',
+      'PAYMENT_EVC_WEBHOOK_SECRET',
+    ] as const;
+    const set = evcKeys.filter((key) => value[key] !== undefined);
+    if (set.length > 0 && set.length < evcKeys.length) {
+      for (const key of evcKeys) {
+        if (!value[key]) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [key],
+            message: 'required when any PAYMENT_EVC_* variable is set',
+          });
+        }
+      }
+    }
+  });
 
 export type Env = z.infer<typeof envSchema>;
 

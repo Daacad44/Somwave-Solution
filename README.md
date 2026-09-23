@@ -14,12 +14,14 @@ authoritative** — where anything disagrees with it, `CLAUDE.md` wins.
 
 npm workspaces (`CLAUDE.md` §6):
 
-| Workspace         | Package             | Stack                                  | Status                              |
-| ----------------- | ------------------- | -------------------------------------- | ----------------------------------- |
-| `packages/shared` | `@somwave/shared`   | Zod schemas, inferred types, constants | shell (contract lands in F0.3)      |
-| `web`             | `@somwave/web`      | Astro (hybrid static/SSR)              | shell (app lands in F0.2)           |
-| `frontend`        | `@somwave/frontend` | React 18 + Vite                        | shell (app in F0.2, UI kit in F0.4) |
-| `backend`         | `@somwave/backend`  | Node 20 + Express                      | shell (app in F0.2, core in F0.3)   |
+| Workspace         | Package             | Stack                                  | Status                                    |
+| ----------------- | ------------------- | -------------------------------------- | ----------------------------------------- |
+| `packages/shared` | `@somwave/shared`   | Zod schemas, inferred types, constants | in use (grows per feature)                |
+| `web`             | `@somwave/web`      | Astro (hybrid static/SSR)              | public site live (W1–W5; gaps in WORKLOG) |
+| `frontend`        | `@somwave/frontend` | React 18 + Vite                        | internal + CMS + portal shell             |
+| `backend`         | `@somwave/backend`  | Node 20 + Express                      | `/api/v1` + `/health`                     |
+
+Current implementation vs remaining work: [`docs/STATUS_REPORT.md`](./docs/STATUS_REPORT.md), [`docs/WORKLOG.md`](./docs/WORKLOG.md), [`docs/FRONTEND_VISIBILITY.md`](./docs/FRONTEND_VISIBILITY.md).
 
 ## Build order
 

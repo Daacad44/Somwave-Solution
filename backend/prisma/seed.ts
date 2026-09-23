@@ -1,6 +1,6 @@
-// Idempotent seed (SYSTEM_PROMPT §7): the fixed roles, the permission vocabulary,
-// SUPER_ADMIN granted every permission, and (when SEED_ADMIN_PASSWORD is set) a
-// super-admin user. Run with `npm run db:seed`.
+// Idempotent seed (SYSTEM_PROMPT §7): permissions, fixed roles, SUPER_ADMIN with
+// every permission, and an optional default super-admin user (see seedSuperAdminUser).
+// Run with `npm run db:seed`.
 import { PrismaClient } from '@prisma/client';
 import { ROLES, PERMISSIONS } from '@somwave/shared';
 import { hashPassword } from '../src/lib/password';
@@ -35,6 +35,87 @@ async function main(): Promise<void> {
     where: { name: ROLES.EDITOR },
     data: { permissions: { set: contentPermissions.map((permission) => ({ id: permission.id })) } },
   });
+
+  const byPrefix = (...prefixes: string[]): typeof permissions =>
+    permissions.filter((p) => prefixes.some((prefix) => p.key.startsWith(prefix)));
+
+  await prisma.role.update({
+    where: { name: ROLES.ADMIN },
+    data: {
+      permissions: {
+        set: permissions
+          .filter((p) => p.key !== PERMISSIONS.ROLES_MANAGE)
+          .map((permission) => ({ id: permission.id })),
+      },
+    },
+  });
+
+  await prisma.role.update({
+    where: { name: ROLES.MANAGER },
+    data: {
+      permissions: {
+        set: byPrefix(
+          'projects.',
+          'tasks.',
+          'milestones.',
+          'leads.',
+          'applications.',
+          'timesheets.',
+          'invoices.',
+          'payments.',
+          'tickets.',
+          'clients.',
+        ).map((permission) => ({ id: permission.id })),
+      },
+    },
+  });
+
+  const staffKeys = new Set<string>([
+    PERMISSIONS.PROJECTS_READ,
+    PERMISSIONS.TASKS_READ,
+    PERMISSIONS.TASKS_CREATE,
+    PERMISSIONS.TASKS_UPDATE,
+    PERMISSIONS.MILESTONES_READ,
+    PERMISSIONS.TIMESHEETS_READ,
+    PERMISSIONS.TIMESHEETS_CREATE,
+    PERMISSIONS.TICKETS_READ,
+    PERMISSIONS.TICKETS_UPDATE,
+  ]);
+  await prisma.role.update({
+    where: { name: ROLES.STAFF },
+    data: {
+      permissions: {
+        set: permissions
+          .filter((p) => staffKeys.has(p.key))
+          .map((permission) => ({ id: permission.id })),
+      },
+    },
+  });
+
+  const clientKeys = new Set<string>([
+    PERMISSIONS.PORTAL_READ,
+    PERMISSIONS.TICKETS_READ,
+    PERMISSIONS.TICKETS_CREATE,
+    PERMISSIONS.INVOICES_READ,
+    PERMISSIONS.PAYMENTS_READ,
+    PERMISSIONS.PAYMENTS_CREATE,
+  ]);
+  await prisma.role.update({
+    where: { name: ROLES.CLIENT },
+    data: {
+      permissions: {
+        set: permissions
+          .filter((p) => clientKeys.has(p.key))
+          .map((permission) => ({ id: permission.id })),
+      },
+    },
+  });
+
+  if ((await prisma.client.count()) === 0) {
+    await prisma.client.create({
+      data: { companyName: 'Macmiil Tusaale', email: 'client@example.com', status: 'ACTIVE' },
+    });
+  }
 
   // Website services shown on the public site (managed from the CMS later).
   const services = [
@@ -239,26 +320,60 @@ async function main(): Promise<void> {
     });
   }
 
-  // Super-admin user — only when a password is provided; never a hardcoded one.
-  const email = process.env.SEED_ADMIN_EMAIL ?? 'admin@somwave.com';
-  const password = process.env.SEED_ADMIN_PASSWORD;
+  await seedSuperAdminUser();
+}
+
+/** Dev-only default password when env is unset — never used when NODE_ENV=production. */
+const DEV_SUPER_ADMIN_PASSWORD = 'changeme';
+
+/**
+ * Creates or updates the default SUPER_ADMIN user (idempotent).
+ *
+ * - Email: SEED_SUPER_ADMIN_EMAIL (legacy: SEED_ADMIN_EMAIL), default admin@somwave.com
+ * - Password: SEED_SUPER_ADMIN_PASSWORD (legacy: SEED_ADMIN_PASSWORD); in non-production
+ *   only, falls back to DEV_SUPER_ADMIN_PASSWORD so local `db:seed` works without .env.
+ * - SUPER_ADMIN vs ADMIN: SUPER_ADMIN holds every permission (including roles.manage);
+ *   ADMIN holds all permissions except roles.manage (see role updates above).
+ *
+ * Never log the password.
+ */
+async function seedSuperAdminUser(): Promise<void> {
+  const email =
+    process.env.SEED_SUPER_ADMIN_EMAIL ?? process.env.SEED_ADMIN_EMAIL ?? 'admin@somwave.com';
+
+  const passwordFromEnv = process.env.SEED_SUPER_ADMIN_PASSWORD ?? process.env.SEED_ADMIN_PASSWORD;
+
+  const isProduction = process.env.NODE_ENV === 'production';
+  const password = passwordFromEnv ?? (isProduction ? undefined : DEV_SUPER_ADMIN_PASSWORD);
+
   if (!password) {
-    console.warn('[seed] SEED_ADMIN_PASSWORD not set — skipped super-admin user creation.');
+    console.warn(
+      '[seed] Super-admin user skipped — set SEED_SUPER_ADMIN_PASSWORD at runtime (do not commit real passwords).',
+    );
     return;
   }
 
-  const superAdmin = await prisma.role.findUniqueOrThrow({ where: { name: ROLES.SUPER_ADMIN } });
+  if (!passwordFromEnv && !isProduction) {
+    console.warn(
+      '[seed] Dev-only default super-admin password in use — change after first login or set SEED_SUPER_ADMIN_PASSWORD.',
+    );
+  }
+
+  const superAdminRole = await prisma.role.findUniqueOrThrow({
+    where: { name: ROLES.SUPER_ADMIN },
+  });
+  const passwordHash = await hashPassword(password);
   const user = await prisma.user.upsert({
     where: { email },
-    update: {},
-    create: { email, name: 'Super Admin', passwordHash: await hashPassword(password) },
+    update: { name: 'Super Admin', passwordHash },
+    create: { email, name: 'Super Admin', passwordHash },
   });
   await prisma.userRole.upsert({
-    where: { userId_roleId: { userId: user.id, roleId: superAdmin.id } },
+    where: { userId_roleId: { userId: user.id, roleId: superAdminRole.id } },
     update: {},
-    create: { userId: user.id, roleId: superAdmin.id },
+    create: { userId: user.id, roleId: superAdminRole.id },
   });
-  console.log(`[seed] Super-admin ready: ${email}`);
+  console.log(`[seed] Super-admin user ready (role SUPER_ADMIN): ${email}`);
 }
 
 main()

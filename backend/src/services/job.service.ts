@@ -7,6 +7,8 @@ import type {
   AdminJobOpening,
   CreateJobOpeningInput,
   UpdateJobOpeningInput,
+  AdminJobApplication,
+  ApplicationStatus,
 } from '@somwave/shared';
 import { prisma } from '../lib/prisma';
 import { redis } from '../lib/redis';
@@ -231,4 +233,47 @@ async function invalidateCache(): Promise<void> {
   } catch {
     // Best-effort; the TTL will refresh it anyway.
   }
+}
+
+export async function listApplications(): Promise<AdminJobApplication[]> {
+  const rows = await prisma.jobApplication.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: 100,
+    include: { jobOpening: { select: { id: true, title: true, slug: true } } },
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    phone: row.phone,
+    coverLetter: row.coverLetter,
+    resumeUrl: row.resumeUrl,
+    status: row.status,
+    createdAt: row.createdAt.toISOString(),
+    jobOpening: row.jobOpening,
+  }));
+}
+
+export async function updateApplicationStatus(
+  id: string,
+  status: ApplicationStatus,
+): Promise<AdminJobApplication> {
+  const existing = await prisma.jobApplication.findUnique({ where: { id } });
+  if (!existing) throw new AppError('NOT_FOUND', 404, 'Codsigan lama helin');
+  const row = await prisma.jobApplication.update({
+    where: { id },
+    data: { status },
+    include: { jobOpening: { select: { id: true, title: true, slug: true } } },
+  });
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    phone: row.phone,
+    coverLetter: row.coverLetter,
+    resumeUrl: row.resumeUrl,
+    status: row.status,
+    createdAt: row.createdAt.toISOString(),
+    jobOpening: row.jobOpening,
+  };
 }

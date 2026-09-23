@@ -10,3 +10,31 @@ export const createInquirySchema = z.object({
 });
 
 export type CreateInquiryInput = z.infer<typeof createInquirySchema>;
+
+export const INQUIRY_STATUSES = ['NEW', 'READ', 'ARCHIVED'] as const;
+export const inquiryStatusSchema = z.enum(INQUIRY_STATUSES);
+export type InquiryStatus = z.infer<typeof inquiryStatusSchema>;
+
+export const INQUIRY_STATUS_LABELS: Record<InquiryStatus, string> = {
+  NEW: 'Cusub',
+  READ: 'La akhriyay',
+  ARCHIVED: 'Kaydsan',
+};
+
+export const adminInquirySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string(),
+  phone: z.string().nullable(),
+  message: z.string(),
+  status: inquiryStatusSchema,
+  createdAt: z.string(),
+});
+
+export type AdminInquiry = z.infer<typeof adminInquirySchema>;
+
+export const updateInquirySchema = z.object({
+  status: inquiryStatusSchema,
+});
+
+export type UpdateInquiryInput = z.infer<typeof updateInquirySchema>;

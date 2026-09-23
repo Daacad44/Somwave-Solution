@@ -8,3 +8,4 @@ export * from './Skeleton';
 export * from './Table';
 export * from './Modal';
 export * from './Toast';
+export * from './DatePicker';

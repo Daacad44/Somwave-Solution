@@ -4,8 +4,9 @@
 interface Props {
   title: string;
   description: string;
+  href?: string;
 }
-const { title, description } = Astro.props;
+const { title, description, href } = Astro.props;
 ---
 
 <article class="rounded-lg border border-border bg-surface p-6 shadow-sm transition-shadow hover:shadow-md">
@@ -14,4 +15,14 @@ const { title, description } = Astro.props;
   </div>
   <h3 class="text-lg font-semibold text-ink">{title}</h3>
   <p class="mt-2 text-[15px] leading-relaxed text-muted">{description}</p>
+  {
+    href ? (
+      <a
+        href={href}
+        class="mt-4 inline-flex h-11 items-center text-sm font-semibold text-accent-600 hover:text-primary"
+      >
+        Akhri wax badan
+      </a>
+    ) : null
+  }
 </article>

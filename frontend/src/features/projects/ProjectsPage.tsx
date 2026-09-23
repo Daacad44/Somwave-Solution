@@ -11,6 +11,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { LoadingState, EmptyState, ErrorState } from '../../components/states';
 import { useHasPermission } from '../../lib/rbac';
+import { formatDate } from '../../lib/date';
 import { useProjects, useDeleteProject } from './hooks';
 import { ProjectFormModal } from './components/ProjectFormModal';
 
@@ -24,9 +25,6 @@ const STATUS_TONE: Record<ProjectStatus, 'neutral' | 'info' | 'success' | 'warni
   CANCELLED: 'error',
 };
 
-function formatDate(iso: string | null): string {
-  return iso ? iso.slice(0, 10) : '—';
-}
 function formatMoney(value: string | null): string {
   return value ? `$${value}` : '—';
 }

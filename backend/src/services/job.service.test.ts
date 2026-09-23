@@ -10,14 +10,21 @@ vi.mock('../lib/prisma', () => ({
       update: vi.fn(),
       delete: vi.fn(),
     },
-    jobApplication: { create: vi.fn() },
+    jobApplication: { create: vi.fn(), findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
   },
 }));
 vi.mock('../lib/redis', () => ({ redis: { get: vi.fn(), set: vi.fn(), del: vi.fn() } }));
 
 import { prisma } from '../lib/prisma';
 import { redis } from '../lib/redis';
-import { applyToOpening, createOpening, updateOpening, deleteOpening } from './job.service';
+import {
+  applyToOpening,
+  createOpening,
+  updateOpening,
+  deleteOpening,
+  listApplications,
+  updateApplicationStatus,
+} from './job.service';
 import { AppError } from '../lib/http';
 
 const input = { name: 'Cali', email: 'cali@example.com' };
@@ -135,5 +142,36 @@ describe('deleteOpening', () => {
 
     expect(prisma.jobOpening.delete).toHaveBeenCalledWith({ where: { id: 'job_1' } });
     expect(redis.del).toHaveBeenCalledWith('public:careers');
+  });
+});
+
+describe('listApplications', () => {
+  it('returns applications with ISO createdAt', async () => {
+    vi.mocked(prisma.jobApplication.findMany).mockResolvedValue([
+      {
+        id: 'app_1',
+        name: 'Cali',
+        email: 'cali@example.com',
+        phone: null,
+        coverLetter: null,
+        resumeUrl: null,
+        status: 'NEW',
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+        jobOpening: { id: 'job_1', title: 'Frontend', slug: 'frontend' },
+      },
+    ] as never);
+
+    const result = await listApplications();
+    expect(result[0]?.createdAt).toBe('2026-01-01T00:00:00.000Z');
+    expect(result[0]?.jobOpening.title).toBe('Frontend');
+  });
+});
+
+describe('updateApplicationStatus', () => {
+  it('throws NOT_FOUND when the application is missing', async () => {
+    vi.mocked(prisma.jobApplication.findUnique).mockResolvedValue(null as never);
+    await expect(updateApplicationStatus('missing', 'REVIEWING')).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    });
   });
 });

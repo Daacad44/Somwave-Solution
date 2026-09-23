@@ -13,6 +13,13 @@ export interface AccessTokenPayload {
   sub: string;
 }
 
+export interface TwoFactorChallengePayload {
+  sub: string;
+}
+
+const TWO_FACTOR_PURPOSE = '2fa-login';
+const TWO_FACTOR_TTL = '5m';
+
 export function signAccessToken(userId: string): string {
   return jwt.sign({}, env.JWT_SECRET, { subject: userId, expiresIn: ACCESS_TTL });
 }
@@ -21,6 +28,29 @@ export function verifyAccessToken(token: string): AccessTokenPayload {
   const decoded = jwt.verify(token, env.JWT_SECRET);
   if (typeof decoded === 'string' || !decoded.sub) {
     throw new Error('Malformed access token');
+  }
+  if ('purpose' in decoded) {
+    throw new Error('Malformed access token');
+  }
+  return { sub: decoded.sub };
+}
+
+export function signTwoFactorChallenge(userId: string): string {
+  return jwt.sign({ purpose: TWO_FACTOR_PURPOSE }, env.JWT_SECRET, {
+    subject: userId,
+    expiresIn: TWO_FACTOR_TTL,
+  });
+}
+
+export function verifyTwoFactorChallenge(token: string): TwoFactorChallengePayload {
+  const decoded = jwt.verify(token, env.JWT_SECRET);
+  if (
+    typeof decoded === 'string' ||
+    !decoded.sub ||
+    !('purpose' in decoded) ||
+    decoded.purpose !== TWO_FACTOR_PURPOSE
+  ) {
+    throw new Error('Malformed 2FA challenge');
   }
   return { sub: decoded.sub };
 }

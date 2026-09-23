@@ -96,3 +96,41 @@ export const updateJobOpeningSchema = z
   });
 
 export type UpdateJobOpeningInput = z.infer<typeof updateJobOpeningSchema>;
+
+export const APPLICATION_STATUSES = [
+  'NEW',
+  'REVIEWING',
+  'SHORTLISTED',
+  'REJECTED',
+  'HIRED',
+] as const;
+export const applicationStatusSchema = z.enum(APPLICATION_STATUSES);
+export type ApplicationStatus = z.infer<typeof applicationStatusSchema>;
+
+export const APPLICATION_STATUS_LABELS: Record<ApplicationStatus, string> = {
+  NEW: 'Cusub',
+  REVIEWING: 'La eegayaa',
+  SHORTLISTED: 'Liiska gaaban',
+  REJECTED: 'La diiday',
+  HIRED: 'La shaqaaleysiiyay',
+};
+
+export const adminJobApplicationSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string(),
+  phone: z.string().nullable(),
+  coverLetter: z.string().nullable(),
+  resumeUrl: z.string().nullable(),
+  status: applicationStatusSchema,
+  createdAt: z.string(),
+  jobOpening: z.object({ id: z.string(), title: z.string(), slug: z.string() }),
+});
+
+export type AdminJobApplication = z.infer<typeof adminJobApplicationSchema>;
+
+export const updateJobApplicationSchema = z.object({
+  status: applicationStatusSchema,
+});
+
+export type UpdateJobApplicationInput = z.infer<typeof updateJobApplicationSchema>;

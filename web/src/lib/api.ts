@@ -11,6 +11,7 @@ import type {
   PublicPostDetail,
   PublicPostSummary,
   PublicService,
+  PublicServiceDetail,
   PublicTestimonial,
   PublicTeamMember,
   PublicFaq,
@@ -27,6 +28,14 @@ async function getData<T>(path: string): Promise<T> {
 
 export function fetchServices(): Promise<PublicService[]> {
   return getData<PublicService[]>('/public/services');
+}
+
+export async function fetchService(slug: string): Promise<PublicServiceDetail | null> {
+  try {
+    return await getData<PublicServiceDetail>(`/public/services/${encodeURIComponent(slug)}`);
+  } catch {
+    return null;
+  }
 }
 
 export function fetchPortfolio(): Promise<PublicPortfolioItem[]> {
