@@ -88,7 +88,9 @@ export function DonutChart({
         {slices.map((slice) => (
           <li key={slice.key} className="flex items-center justify-between gap-3">
             <span className="flex items-center gap-2 text-muted">
-              <span className={cn('h-2.5 w-2.5 rounded-full', slice.className.replace('text-', 'bg-'))} />
+              <span
+                className={cn('h-2.5 w-2.5 rounded-full', slice.className.replace('text-', 'bg-'))}
+              />
               {slice.label}
             </span>
             <span className="font-medium text-ink">{slice.value}</span>
@@ -157,7 +159,8 @@ export function InvoiceChart({
   const line = (values: number[]): string =>
     values
       .map((value, index) => {
-        const x = pad.l + (values.length === 1 ? innerW / 2 : (index / (values.length - 1)) * innerW);
+        const x =
+          pad.l + (values.length === 1 ? innerW / 2 : (index / (values.length - 1)) * innerW);
         const y = pad.t + innerH - (value / max) * innerH;
         return `${x},${y}`;
       })

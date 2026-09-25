@@ -202,10 +202,7 @@ export function TwoFactorPanel(): ReactNode {
               </p>
               <p className="mt-1 text-sm font-medium text-ink">Scan the QR code</p>
               {qr ? (
-                <div
-                  className="mt-3 w-48 text-primary"
-                  dangerouslySetInnerHTML={{ __html: qr }}
-                />
+                <div className="mt-3 w-48 text-primary" dangerouslySetInnerHTML={{ __html: qr }} />
               ) : null}
               <p className="mt-3 text-xs text-muted">
                 Ama geli sirta gacanta haddii aadan scan-garayn karin.

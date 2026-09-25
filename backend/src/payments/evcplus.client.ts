@@ -15,9 +15,9 @@ export interface EvcInitiateResult {
 function evcConfigured(): boolean {
   return Boolean(
     env.PAYMENT_EVC_API_URL &&
-      env.PAYMENT_EVC_API_KEY &&
-      env.PAYMENT_EVC_MERCHANT_ID &&
-      env.PAYMENT_EVC_WEBHOOK_SECRET,
+    env.PAYMENT_EVC_API_KEY &&
+    env.PAYMENT_EVC_MERCHANT_ID &&
+    env.PAYMENT_EVC_WEBHOOK_SECRET,
   );
 }
 
@@ -63,10 +63,15 @@ export async function initiateEvcCharge(params: EvcInitiateParams): Promise<EvcI
   return { transactionId: body.transactionId };
 }
 
-export function verifyEvcWebhookSignature(rawBody: Buffer, signatureHeader: string | undefined): boolean {
+export function verifyEvcWebhookSignature(
+  rawBody: Buffer,
+  signatureHeader: string | undefined,
+): boolean {
   if (!env.PAYMENT_EVC_WEBHOOK_SECRET) return false;
   if (!signatureHeader) return false;
-  const expected = createHmac('sha256', env.PAYMENT_EVC_WEBHOOK_SECRET).update(rawBody).digest('hex');
+  const expected = createHmac('sha256', env.PAYMENT_EVC_WEBHOOK_SECRET)
+    .update(rawBody)
+    .digest('hex');
   const provided = signatureHeader.replace(/^sha256=/, '');
   if (expected.length !== provided.length) return false;
   try {

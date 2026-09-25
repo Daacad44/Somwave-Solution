@@ -4,13 +4,7 @@ import type { ProjectStatus } from './project';
 import type { TaskPriority, TaskStatus } from './task';
 import type { TicketStatus } from './ticket';
 
-export const DASHBOARD_RANGES = [
-  '7d',
-  '30d',
-  'this_month',
-  'last_month',
-  'this_year',
-] as const;
+export const DASHBOARD_RANGES = ['7d', '30d', 'this_month', 'last_month', 'this_year'] as const;
 
 export const dashboardRangeSchema = z.enum(DASHBOARD_RANGES);
 export type DashboardRange = z.infer<typeof dashboardRangeSchema>;

@@ -93,26 +93,166 @@ type ModuleDef = {
 };
 
 const MODULES: ModuleDef[] = [
-  { key: 'projects', to: '/projects', label: 'Projects', description: 'Manage active and completed projects', permission: PERMISSIONS.PROJECTS_READ, icon: Folder },
-  { key: 'tasks', to: '/tasks', label: 'Tasks', description: 'Track work across all projects', permission: PERMISSIONS.TASKS_READ, icon: ListTodo },
-  { key: 'milestones', to: '/milestones', label: 'Milestones', description: 'Delivery checkpoints', permission: PERMISSIONS.MILESTONES_READ, icon: CalendarDays },
-  { key: 'timesheets', to: '/timesheets', label: 'Timesheets', description: 'Recorded hours', permission: PERMISSIONS.TIMESHEETS_READ, icon: Clock },
-  { key: 'clients', to: '/clients', label: 'Clients', description: 'Companies you work with', permission: PERMISSIONS.CLIENTS_READ, icon: Building2 },
-  { key: 'leads', to: '/leads', label: 'Leads', description: 'Website enquiries', permission: PERMISSIONS.LEADS_READ, icon: Users },
-  { key: 'tickets', to: '/tickets', label: 'Tickets', description: 'Support conversations', permission: PERMISSIONS.TICKETS_READ, icon: Headphones },
-  { key: 'invoices', to: '/invoices', label: 'Invoices', description: 'Issued billing', permission: PERMISSIONS.INVOICES_READ, icon: Receipt },
-  { key: 'employees', to: '/employees', label: 'Employees', description: 'People records', permission: PERMISSIONS.EMPLOYEES_READ, icon: Users },
-  { key: 'attendance', to: '/attendance', label: 'Attendance', description: 'Check-in records', permission: PERMISSIONS.ATTENDANCE_READ, icon: Clock },
-  { key: 'leave', to: '/leave', label: 'Leave', description: 'Time-off requests', permission: PERMISSIONS.LEAVE_READ, icon: CalendarDays },
-  { key: 'applications', to: '/applications', label: 'Recruitment', description: 'Job applications', permission: PERMISSIONS.APPLICATIONS_READ, icon: ClipboardList },
-  { key: 'documents', to: '/documents', label: 'Documents', description: 'Client files', permission: PERMISSIONS.DOCUMENTS_READ, icon: FileText },
-  { key: 'content', to: '/cms/services', label: 'Website', description: 'Public content', permission: PERMISSIONS.CONTENT_READ, icon: LayoutGrid },
-  { key: 'media', to: '/media', label: 'Media', description: 'Uploaded assets', permission: PERMISSIONS.MEDIA_READ, icon: Image },
-  { key: 'users', to: '/users', label: 'Users', description: 'Account access', permission: PERMISSIONS.USERS_READ, icon: Users },
-  { key: 'roles', to: '/roles', label: 'Roles', description: 'Permissions', permission: PERMISSIONS.ROLES_READ, icon: KeyRound },
-  { key: 'audit', to: '/audit', label: 'Audit', description: 'System events', permission: PERMISSIONS.AUDIT_READ, icon: Shield },
-  { key: 'portal-projects', to: '/portal/projects', label: 'My Projects', description: 'Projects linked to your account', permission: PERMISSIONS.PORTAL_READ, icon: Folder },
-  { key: 'portal-milestones', to: '/portal/milestones', label: 'Milestones', description: 'Upcoming delivery dates', permission: PERMISSIONS.PORTAL_READ, icon: CalendarDays },
+  {
+    key: 'projects',
+    to: '/projects',
+    label: 'Projects',
+    description: 'Manage active and completed projects',
+    permission: PERMISSIONS.PROJECTS_READ,
+    icon: Folder,
+  },
+  {
+    key: 'tasks',
+    to: '/tasks',
+    label: 'Tasks',
+    description: 'Track work across all projects',
+    permission: PERMISSIONS.TASKS_READ,
+    icon: ListTodo,
+  },
+  {
+    key: 'milestones',
+    to: '/milestones',
+    label: 'Milestones',
+    description: 'Delivery checkpoints',
+    permission: PERMISSIONS.MILESTONES_READ,
+    icon: CalendarDays,
+  },
+  {
+    key: 'timesheets',
+    to: '/timesheets',
+    label: 'Timesheets',
+    description: 'Recorded hours',
+    permission: PERMISSIONS.TIMESHEETS_READ,
+    icon: Clock,
+  },
+  {
+    key: 'clients',
+    to: '/clients',
+    label: 'Clients',
+    description: 'Companies you work with',
+    permission: PERMISSIONS.CLIENTS_READ,
+    icon: Building2,
+  },
+  {
+    key: 'leads',
+    to: '/leads',
+    label: 'Leads',
+    description: 'Website enquiries',
+    permission: PERMISSIONS.LEADS_READ,
+    icon: Users,
+  },
+  {
+    key: 'tickets',
+    to: '/tickets',
+    label: 'Tickets',
+    description: 'Support conversations',
+    permission: PERMISSIONS.TICKETS_READ,
+    icon: Headphones,
+  },
+  {
+    key: 'invoices',
+    to: '/invoices',
+    label: 'Invoices',
+    description: 'Issued billing',
+    permission: PERMISSIONS.INVOICES_READ,
+    icon: Receipt,
+  },
+  {
+    key: 'employees',
+    to: '/employees',
+    label: 'Employees',
+    description: 'People records',
+    permission: PERMISSIONS.EMPLOYEES_READ,
+    icon: Users,
+  },
+  {
+    key: 'attendance',
+    to: '/attendance',
+    label: 'Attendance',
+    description: 'Check-in records',
+    permission: PERMISSIONS.ATTENDANCE_READ,
+    icon: Clock,
+  },
+  {
+    key: 'leave',
+    to: '/leave',
+    label: 'Leave',
+    description: 'Time-off requests',
+    permission: PERMISSIONS.LEAVE_READ,
+    icon: CalendarDays,
+  },
+  {
+    key: 'applications',
+    to: '/applications',
+    label: 'Recruitment',
+    description: 'Job applications',
+    permission: PERMISSIONS.APPLICATIONS_READ,
+    icon: ClipboardList,
+  },
+  {
+    key: 'documents',
+    to: '/documents',
+    label: 'Documents',
+    description: 'Client files',
+    permission: PERMISSIONS.DOCUMENTS_READ,
+    icon: FileText,
+  },
+  {
+    key: 'content',
+    to: '/cms/services',
+    label: 'Website',
+    description: 'Public content',
+    permission: PERMISSIONS.CONTENT_READ,
+    icon: LayoutGrid,
+  },
+  {
+    key: 'media',
+    to: '/media',
+    label: 'Media',
+    description: 'Uploaded assets',
+    permission: PERMISSIONS.MEDIA_READ,
+    icon: Image,
+  },
+  {
+    key: 'users',
+    to: '/users',
+    label: 'Users',
+    description: 'Account access',
+    permission: PERMISSIONS.USERS_READ,
+    icon: Users,
+  },
+  {
+    key: 'roles',
+    to: '/roles',
+    label: 'Roles',
+    description: 'Permissions',
+    permission: PERMISSIONS.ROLES_READ,
+    icon: KeyRound,
+  },
+  {
+    key: 'audit',
+    to: '/audit',
+    label: 'Audit',
+    description: 'System events',
+    permission: PERMISSIONS.AUDIT_READ,
+    icon: Shield,
+  },
+  {
+    key: 'portal-projects',
+    to: '/portal/projects',
+    label: 'My Projects',
+    description: 'Projects linked to your account',
+    permission: PERMISSIONS.PORTAL_READ,
+    icon: Folder,
+  },
+  {
+    key: 'portal-milestones',
+    to: '/portal/milestones',
+    label: 'Milestones',
+    description: 'Upcoming delivery dates',
+    permission: PERMISSIONS.PORTAL_READ,
+    icon: CalendarDays,
+  },
 ];
 
 type ActionDef = { to: string; label: string; permission: PermissionKey; icon: LucideIcon };
@@ -121,15 +261,35 @@ const ACTIONS: ActionDef[] = [
   { to: '/projects', label: 'New Project', permission: PERMISSIONS.PROJECTS_CREATE, icon: Folder },
   { to: '/tasks', label: 'New Task', permission: PERMISSIONS.TASKS_CREATE, icon: ListTodo },
   { to: '/clients', label: 'Add Client', permission: PERMISSIONS.CLIENTS_CREATE, icon: Building2 },
-  { to: '/invoices', label: 'Create Invoice', permission: PERMISSIONS.INVOICES_CREATE, icon: Receipt },
-  { to: '/employees', label: 'Add Employee', permission: PERMISSIONS.EMPLOYEES_CREATE, icon: Briefcase },
-  { to: '/documents', label: 'Upload Document', permission: PERMISSIONS.DOCUMENTS_CREATE, icon: FileText },
+  {
+    to: '/invoices',
+    label: 'Create Invoice',
+    permission: PERMISSIONS.INVOICES_CREATE,
+    icon: Receipt,
+  },
+  {
+    to: '/employees',
+    label: 'Add Employee',
+    permission: PERMISSIONS.EMPLOYEES_CREATE,
+    icon: Briefcase,
+  },
+  {
+    to: '/documents',
+    label: 'Upload Document',
+    permission: PERMISSIONS.DOCUMENTS_CREATE,
+    icon: FileText,
+  },
   { to: '/tickets', label: 'New Ticket', permission: PERMISSIONS.TICKETS_CREATE, icon: Headphones },
 ];
 
 function StatusPill({ label, tone }: { label: string; tone: PillTone }): ReactNode {
   return (
-    <span className={cn('inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium', PILL[tone])}>
+    <span
+      className={cn(
+        'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium',
+        PILL[tone],
+      )}
+    >
       {label}
     </span>
   );
@@ -242,7 +402,9 @@ export function DashboardPage(): ReactNode {
           to={data.surface === 'portal' ? '/portal/projects' : '/projects'}
           label="Total projects"
           value={String(data.kpis.projects.value)}
-          context={data.kpis.activeProjects ? `${data.kpis.activeProjects.value} active` : 'All projects'}
+          context={
+            data.kpis.activeProjects ? `${data.kpis.activeProjects.value} active` : 'All projects'
+          }
           trend={kpiTrend(data.kpis.projects)}
           icon={Folder}
         />,
@@ -331,11 +493,20 @@ export function DashboardPage(): ReactNode {
 
   const modules = MODULES.filter((module) => {
     if (!hasPermission(user, module.permission)) return false;
-    if (data?.surface === 'portal' && !module.key.startsWith('portal') && module.key !== 'tickets' && module.key !== 'invoices' && module.key !== 'documents') {
+    if (
+      data?.surface === 'portal' &&
+      !module.key.startsWith('portal') &&
+      module.key !== 'tickets' &&
+      module.key !== 'invoices' &&
+      module.key !== 'documents'
+    ) {
       return false;
     }
     if (data?.surface === 'internal' && module.key.startsWith('portal')) return false;
-    return data?.modules.some((item) => item.key === module.key) ?? hasPermission(user, module.permission);
+    return (
+      data?.modules.some((item) => item.key === module.key) ??
+      hasPermission(user, module.permission)
+    );
   });
   const actions = ACTIONS.filter((action) => hasPermission(user, action.permission));
   const counts = new Map((data?.modules ?? []).map((item) => [item.key, item.count]));
@@ -383,26 +554,59 @@ export function DashboardPage(): ReactNode {
       ) : kpis.length > 0 ? (
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">{kpis}</ul>
       ) : (
-        <EmptyState title="Wax xog ah lama hayo." description="No metrics are available for your role." />
+        <EmptyState
+          title="Wax xog ah lama hayo."
+          description="No metrics are available for your role."
+        />
       )}
 
       {data?.surface === 'internal' ? (
-        <InternalAnalytics data={data} loading={query.isLoading} error={query.isError} onRetry={retry} />
+        <InternalAnalytics
+          data={data}
+          loading={query.isLoading}
+          error={query.isError}
+          onRetry={retry}
+        />
       ) : null}
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-        <RecentProjects data={data} loading={query.isLoading} error={query.isError} onRetry={retry} />
+        <RecentProjects
+          data={data}
+          loading={query.isLoading}
+          error={query.isError}
+          onRetry={retry}
+        />
         {data?.surface === 'portal' ? (
-          <RecentTickets data={data} loading={query.isLoading} error={query.isError} onRetry={retry} />
+          <RecentTickets
+            data={data}
+            loading={query.isLoading}
+            error={query.isError}
+            onRetry={retry}
+          />
         ) : (
-          <RecentTasks data={data} loading={query.isLoading} error={query.isError} onRetry={retry} />
+          <RecentTasks
+            data={data}
+            loading={query.isLoading}
+            error={query.isError}
+            onRetry={retry}
+          />
         )}
       </div>
 
       {data?.surface === 'internal' ? (
         <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-          <RecentLeads data={data} loading={query.isLoading} error={query.isError} onRetry={retry} />
-          <RecentTickets data={data} loading={query.isLoading} error={query.isError} onRetry={retry} />
+          <RecentLeads
+            data={data}
+            loading={query.isLoading}
+            error={query.isError}
+            onRetry={retry}
+          />
+          <RecentTickets
+            data={data}
+            loading={query.isLoading}
+            error={query.isError}
+            onRetry={retry}
+          />
         </div>
       ) : null}
 
@@ -498,10 +702,15 @@ function InternalAnalytics({
           {hasMoneySeries(data.series.invoices) ? (
             <>
               <InvoiceChart points={data.series.invoices} label="Invoice totals and paid amounts" />
-              <p className="mt-2 text-xs text-muted">Blue is issued totals. Green is paid amounts.</p>
+              <p className="mt-2 text-xs text-muted">
+                Blue is issued totals. Green is paid amounts.
+              </p>
             </>
           ) : (
-            <EmptyState title="No data yet" description="Xog ku filan oo lagu sameeyo jaantuskan weli ma jirto." />
+            <EmptyState
+              title="No data yet"
+              description="Xog ku filan oo lagu sameeyo jaantuskan weli ma jirto."
+            />
           )}
         </WidgetFrame>
       ) : null}
@@ -586,7 +795,10 @@ function RecentTasks({
     >
       <ul>
         {rows.map((task) => (
-          <li key={task.id} className="flex items-start justify-between gap-3 border-b border-border py-3 last:border-b-0">
+          <li
+            key={task.id}
+            className="flex items-start justify-between gap-3 border-b border-border py-3 last:border-b-0"
+          >
             <div className="min-w-0">
               <p className="truncate font-semibold text-ink">{task.title}</p>
               <p className="truncate text-xs text-muted">
@@ -597,7 +809,13 @@ function RecentTasks({
             </div>
             <StatusPill
               label={TASK_STATUS_LABELS_EN[task.status]}
-              tone={task.status === 'DONE' ? 'success' : task.status === 'IN_REVIEW' ? 'warning' : 'brand'}
+              tone={
+                task.status === 'DONE'
+                  ? 'success'
+                  : task.status === 'IN_REVIEW'
+                    ? 'warning'
+                    : 'brand'
+              }
             />
           </li>
         ))}

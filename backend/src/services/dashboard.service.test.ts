@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  resolveDashboardWindow,
-  trendFromCounts,
-  hasInternalSurface,
-} from './dashboard.service';
+import { resolveDashboardWindow, trendFromCounts, hasInternalSurface } from './dashboard.service';
 import { PERMISSIONS, ROLES, type AuthUser } from '@somwave/shared';
 
 describe('resolveDashboardWindow', () => {
