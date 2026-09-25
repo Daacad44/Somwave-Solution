@@ -336,6 +336,7 @@ CI on `main`: `npm ci` → migrate → seed → typecheck → lint → format �
 | Document | Ujeeddo |
 | --- | --- |
 | `CLAUDE.md` | Qorshe rasmiga ah (stack, gates, conventions) |
+| `docs/SOMWAVE_FEATURES.md` | Liiska features-ka saddexda qaybood |
 | `docs/STATUS_REPORT.md` | Snapshot 10 Sep 2026 |
 | `docs/WORKLOG.md` | Wave platform PR |
 | `docs/FRONTEND_VISIBILITY.md` | Cidda wax aragta role kasta |
