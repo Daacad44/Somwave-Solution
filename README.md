@@ -6,6 +6,8 @@ A single platform serving three audiences:
 - **Client portal** (`frontend/`, React) — clients see their projects and pay invoices.
 - **Internal management system** (`frontend/`, React) — staff run projects, HR, and finance.
 
+Feature catalog for those three parts: [`docs/FEATURES.md`](./docs/FEATURES.md) (Soomaali).
+
 The full specification lives in [`CLAUDE.md`](./CLAUDE.md) and the design blueprint in
 [`docs/Somwave_Blueprint_v3_2.docx`](./docs/Somwave_Blueprint_v3_2.docx). **`CLAUDE.md` is
 authoritative** — where anything disagrees with it, `CLAUDE.md` wins.
