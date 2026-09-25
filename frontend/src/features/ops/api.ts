@@ -22,7 +22,7 @@ import type {
   AdminProject,
   AdminMilestone,
 } from '@somwave/shared';
-import { apiFetch } from '../../lib/apiClient';
+import { apiDownload, apiFetch } from '../../lib/apiClient';
 
 export function listLeads(): Promise<AdminInquiry[]> {
   return apiFetch<AdminInquiry[]>('/leads');
@@ -141,4 +141,71 @@ export function listPortalProjects(): Promise<AdminProject[]> {
 }
 export function listPortalMilestones(): Promise<AdminMilestone[]> {
   return apiFetch<AdminMilestone[]>('/portal/milestones');
+}
+
+export function listEmployees() {
+  return apiFetch<import('@somwave/shared').AdminEmployee[]>('/employees');
+}
+export function listEmployeeCandidates() {
+  return apiFetch<{ id: string; name: string; email: string }[]>('/employees/candidates');
+}
+export function createEmployee(input: import('@somwave/shared').CreateEmployeeInput) {
+  return apiFetch<import('@somwave/shared').AdminEmployee>('/employees', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+export function listAttendance() {
+  return apiFetch<import('@somwave/shared').AdminAttendance[]>('/attendance');
+}
+export function checkIn(employeeId: string) {
+  return apiFetch('/attendance/check-in', { method: 'POST', body: JSON.stringify({ employeeId }) });
+}
+export function checkOut(employeeId: string) {
+  return apiFetch('/attendance/check-out', {
+    method: 'POST',
+    body: JSON.stringify({ employeeId }),
+  });
+}
+export function listLeave() {
+  return apiFetch<import('@somwave/shared').AdminLeaveRequest[]>('/leave-requests');
+}
+export function createLeave(input: import('@somwave/shared').CreateLeaveRequestInput) {
+  return apiFetch('/leave-requests', { method: 'POST', body: JSON.stringify(input) });
+}
+export function updateLeave(id: string, input: import('@somwave/shared').UpdateLeaveRequestInput) {
+  return apiFetch(`/leave-requests/${id}`, { method: 'PATCH', body: JSON.stringify(input) });
+}
+export function listDocuments() {
+  return apiFetch<import('@somwave/shared').AdminDocument[]>('/documents');
+}
+export function createDocument(input: import('@somwave/shared').CreateDocumentInput) {
+  return apiFetch('/documents', { method: 'POST', body: JSON.stringify(input) });
+}
+export function deleteDocument(id: string) {
+  return apiFetch<{ ok: boolean }>(`/documents/${id}`, { method: 'DELETE' });
+}
+export function downloadDocument(id: string, fileName: string) {
+  return apiDownload(`/documents/${id}/file`, fileName);
+}
+export function listMedia() {
+  return apiFetch<import('@somwave/shared').AdminMediaAsset[]>('/media');
+}
+export function createMedia(input: import('@somwave/shared').CreateMediaAssetInput) {
+  return apiFetch('/media', { method: 'POST', body: JSON.stringify(input) });
+}
+export function deleteMedia(id: string) {
+  return apiFetch<{ ok: boolean }>(`/media/${id}`, { method: 'DELETE' });
+}
+export function downloadMedia(id: string, fileName: string) {
+  return apiDownload(`/media/${id}/file`, fileName);
+}
+export function listAuditLogs() {
+  return apiFetch<import('@somwave/shared').AdminAuditLog[]>('/audit-logs');
+}
+export function listNotifications() {
+  return apiFetch<import('@somwave/shared').AdminNotification[]>('/notifications');
+}
+export function markNotificationRead(id: string) {
+  return apiFetch(`/notifications/${id}/read`, { method: 'POST' });
 }

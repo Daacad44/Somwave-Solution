@@ -30,10 +30,12 @@ async function main(): Promise<void> {
   });
 
   // EDITOR manages website content via the CMS (W4, §9): content.* only.
-  const contentPermissions = permissions.filter((p) => p.key.startsWith('content.'));
+  const editorPermissions = permissions.filter(
+    (p) => p.key.startsWith('content.') || p.key.startsWith('media.'),
+  );
   await prisma.role.update({
     where: { name: ROLES.EDITOR },
-    data: { permissions: { set: contentPermissions.map((permission) => ({ id: permission.id })) } },
+    data: { permissions: { set: editorPermissions.map((permission) => ({ id: permission.id })) } },
   });
 
   const byPrefix = (...prefixes: string[]): typeof permissions =>
@@ -65,6 +67,13 @@ async function main(): Promise<void> {
           'payments.',
           'tickets.',
           'clients.',
+          'employees.',
+          'attendance.',
+          'leave.',
+          'documents.',
+          'media.',
+          'audit.',
+          'notifications.',
         ).map((permission) => ({ id: permission.id })),
       },
     },
@@ -80,6 +89,12 @@ async function main(): Promise<void> {
     PERMISSIONS.TIMESHEETS_CREATE,
     PERMISSIONS.TICKETS_READ,
     PERMISSIONS.TICKETS_UPDATE,
+    PERMISSIONS.EMPLOYEES_READ,
+    PERMISSIONS.ATTENDANCE_READ,
+    PERMISSIONS.ATTENDANCE_CREATE,
+    PERMISSIONS.LEAVE_READ,
+    PERMISSIONS.LEAVE_CREATE,
+    PERMISSIONS.NOTIFICATIONS_READ,
   ]);
   await prisma.role.update({
     where: { name: ROLES.STAFF },
@@ -99,6 +114,8 @@ async function main(): Promise<void> {
     PERMISSIONS.INVOICES_READ,
     PERMISSIONS.PAYMENTS_READ,
     PERMISSIONS.PAYMENTS_CREATE,
+    PERMISSIONS.DOCUMENTS_READ,
+    PERMISSIONS.NOTIFICATIONS_READ,
   ]);
   await prisma.role.update({
     where: { name: ROLES.CLIENT },
@@ -339,12 +356,9 @@ const DEV_SUPER_ADMIN_PASSWORD = 'changeme';
  */
 async function seedSuperAdminUser(): Promise<void> {
   const email =
-    process.env.SEED_SUPER_ADMIN_EMAIL ??
-    process.env.SEED_ADMIN_EMAIL ??
-    'admin@somwave.com';
+    process.env.SEED_SUPER_ADMIN_EMAIL ?? process.env.SEED_ADMIN_EMAIL ?? 'admin@somwave.com';
 
-  const passwordFromEnv =
-    process.env.SEED_SUPER_ADMIN_PASSWORD ?? process.env.SEED_ADMIN_PASSWORD;
+  const passwordFromEnv = process.env.SEED_SUPER_ADMIN_PASSWORD ?? process.env.SEED_ADMIN_PASSWORD;
 
   const isProduction = process.env.NODE_ENV === 'production';
   const password = passwordFromEnv ?? (isProduction ? undefined : DEV_SUPER_ADMIN_PASSWORD);

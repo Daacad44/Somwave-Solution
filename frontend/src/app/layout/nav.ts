@@ -12,7 +12,7 @@ export type NavGroup = {
   items: NavItem[];
 };
 
-const WEBSITE_ITEMS: NavItem[] = [
+const CONTENT_ITEMS: NavItem[] = [
   { to: '/cms/services', label: 'Services', permission: PERMISSIONS.CONTENT_READ },
   { to: '/cms/posts', label: 'Articles', permission: PERMISSIONS.CONTENT_READ },
   { to: '/cms/portfolio', label: 'Portfolio', permission: PERMISSIONS.CONTENT_READ },
@@ -21,20 +21,38 @@ const WEBSITE_ITEMS: NavItem[] = [
   { to: '/cms/team', label: 'Team', permission: PERMISSIONS.CONTENT_READ },
   { to: '/cms/faqs', label: 'FAQs', permission: PERMISSIONS.CONTENT_READ },
   { to: '/cms/subscribers', label: 'Newsletter', permission: PERMISSIONS.CONTENT_READ },
+  { to: '/media', label: 'Media', permission: PERMISSIONS.MEDIA_READ },
 ];
 
-const OPERATIONS_ITEMS: NavItem[] = [
+const DELIVERY_ITEMS: NavItem[] = [
   { to: '/projects', label: 'Projects', permission: PERMISSIONS.PROJECTS_READ },
   { to: '/tasks', label: 'Tasks', permission: PERMISSIONS.TASKS_READ },
   { to: '/milestones', label: 'Milestones', permission: PERMISSIONS.MILESTONES_READ },
   { to: '/timesheets', label: 'Timesheets', permission: PERMISSIONS.TIMESHEETS_READ },
-  { to: '/clients', label: 'Clients', permission: PERMISSIONS.CLIENTS_READ },
-  { to: '/leads', label: 'Leads', permission: PERMISSIONS.LEADS_READ },
-  { to: '/applications', label: 'Applications', permission: PERMISSIONS.APPLICATIONS_READ },
-  { to: '/invoices', label: 'Invoices', permission: PERMISSIONS.INVOICES_READ },
   { to: '/tickets', label: 'Tickets', permission: PERMISSIONS.TICKETS_READ },
+];
+
+const PEOPLE_ITEMS: NavItem[] = [
+  { to: '/employees', label: 'Employees', permission: PERMISSIONS.EMPLOYEES_READ },
+  { to: '/attendance', label: 'Attendance', permission: PERMISSIONS.ATTENDANCE_READ },
+  { to: '/leave', label: 'Leave', permission: PERMISSIONS.LEAVE_READ },
+  { to: '/applications', label: 'Applications', permission: PERMISSIONS.APPLICATIONS_READ },
   { to: '/users', label: 'Users', permission: PERMISSIONS.USERS_READ },
+];
+
+const MONEY_ITEMS: NavItem[] = [
+  { to: '/invoices', label: 'Invoices', permission: PERMISSIONS.INVOICES_READ },
+];
+
+const GROWTH_ITEMS: NavItem[] = [
+  { to: '/leads', label: 'Leads', permission: PERMISSIONS.LEADS_READ },
+  { to: '/clients', label: 'Clients', permission: PERMISSIONS.CLIENTS_READ },
+];
+
+const SYSTEM_ITEMS: NavItem[] = [
   { to: '/roles', label: 'Roles', permission: PERMISSIONS.ROLES_READ },
+  { to: '/documents', label: 'Documents', permission: PERMISSIONS.DOCUMENTS_READ },
+  { to: '/audit', label: 'Audit', permission: PERMISSIONS.AUDIT_READ },
 ];
 
 const PORTAL_ITEMS: NavItem[] = [
@@ -42,6 +60,7 @@ const PORTAL_ITEMS: NavItem[] = [
   { to: '/portal/milestones', label: 'Milestones', permission: PERMISSIONS.PORTAL_READ },
   { to: '/tickets', label: 'Tickets', permission: PERMISSIONS.TICKETS_READ },
   { to: '/invoices', label: 'Invoices', permission: PERMISSIONS.INVOICES_READ },
+  { to: '/documents', label: 'Documents', permission: PERMISSIONS.DOCUMENTS_READ },
 ];
 
 const INTERNAL_SURFACE_PERMISSIONS: PermissionKey[] = [
@@ -55,6 +74,11 @@ const INTERNAL_SURFACE_PERMISSIONS: PermissionKey[] = [
   PERMISSIONS.APPLICATIONS_READ,
   PERMISSIONS.USERS_READ,
   PERMISSIONS.ROLES_READ,
+  PERMISSIONS.EMPLOYEES_READ,
+  PERMISSIONS.ATTENDANCE_READ,
+  PERMISSIONS.LEAVE_READ,
+  PERMISSIONS.MEDIA_READ,
+  PERMISSIONS.AUDIT_READ,
 ];
 
 export function hasInternalSurface(user: AuthUser | null | undefined): boolean {
@@ -65,20 +89,22 @@ function permitted(user: AuthUser | null | undefined, items: readonly NavItem[])
   return items.filter((item) => hasPermission(user, item.permission));
 }
 
+function pushGroup(groups: NavGroup[], heading: string, items: NavItem[]): void {
+  if (items.length > 0) groups.push({ heading, items });
+}
+
 /** Sidebar groups for the signed-in user. Permission-gated; CLIENT stays off Operations. */
 export function visibleNavGroups(user: AuthUser | null | undefined): NavGroup[] {
   const groups: NavGroup[] = [];
-  const website = permitted(user, WEBSITE_ITEMS);
-  if (website.length > 0) {
-    groups.push({ heading: 'Website', items: website });
-  }
+  pushGroup(groups, 'Content', permitted(user, CONTENT_ITEMS));
 
   const isInternal = hasInternalSurface(user);
   if (isInternal) {
-    const operations = permitted(user, OPERATIONS_ITEMS);
-    if (operations.length > 0) {
-      groups.push({ heading: 'Operations', items: operations });
-    }
+    pushGroup(groups, 'Delivery', permitted(user, DELIVERY_ITEMS));
+    pushGroup(groups, 'People', permitted(user, PEOPLE_ITEMS));
+    pushGroup(groups, 'Money', permitted(user, MONEY_ITEMS));
+    pushGroup(groups, 'Growth', permitted(user, GROWTH_ITEMS));
+    pushGroup(groups, 'System', permitted(user, SYSTEM_ITEMS));
   }
 
   if (hasPermission(user, PERMISSIONS.PORTAL_READ)) {
@@ -86,18 +112,21 @@ export function visibleNavGroups(user: AuthUser | null | undefined): NavGroup[] 
       if (!hasPermission(user, item.permission)) return false;
       if (item.to.startsWith('/portal/') && !user?.clientId) return false;
       if (isInternal && (item.to === '/tickets' || item.to === '/invoices')) return false;
+      if (isInternal && item.to === '/documents') return false;
       return true;
     });
-    if (portal.length > 0) {
-      groups.push({ heading: 'Portal', items: portal });
-    }
+    pushGroup(groups, 'Portal', portal);
   }
 
   return groups;
 }
 
 export const NAV_GROUPS: NavGroup[] = [
-  { heading: 'Website', items: WEBSITE_ITEMS },
-  { heading: 'Operations', items: OPERATIONS_ITEMS },
+  { heading: 'Content', items: CONTENT_ITEMS },
+  { heading: 'Delivery', items: DELIVERY_ITEMS },
+  { heading: 'People', items: PEOPLE_ITEMS },
+  { heading: 'Money', items: MONEY_ITEMS },
+  { heading: 'Growth', items: GROWTH_ITEMS },
+  { heading: 'System', items: SYSTEM_ITEMS },
   { heading: 'Portal', items: PORTAL_ITEMS },
 ];

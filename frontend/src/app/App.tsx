@@ -2,6 +2,8 @@ import { type ReactNode, lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { PERMISSIONS, type PermissionKey } from '@somwave/shared';
 import { LoginPage } from '../features/auth/LoginPage';
+import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage';
+import { ResetPasswordPage } from '../features/auth/ResetPasswordPage';
 import { TwoFactorSetupPage } from '../features/auth/TwoFactorSetupPage';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { RequirePermission } from '../features/auth/RequirePermission';
@@ -90,6 +92,27 @@ const PortalMilestonesPage = lazy(() =>
     default: m.PortalMilestonesPage,
   })),
 );
+const EmployeesPage = lazy(() =>
+  import('../features/ops/EmployeesPage').then((m) => ({ default: m.EmployeesPage })),
+);
+const AttendancePage = lazy(() =>
+  import('../features/ops/AttendancePage').then((m) => ({ default: m.AttendancePage })),
+);
+const LeavePage = lazy(() =>
+  import('../features/ops/LeavePage').then((m) => ({ default: m.LeavePage })),
+);
+const DocumentsPage = lazy(() =>
+  import('../features/ops/DocumentsPage').then((m) => ({ default: m.DocumentsPage })),
+);
+const MediaPage = lazy(() =>
+  import('../features/ops/MediaPage').then((m) => ({ default: m.MediaPage })),
+);
+const AuditPage = lazy(() =>
+  import('../features/ops/AuditPage').then((m) => ({ default: m.AuditPage })),
+);
+const NotificationsPage = lazy(() =>
+  import('../features/ops/NotificationsPage').then((m) => ({ default: m.NotificationsPage })),
+);
 
 function LazyPage({ children }: { children: ReactNode }): ReactNode {
   return <Suspense fallback={<LoadingState rows={6} />}>{children}</Suspense>;
@@ -113,6 +136,8 @@ export function App(): ReactNode {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
           <Route
@@ -320,6 +345,62 @@ export function App(): ReactNode {
             element={
               <Guarded permission={PERMISSIONS.PORTAL_READ}>
                 <PortalMilestonesPage />
+              </Guarded>
+            }
+          />
+          <Route
+            path="/employees"
+            element={
+              <Guarded permission={PERMISSIONS.EMPLOYEES_READ}>
+                <EmployeesPage />
+              </Guarded>
+            }
+          />
+          <Route
+            path="/attendance"
+            element={
+              <Guarded permission={PERMISSIONS.ATTENDANCE_READ}>
+                <AttendancePage />
+              </Guarded>
+            }
+          />
+          <Route
+            path="/leave"
+            element={
+              <Guarded permission={PERMISSIONS.LEAVE_READ}>
+                <LeavePage />
+              </Guarded>
+            }
+          />
+          <Route
+            path="/documents"
+            element={
+              <Guarded permission={PERMISSIONS.DOCUMENTS_READ}>
+                <DocumentsPage />
+              </Guarded>
+            }
+          />
+          <Route
+            path="/media"
+            element={
+              <Guarded permission={PERMISSIONS.MEDIA_READ}>
+                <MediaPage />
+              </Guarded>
+            }
+          />
+          <Route
+            path="/audit"
+            element={
+              <Guarded permission={PERMISSIONS.AUDIT_READ}>
+                <AuditPage />
+              </Guarded>
+            }
+          />
+          <Route
+            path="/notifications"
+            element={
+              <Guarded permission={PERMISSIONS.NOTIFICATIONS_READ}>
+                <NotificationsPage />
               </Guarded>
             }
           />

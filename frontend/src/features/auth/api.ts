@@ -1,7 +1,9 @@
 import type {
   AuthUser,
   ConfirmTwoFactorInput,
+  ForgotPasswordInput,
   LoginInput,
+  ResetPasswordInput,
   VerifyTwoFactorInput,
 } from '@somwave/shared';
 import { apiFetch, ApiError } from '../../lib/apiClient';
@@ -28,8 +30,24 @@ export function startTwoFactorSetup(): Promise<{ otpauthUrl: string; secret: str
   return apiFetch<{ otpauthUrl: string; secret: string }>('/auth/2fa/setup', { method: 'POST' });
 }
 
-export function confirmTwoFactorSetup(input: ConfirmTwoFactorInput): Promise<{ user: AuthUser }> {
-  return apiFetch<{ user: AuthUser }>('/auth/2fa/confirm', {
+export function confirmTwoFactorSetup(
+  input: ConfirmTwoFactorInput,
+): Promise<{ user: AuthUser; backupCodes: string[] }> {
+  return apiFetch<{ user: AuthUser; backupCodes: string[] }>('/auth/2fa/confirm', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function forgotPassword(input: ForgotPasswordInput): Promise<{ ok: boolean }> {
+  return apiFetch<{ ok: boolean }>('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function resetPassword(input: ResetPasswordInput): Promise<{ ok: boolean }> {
+  return apiFetch<{ ok: boolean }>('/auth/reset-password', {
     method: 'POST',
     body: JSON.stringify(input),
   });

@@ -18,6 +18,7 @@ import { useHasPermission } from '../../lib/rbac';
 import { useProjects } from '../projects/hooks';
 import { useTasks, useDeleteTask } from './hooks';
 import { TaskFormModal } from './components/TaskFormModal';
+import { TaskKanban } from './TaskKanban';
 
 const PAGE_SIZE = 20;
 
@@ -42,6 +43,7 @@ export function TasksPage(): ReactNode {
   const [page, setPage] = useState(1);
   const [projectId, setProjectId] = useState('');
   const [status, setStatus] = useState<TaskStatus | ''>('');
+  const [view, setView] = useState<'list' | 'kanban'>('list');
 
   const canCreate = useHasPermission(PERMISSIONS.TASKS_CREATE);
   const canUpdate = useHasPermission(PERMISSIONS.TASKS_UPDATE);
@@ -52,10 +54,10 @@ export function TasksPage(): ReactNode {
   const projects = (projectsQuery.data?.data ?? []).map((p) => ({ id: p.id, name: p.name }));
 
   const query = useTasks({
-    page,
-    pageSize: PAGE_SIZE,
+    page: view === 'kanban' ? 1 : page,
+    pageSize: view === 'kanban' ? 100 : PAGE_SIZE,
     projectId: projectId || undefined,
-    status: status || undefined,
+    status: view === 'kanban' ? undefined : status || undefined,
   });
   const del = useDeleteTask();
 
@@ -83,7 +85,21 @@ export function TasksPage(): ReactNode {
           <h1 className="text-2xl font-semibold text-ink">Hawlaha</h1>
           <p className="mt-1 text-base text-muted">Maamul hawlaha mashruucyada.</p>
         </div>
-        {canCreate ? <Button onClick={openCreate}>Hawl cusub</Button> : null}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={view === 'list' ? 'primary' : 'secondary'}
+            onClick={() => setView('list')}
+          >
+            Liis
+          </Button>
+          <Button
+            variant={view === 'kanban' ? 'primary' : 'secondary'}
+            onClick={() => setView('kanban')}
+          >
+            Kanban
+          </Button>
+          {canCreate ? <Button onClick={openCreate}>Hawl cusub</Button> : null}
+        </div>
       </div>
 
       <div className="mt-6 flex flex-wrap items-end gap-2">
@@ -99,18 +115,20 @@ export function TasksPage(): ReactNode {
             setProjectId(e.target.value);
           }}
         />
-        <Select
-          aria-label="Kala sooc xaalada"
-          options={[
-            { value: '', label: 'Dhammaan xaaladaha' },
-            ...TASK_STATUSES.map((s) => ({ value: s, label: TASK_STATUS_LABELS[s] })),
-          ]}
-          value={status}
-          onChange={(e) => {
-            setPage(1);
-            setStatus(e.target.value as TaskStatus | '');
-          }}
-        />
+        {view === 'list' ? (
+          <Select
+            aria-label="Kala sooc xaalada"
+            options={[
+              { value: '', label: 'Dhammaan xaaladaha' },
+              ...TASK_STATUSES.map((s) => ({ value: s, label: TASK_STATUS_LABELS[s] })),
+            ]}
+            value={status}
+            onChange={(e) => {
+              setPage(1);
+              setStatus(e.target.value as TaskStatus | '');
+            }}
+          />
+        ) : null}
       </div>
 
       <div className="mt-6 rounded-lg border border-border bg-surface">
@@ -124,6 +142,10 @@ export function TasksPage(): ReactNode {
             description={projectId || status ? 'Kala-soocdu waxba ma soo celin.' : undefined}
             action={canCreate ? <Button onClick={openCreate}>Hawl cusub</Button> : undefined}
           />
+        ) : view === 'kanban' ? (
+          <div className="p-4">
+            <TaskKanban tasks={tasks} canUpdate={canUpdate} />
+          </div>
         ) : (
           <Table>
             <THead>
@@ -171,7 +193,7 @@ export function TasksPage(): ReactNode {
         )}
       </div>
 
-      {total > PAGE_SIZE ? (
+      {view === 'list' && total > PAGE_SIZE ? (
         <div className="mt-4 flex items-center justify-between text-sm text-muted">
           <span>
             Bogga {page} / {totalPages} · {total} hawl
