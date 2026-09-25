@@ -1,10 +1,9 @@
 import { type ReactNode, lazy, Suspense } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { PERMISSIONS, type PermissionKey } from '@somwave/shared';
 import { LoginPage } from '../features/auth/LoginPage';
 import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '../features/auth/ResetPasswordPage';
-import { TwoFactorSetupPage } from '../features/auth/TwoFactorSetupPage';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { RequirePermission } from '../features/auth/RequirePermission';
 import { AppShell } from './layout/AppShell';
@@ -113,6 +112,9 @@ const AuditPage = lazy(() =>
 const NotificationsPage = lazy(() =>
   import('../features/ops/NotificationsPage').then((m) => ({ default: m.NotificationsPage })),
 );
+const ProfilePage = lazy(() =>
+  import('../features/profile/ProfilePage').then((m) => ({ default: m.ProfilePage })),
+);
 
 function LazyPage({ children }: { children: ReactNode }): ReactNode {
   return <Suspense fallback={<LoadingState rows={6} />}>{children}</Suspense>;
@@ -140,11 +142,12 @@ export function App(): ReactNode {
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
+          <Route path="/settings/2fa" element={<Navigate to="/profile?tab=security" replace />} />
           <Route
-            path="/settings/2fa"
+            path="/profile"
             element={
               <LazyPage>
-                <TwoFactorSetupPage />
+                <ProfilePage />
               </LazyPage>
             }
           />

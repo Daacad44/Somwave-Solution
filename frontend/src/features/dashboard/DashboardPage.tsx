@@ -1,49 +1,71 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { formatInTimeZone } from 'date-fns-tz';
 import {
   ArrowRight,
+  Briefcase,
+  Building2,
+  CalendarDays,
+  ClipboardList,
+  Clock,
   FileText,
   Folder,
   Headphones,
-  Home,
+  Image,
+  KeyRound,
+  LayoutGrid,
   ListTodo,
+  Plus,
+  Receipt,
   Shield,
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import type { ProjectStatus, TaskStatus } from '@somwave/shared';
+import {
+  DASHBOARD_RANGES,
+  PERMISSIONS,
+  type DashboardOverview,
+  type DashboardRange,
+  type PermissionKey,
+  type TaskStatus,
+} from '@somwave/shared';
+import { Select } from '../../components/ui/Select';
 import { Skeleton } from '../../components/ui/Skeleton';
-import { ErrorState } from '../../components/states';
+import { EmptyState, ErrorState } from '../../components/states';
 import { useCurrentUser } from '../auth/hooks';
-import { DISPLAY_TIMEZONE, formatDate } from '../../lib/date';
+import { hasPermission } from '../../lib/rbac';
+import { DISPLAY_TIMEZONE, formatLongDate, greetingForNow } from '../../lib/date';
 import { cn } from '../../lib/cn';
-import { useDashboard } from './hooks';
+import { useDashboardOverview } from './hooks';
+import { AreaChart, BarChart, DonutChart, InvoiceChart } from './charts';
 import {
   PROJECT_STATUS_LABELS_EN,
   TASK_STATUS_LABELS_EN,
-  countInvoices,
-  countLeads,
-  countOpenTasks,
-  countOpenTickets,
+  TICKET_STATUS_LABELS_EN,
+  activityLabel,
+  formatMoney,
   formatRoleName,
+  hasMoneySeries,
+  kpiTrend,
+  moneyTrend,
+  projectProgress,
 } from './metrics';
 
 type PillTone = 'success' | 'brand' | 'warning' | 'neutral';
 
-const PROJECT_TONE: Record<ProjectStatus, PillTone> = {
-  PLANNING: 'brand',
-  ACTIVE: 'success',
-  ON_HOLD: 'warning',
-  COMPLETED: 'success',
-  CANCELLED: 'neutral',
+const RANGE_LABELS: Record<DashboardRange, string> = {
+  '7d': '7 days',
+  '30d': '30 days',
+  this_month: 'This month',
+  last_month: 'Last month',
+  this_year: 'This year',
 };
 
-const TASK_TONE: Record<TaskStatus, PillTone> = {
-  TODO: 'neutral',
-  IN_PROGRESS: 'brand',
-  IN_REVIEW: 'warning',
-  DONE: 'success',
+const TASK_SLICE: Record<TaskStatus, { label: string; className: string }> = {
+  TODO: { label: 'To do', className: 'text-muted' },
+  IN_PROGRESS: { label: 'In progress', className: 'text-brand' },
+  IN_REVIEW: { label: 'In review', className: 'text-warning' },
+  DONE: { label: 'Done', className: 'text-success' },
 };
 
 const PILL: Record<PillTone, string> = {
@@ -53,115 +75,124 @@ const PILL: Record<PillTone, string> = {
   neutral: 'bg-canvas text-muted',
 };
 
+const PROJECT_TONE: Record<string, PillTone> = {
+  PLANNING: 'brand',
+  ACTIVE: 'success',
+  ON_HOLD: 'warning',
+  COMPLETED: 'success',
+  CANCELLED: 'neutral',
+};
+
+type ModuleDef = {
+  key: string;
+  to: string;
+  label: string;
+  description: string;
+  permission: PermissionKey;
+  icon: LucideIcon;
+};
+
+const MODULES: ModuleDef[] = [
+  { key: 'projects', to: '/projects', label: 'Projects', description: 'Manage active and completed projects', permission: PERMISSIONS.PROJECTS_READ, icon: Folder },
+  { key: 'tasks', to: '/tasks', label: 'Tasks', description: 'Track work across all projects', permission: PERMISSIONS.TASKS_READ, icon: ListTodo },
+  { key: 'milestones', to: '/milestones', label: 'Milestones', description: 'Delivery checkpoints', permission: PERMISSIONS.MILESTONES_READ, icon: CalendarDays },
+  { key: 'timesheets', to: '/timesheets', label: 'Timesheets', description: 'Recorded hours', permission: PERMISSIONS.TIMESHEETS_READ, icon: Clock },
+  { key: 'clients', to: '/clients', label: 'Clients', description: 'Companies you work with', permission: PERMISSIONS.CLIENTS_READ, icon: Building2 },
+  { key: 'leads', to: '/leads', label: 'Leads', description: 'Website enquiries', permission: PERMISSIONS.LEADS_READ, icon: Users },
+  { key: 'tickets', to: '/tickets', label: 'Tickets', description: 'Support conversations', permission: PERMISSIONS.TICKETS_READ, icon: Headphones },
+  { key: 'invoices', to: '/invoices', label: 'Invoices', description: 'Issued billing', permission: PERMISSIONS.INVOICES_READ, icon: Receipt },
+  { key: 'employees', to: '/employees', label: 'Employees', description: 'People records', permission: PERMISSIONS.EMPLOYEES_READ, icon: Users },
+  { key: 'attendance', to: '/attendance', label: 'Attendance', description: 'Check-in records', permission: PERMISSIONS.ATTENDANCE_READ, icon: Clock },
+  { key: 'leave', to: '/leave', label: 'Leave', description: 'Time-off requests', permission: PERMISSIONS.LEAVE_READ, icon: CalendarDays },
+  { key: 'applications', to: '/applications', label: 'Recruitment', description: 'Job applications', permission: PERMISSIONS.APPLICATIONS_READ, icon: ClipboardList },
+  { key: 'documents', to: '/documents', label: 'Documents', description: 'Client files', permission: PERMISSIONS.DOCUMENTS_READ, icon: FileText },
+  { key: 'content', to: '/cms/services', label: 'Website', description: 'Public content', permission: PERMISSIONS.CONTENT_READ, icon: LayoutGrid },
+  { key: 'media', to: '/media', label: 'Media', description: 'Uploaded assets', permission: PERMISSIONS.MEDIA_READ, icon: Image },
+  { key: 'users', to: '/users', label: 'Users', description: 'Account access', permission: PERMISSIONS.USERS_READ, icon: Users },
+  { key: 'roles', to: '/roles', label: 'Roles', description: 'Permissions', permission: PERMISSIONS.ROLES_READ, icon: KeyRound },
+  { key: 'audit', to: '/audit', label: 'Audit', description: 'System events', permission: PERMISSIONS.AUDIT_READ, icon: Shield },
+  { key: 'portal-projects', to: '/portal/projects', label: 'My Projects', description: 'Projects linked to your account', permission: PERMISSIONS.PORTAL_READ, icon: Folder },
+  { key: 'portal-milestones', to: '/portal/milestones', label: 'Milestones', description: 'Upcoming delivery dates', permission: PERMISSIONS.PORTAL_READ, icon: CalendarDays },
+];
+
+type ActionDef = { to: string; label: string; permission: PermissionKey; icon: LucideIcon };
+
+const ACTIONS: ActionDef[] = [
+  { to: '/projects', label: 'New Project', permission: PERMISSIONS.PROJECTS_CREATE, icon: Folder },
+  { to: '/tasks', label: 'New Task', permission: PERMISSIONS.TASKS_CREATE, icon: ListTodo },
+  { to: '/clients', label: 'Add Client', permission: PERMISSIONS.CLIENTS_CREATE, icon: Building2 },
+  { to: '/invoices', label: 'Create Invoice', permission: PERMISSIONS.INVOICES_CREATE, icon: Receipt },
+  { to: '/employees', label: 'Add Employee', permission: PERMISSIONS.EMPLOYEES_CREATE, icon: Briefcase },
+  { to: '/documents', label: 'Upload Document', permission: PERMISSIONS.DOCUMENTS_CREATE, icon: FileText },
+  { to: '/tickets', label: 'New Ticket', permission: PERMISSIONS.TICKETS_CREATE, icon: Headphones },
+];
+
 function StatusPill({ label, tone }: { label: string; tone: PillTone }): ReactNode {
   return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium',
-        PILL[tone],
-      )}
-    >
+    <span className={cn('inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium', PILL[tone])}>
       {label}
     </span>
   );
 }
 
-function Sparkline({ d, className }: { d: string; className: string }): ReactNode {
-  return (
-    <svg className={cn('h-8 w-16 shrink-0', className)} viewBox="0 0 64 32" aria-hidden="true">
-      <path d={d} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function WelcomeWave(): ReactNode {
-  return (
-    <svg
-      className="pointer-events-none absolute end-0 top-0 hidden h-full w-[48%] text-brand lg:block"
-      viewBox="0 0 520 240"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M20 170C110 110 170 40 270 78C350 108 400 30 520 58"
-        stroke="currentColor"
-        strokeOpacity="0.28"
-        strokeWidth="1.6"
-      />
-      <path
-        d="M0 200C100 140 180 70 280 120C370 164 420 90 520 110"
-        stroke="currentColor"
-        strokeOpacity="0.16"
-        strokeWidth="1.6"
-      />
-      <path
-        d="M80 80C150 40 210 90 280 50"
-        stroke="currentColor"
-        strokeOpacity="0.2"
-        strokeWidth="1.4"
-      />
-      {[
-        [430, 46],
-        [448, 62],
-        [466, 40],
-        [484, 58],
-        [456, 28],
-      ].map(([cx, cy]) => (
-        <circle
-          key={`${cx}-${cy}`}
-          cx={cx}
-          cy={cy}
-          r="3.2"
-          fill="currentColor"
-          fillOpacity="0.85"
-        />
-      ))}
-    </svg>
-  );
-}
-
-function ProjectThumb({ index }: { index: number }): ReactNode {
-  const scenes = [
-    'M6 18h20v8H6zM8 10h16v6H8z',
-    'M6 8h20v16H6zM10 12h12M10 16h8',
-    'M8 6h16v20H8zM12 10h8M12 14h8M12 18h5',
-  ];
-  return (
-    <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand">
-      <svg viewBox="0 0 32 32" className="h-6 w-6" aria-hidden="true">
-        <path
-          d={scenes[index % scenes.length]}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-        />
-      </svg>
-    </span>
-  );
-}
-
-function MetricCard({
-  label,
-  value,
-  hint,
-  icon: Icon,
-  iconClass,
-  spark,
-  sparkClass,
-  to,
+function WidgetFrame({
+  title,
+  action,
   isLoading,
   isError,
+  onRetry,
+  empty,
+  children,
 }: {
-  label: string;
-  value: number | null;
-  hint: string;
-  icon: LucideIcon;
-  iconClass: string;
-  spark: string;
-  sparkClass: string;
-  to: string;
+  title: string;
+  action?: ReactNode;
   isLoading: boolean;
   isError: boolean;
+  onRetry: () => void;
+  empty?: boolean;
+  children: ReactNode;
+}): ReactNode {
+  return (
+    <section className="min-w-0 rounded-lg border border-border bg-surface p-5 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-base font-semibold text-ink">{title}</h2>
+        {action}
+      </div>
+      {isLoading ? (
+        <div className="mt-4 flex flex-col gap-3" role="status" aria-label={`Loading ${title}`}>
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+      ) : isError ? (
+        <ErrorState
+          title="Xogta lama soo gelin karin."
+          retryLabel="Isku day mar kale"
+          onRetry={onRetry}
+        />
+      ) : empty ? (
+        <EmptyState title="Wax xog ah lama hayo." />
+      ) : (
+        <div className="mt-4">{children}</div>
+      )}
+    </section>
+  );
+}
+
+function KpiCard({
+  label,
+  value,
+  context,
+  trend,
+  icon: Icon,
+  to,
+}: {
+  label: string;
+  value: string;
+  context: string;
+  trend: number | null;
+  icon: LucideIcon;
+  to: string;
 }): ReactNode {
   return (
     <li>
@@ -169,29 +200,21 @@ function MetricCard({
         to={to}
         className="flex h-full min-h-11 flex-col rounded-lg border border-border bg-surface p-4 shadow-sm transition-colors hover:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span
-              className={cn(
-                'inline-flex h-10 w-10 items-center justify-center rounded-lg',
-                iconClass,
-              )}
-            >
-              <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
-            </span>
-            <span className="text-sm font-medium text-muted">{label}</span>
-          </div>
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-brand-soft text-brand">
+            <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+          </span>
+          <span className="text-sm font-medium text-muted">{label}</span>
         </div>
-        {isLoading ? (
-          <Skeleton className="mt-3 h-8 w-16" />
-        ) : isError ? (
-          <p className="mt-3 text-sm font-medium text-error">Unavailable</p>
-        ) : (
-          <p className="mt-3 text-3xl font-semibold leading-none text-ink">{value}</p>
-        )}
-        <div className="mt-3 flex items-end justify-between gap-3">
-          <p className="text-sm text-muted">{hint}</p>
-          <Sparkline d={spark} className={sparkClass} />
+        <p className="mt-3 text-3xl font-semibold leading-none text-ink">{value}</p>
+        <div className="mt-3 flex items-center justify-between gap-2 text-sm">
+          <p className="text-muted">{context}</p>
+          {trend !== null ? (
+            <span className={trend >= 0 ? 'text-success' : 'text-error'}>
+              {trend > 0 ? '+' : ''}
+              {trend}%
+            </span>
+          ) : null}
         </div>
       </Link>
     </li>
@@ -200,265 +223,553 @@ function MetricCard({
 
 export function DashboardPage(): ReactNode {
   const { data: user } = useCurrentUser();
-  const dash = useDashboard(user);
+  const [range, setRange] = useState<DashboardRange>('30d');
+  const query = useDashboardOverview(range);
+  const data = query.data;
   const today = formatInTimeZone(new Date(), DISPLAY_TIMEZONE, 'EEEE, d MMMM yyyy');
-  const leadCounts = dash.leads.data ? countLeads(dash.leads.data) : null;
-  const invoiceCounts = dash.invoices.data ? countInvoices(dash.invoices.data) : null;
-  const openTasks =
-    dash.tasks.data && dash.doneTasks.data
-      ? countOpenTasks(dash.tasks.data.meta.total, dash.doneTasks.data.meta.total)
-      : null;
-  const openTickets = dash.tickets.data ? countOpenTickets(dash.tickets.data) : null;
-  const roleLabel = formatRoleName(user?.roles[0] ?? 'SUPER_ADMIN');
-  const projects = dash.projects.data?.data.slice(0, 3) ?? [];
-  const tasks = dash.tasks.data?.data.slice(0, 3) ?? [];
+  const roleLabel = formatRoleName(user?.roles[0] ?? 'STAFF');
+  const retry = (): void => {
+    void query.refetch();
+  };
+
+  const kpis = useMemo(() => {
+    if (!data) return [];
+    const cards: ReactNode[] = [];
+    if (data.kpis.projects) {
+      cards.push(
+        <KpiCard
+          key="projects"
+          to={data.surface === 'portal' ? '/portal/projects' : '/projects'}
+          label="Total projects"
+          value={String(data.kpis.projects.value)}
+          context={data.kpis.activeProjects ? `${data.kpis.activeProjects.value} active` : 'All projects'}
+          trend={kpiTrend(data.kpis.projects)}
+          icon={Folder}
+        />,
+      );
+    }
+    if (data.kpis.openTasks) {
+      cards.push(
+        <KpiCard
+          key="tasks"
+          to="/tasks"
+          label="Open tasks"
+          value={String(data.kpis.openTasks.value)}
+          context="Still to do, in progress, or in review"
+          trend={kpiTrend(data.kpis.openTasks)}
+          icon={ListTodo}
+        />,
+      );
+    }
+    if (data.kpis.openLeads) {
+      cards.push(
+        <KpiCard
+          key="leads"
+          to="/leads"
+          label="Open leads"
+          value={String(data.kpis.openLeads.value)}
+          context="New website enquiries"
+          trend={kpiTrend(data.kpis.openLeads)}
+          icon={Users}
+        />,
+      );
+    }
+    if (data.kpis.activeClients) {
+      cards.push(
+        <KpiCard
+          key="clients"
+          to="/clients"
+          label="Active clients"
+          value={String(data.kpis.activeClients.value)}
+          context="Companies currently active"
+          trend={null}
+          icon={Building2}
+        />,
+      );
+    }
+    if (data.kpis.openTickets) {
+      cards.push(
+        <KpiCard
+          key="tickets"
+          to="/tickets"
+          label="Open tickets"
+          value={String(data.kpis.openTickets.value)}
+          context="Waiting on a reply or a fix"
+          trend={null}
+          icon={Headphones}
+        />,
+      );
+    }
+    if (data.kpis.pendingInvoices) {
+      cards.push(
+        <KpiCard
+          key="invoices"
+          to="/invoices"
+          label="Pending invoices"
+          value={String(data.kpis.pendingInvoices.value)}
+          context="Draft, sent, partial, or overdue"
+          trend={null}
+          icon={Receipt}
+        />,
+      );
+    }
+    if (data.kpis.revenue) {
+      cards.push(
+        <KpiCard
+          key="revenue"
+          to="/invoices"
+          label="Revenue collected"
+          value={formatMoney(data.kpis.revenue.value)}
+          context="Paid amount on issued invoices"
+          trend={moneyTrend(data.kpis.revenue)}
+          icon={Receipt}
+        />,
+      );
+    }
+    return cards;
+  }, [data]);
+
+  const modules = MODULES.filter((module) => {
+    if (!hasPermission(user, module.permission)) return false;
+    if (data?.surface === 'portal' && !module.key.startsWith('portal') && module.key !== 'tickets' && module.key !== 'invoices' && module.key !== 'documents') {
+      return false;
+    }
+    if (data?.surface === 'internal' && module.key.startsWith('portal')) return false;
+    return data?.modules.some((item) => item.key === module.key) ?? hasPermission(user, module.permission);
+  });
+  const actions = ACTIONS.filter((action) => hasPermission(user, action.permission));
+  const counts = new Map((data?.modules ?? []).map((item) => [item.key, item.count]));
 
   return (
     <section className="flex min-w-0 flex-col gap-5">
-      <div className="flex items-center justify-between gap-3">
-        <p className="inline-flex items-center gap-2 text-sm text-muted">
-          <Home className="h-4 w-4" aria-hidden="true" />
-          <span aria-current="page">Home</span>
-        </p>
-        <p className="text-sm text-muted">{today}</p>
-      </div>
-
-      <section className="relative overflow-hidden rounded-lg border border-brand-soft bg-banner shadow-sm">
-        <WelcomeWave />
-        <div className="relative grid gap-6 p-6 lg:grid-cols-[1.35fr_0.8fr] lg:items-center lg:p-8">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand">
-              Good to see you
-            </p>
-            <h1 className="mt-2 text-[28px] font-bold leading-tight text-ink">
-              Welcome back, <span className="text-brand">{user?.name}</span>
-            </h1>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
-              Your workspace at a glance. Figures and shortcuts below are limited to the areas you
-              can access.
-            </p>
-            <span className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg border border-brand bg-surface px-3 text-sm font-semibold text-brand">
-              <Shield className="h-4 w-4" aria-hidden="true" />
-              {roleLabel}
-            </span>
-          </div>
-          <div className="lg:text-end">
-            <p className="text-lg font-medium leading-snug text-ink">
-              “Better Systems
-              <br />
-              Brighter Tomorrows”
-            </p>
-            <p className="mt-2 text-sm text-muted">Somwave Solution</p>
-          </div>
+      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-sm text-muted">{today}</p>
+          <h1 className="mt-1 text-[28px] font-bold leading-tight text-ink">
+            {greetingForNow()}, {user?.name}
+          </h1>
+          <p className="mt-1 max-w-xl text-sm text-muted">
+            {data?.surface === 'portal'
+              ? 'Your projects, tickets, and documents in one place.'
+              : "Here's what's happening across Somwave today."}
+          </p>
+          <span className="mt-3 inline-flex min-h-11 items-center rounded-lg border border-brand bg-surface px-3 text-sm font-semibold text-brand">
+            {roleLabel}
+          </span>
         </div>
-      </section>
+        <Select
+          aria-label="Date range"
+          value={range}
+          onChange={(event) => setRange(event.target.value as DashboardRange)}
+          options={DASHBOARD_RANGES.map((value) => ({ value, label: RANGE_LABELS[value] }))}
+        />
+      </header>
 
-      <div>
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Overview</h2>
-        </div>
-        <ul className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {dash.portalProjectsEnabled ? (
-            <MetricCard
-              label="My projects"
-              to="/portal/projects"
-              value={dash.portalProjects.data?.length ?? null}
-              hint="Projects linked to your account"
-              icon={Folder}
-              iconClass="bg-brand-soft text-brand"
-              spark="M2 22 L14 18 L24 20 L36 12 L46 14 L62 6"
-              sparkClass="text-brand"
-              isLoading={dash.portalProjects.isLoading}
-              isError={dash.portalProjects.isError}
-            />
-          ) : null}
-          {dash.projectsEnabled ? (
-            <MetricCard
-              label="Projects"
-              to="/projects"
-              value={dash.projects.data?.meta.total ?? null}
-              hint={
-                dash.activeProjects.data
-                  ? `${dash.activeProjects.data.meta.total} active`
-                  : 'Active projects'
-              }
-              icon={Folder}
-              iconClass="bg-brand-soft text-brand"
-              spark="M2 22 L14 18 L24 20 L36 12 L46 14 L62 6"
-              sparkClass="text-brand"
-              isLoading={dash.projects.isLoading || dash.activeProjects.isLoading}
-              isError={dash.projects.isError || dash.activeProjects.isError}
-            />
-          ) : null}
-          {dash.tasksEnabled ? (
-            <MetricCard
-              label="Open tasks"
-              to="/tasks"
-              value={openTasks}
-              hint="Still to do, in progress, or in review"
-              icon={ListTodo}
-              iconClass="bg-warning-soft text-warning"
-              spark="M2 20 L12 22 L24 14 L34 16 L46 8 L62 12"
-              sparkClass="text-warning"
-              isLoading={dash.tasks.isLoading || dash.doneTasks.isLoading}
-              isError={dash.tasks.isError || dash.doneTasks.isError}
-            />
-          ) : null}
-          {dash.leadsEnabled ? (
-            <MetricCard
-              label="Leads"
-              to="/leads"
-              value={leadCounts?.total ?? null}
-              hint={leadCounts ? `${leadCounts.fresh} new` : 'New enquiries'}
-              icon={Users}
-              iconClass="bg-brand-soft text-brand"
-              spark="M2 24 L16 20 L26 18 L38 10 L50 8 L62 4"
-              sparkClass="text-brand"
-              isLoading={dash.leads.isLoading}
-              isError={dash.leads.isError}
-            />
-          ) : null}
-          {dash.invoicesEnabled ? (
-            <MetricCard
-              label="Open invoices"
-              to="/invoices"
-              value={invoiceCounts?.open ?? null}
-              hint={invoiceCounts ? `${invoiceCounts.overdue} overdue` : 'Still open'}
-              icon={FileText}
-              iconClass="bg-invoice-soft text-invoice"
-              spark="M2 10 L14 12 L26 8 L36 18 L48 16 L62 24"
-              sparkClass="text-invoice"
-              isLoading={dash.invoices.isLoading}
-              isError={dash.invoices.isError}
-            />
-          ) : null}
-          {dash.ticketsEnabled ? (
-            <MetricCard
-              label="Open tickets"
-              to="/tickets"
-              value={openTickets}
-              hint="Waiting on a reply or a fix"
-              icon={Headphones}
-              iconClass="bg-success-soft text-success"
-              spark="M2 16 L14 18 L26 14 L38 16 L50 12 L62 14"
-              sparkClass="text-success"
-              isLoading={dash.tickets.isLoading}
-              isError={dash.tickets.isError}
-            />
-          ) : null}
+      {query.isLoading ? (
+        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }, (_, index) => (
+            <li key={index} className="rounded-lg border border-border bg-surface p-4">
+              <Skeleton className="h-10 w-10" />
+              <Skeleton className="mt-3 h-8 w-20" />
+            </li>
+          ))}
         </ul>
-      </div>
+      ) : query.isError ? (
+        <ErrorState
+          title="Xogta lama soo gelin karin."
+          retryLabel="Isku day mar kale"
+          onRetry={retry}
+        />
+      ) : kpis.length > 0 ? (
+        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">{kpis}</ul>
+      ) : (
+        <EmptyState title="Wax xog ah lama hayo." description="No metrics are available for your role." />
+      )}
+
+      {data?.surface === 'internal' ? (
+        <InternalAnalytics data={data} loading={query.isLoading} error={query.isError} onRetry={retry} />
+      ) : null}
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-        {dash.projectsEnabled ? (
-          <section className="min-w-0 rounded-lg border border-border bg-surface p-5 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="flex items-center gap-2 text-base font-semibold text-ink">
-                <Folder className="h-4 w-4 text-brand" aria-hidden="true" />
-                Recent projects
-              </h2>
-              <Link
-                to="/projects"
-                className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                View all
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Link>
-            </div>
-            {dash.projects.isLoading ? (
-              <div className="mt-4 flex flex-col gap-3" role="status" aria-label="Loading projects">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-              </div>
-            ) : dash.projects.isError ? (
-              <ErrorState
-                description="Projects could not be loaded."
-                onRetry={() => void dash.projects.refetch()}
-              />
-            ) : projects.length === 0 ? (
-              <p className="mt-4 text-sm text-muted">No projects yet.</p>
-            ) : (
-              <ul className="mt-2">
-                {projects.map((project, index) => (
-                  <li
-                    key={project.id}
-                    className="flex items-center gap-3 border-b border-border py-3 last:border-b-0"
-                  >
-                    <ProjectThumb index={index} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-ink">{project.name}</p>
-                      <p className="text-xs text-muted">
-                        {project.dueDate ? `Due ${formatDate(project.dueDate)}` : 'No due date'}
-                      </p>
-                    </div>
-                    <StatusPill
-                      label={PROJECT_STATUS_LABELS_EN[project.status]}
-                      tone={PROJECT_TONE[project.status]}
-                    />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        ) : null}
-
-        {dash.tasksEnabled ? (
-          <section className="min-w-0 rounded-lg border border-border bg-surface p-5 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="flex items-center gap-2 text-base font-semibold text-ink">
-                <ListTodo className="h-4 w-4 text-brand" aria-hidden="true" />
-                Recent tasks
-              </h2>
-              <Link
-                to="/tasks"
-                className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                View all
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Link>
-            </div>
-            {dash.tasks.isLoading ? (
-              <div className="mt-4 flex flex-col gap-3" role="status" aria-label="Loading tasks">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-              </div>
-            ) : dash.tasks.isError ? (
-              <ErrorState
-                description="Tasks could not be loaded."
-                onRetry={() => void dash.tasks.refetch()}
-              />
-            ) : tasks.length === 0 ? (
-              <p className="mt-4 text-sm text-muted">No tasks yet.</p>
-            ) : (
-              <ul className="mt-2">
-                {tasks.map((task, index) => {
-                  const TaskIcon = [ListTodo, Headphones, FileText][index % 3] ?? ListTodo;
-                  return (
-                    <li
-                      key={task.id}
-                      className="flex items-center gap-3 border-b border-border py-3 last:border-b-0"
-                    >
-                      <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-canvas text-muted">
-                        <TaskIcon className="h-[18px] w-[18px]" aria-hidden="true" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-ink">{task.title}</p>
-                        <p className="truncate text-xs text-muted">{task.project.name}</p>
-                      </div>
-                      <StatusPill
-                        label={TASK_STATUS_LABELS_EN[task.status]}
-                        tone={TASK_TONE[task.status]}
-                      />
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
-        ) : null}
+        <RecentProjects data={data} loading={query.isLoading} error={query.isError} onRetry={retry} />
+        {data?.surface === 'portal' ? (
+          <RecentTickets data={data} loading={query.isLoading} error={query.isError} onRetry={retry} />
+        ) : (
+          <RecentTasks data={data} loading={query.isLoading} error={query.isError} onRetry={retry} />
+        )}
       </div>
+
+      {data?.surface === 'internal' ? (
+        <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+          <RecentLeads data={data} loading={query.isLoading} error={query.isError} onRetry={retry} />
+          <RecentTickets data={data} loading={query.isLoading} error={query.isError} onRetry={retry} />
+        </div>
+      ) : null}
+
+      <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+        <Upcoming data={data} loading={query.isLoading} error={query.isError} onRetry={retry} />
+        <Activity data={data} loading={query.isLoading} error={query.isError} onRetry={retry} />
+      </div>
+
+      {actions.length > 0 ? (
+        <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+          <h2 className="text-base font-semibold text-ink">Quick actions</h2>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {actions.map((action) => (
+              <Link
+                key={action.to + action.label}
+                to={action.to}
+                className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium text-ink hover:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                <Plus className="h-4 w-4 text-brand" aria-hidden="true" />
+                {action.label}
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <section>
+        <h2 className="text-base font-semibold text-ink">
+          {data?.surface === 'portal' ? 'Your workspace' : 'Operations overview'}
+        </h2>
+        <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {modules.map((module) => {
+            const Icon = module.icon;
+            const count = counts.get(module.key);
+            return (
+              <li key={module.key}>
+                <Link
+                  to={module.to}
+                  className="flex h-full min-h-11 flex-col rounded-lg border border-border bg-surface p-4 shadow-sm hover:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-brand-soft text-brand">
+                    <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+                  </span>
+                  <p className="mt-3 font-semibold text-ink">{module.label}</p>
+                  <p className="mt-1 text-sm text-muted">{module.description}</p>
+                  <p className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-brand">
+                    {count !== undefined && count !== null ? `${count} ` : ''}
+                    View
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </p>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
     </section>
+  );
+}
+
+function InternalAnalytics({
+  data,
+  loading,
+  error,
+  onRetry,
+}: {
+  data: DashboardOverview;
+  loading: boolean;
+  error: boolean;
+  onRetry: () => void;
+}): ReactNode {
+  const taskSlices = (['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'] as const).map((key) => ({
+    key,
+    label: TASK_SLICE[key].label,
+    className: TASK_SLICE[key].className,
+    value: data.taskStatus[key] ?? 0,
+  }));
+  return (
+    <div className="grid min-w-0 gap-4 lg:grid-cols-[1.4fr_0.8fr]">
+      <WidgetFrame title="Project activity" isLoading={loading} isError={error} onRetry={onRetry}>
+        <AreaChart points={data.series.projects} label="Projects created over time" />
+      </WidgetFrame>
+      <WidgetFrame title="Task status" isLoading={loading} isError={error} onRetry={onRetry}>
+        <DonutChart slices={taskSlices} label="Tasks by status" />
+      </WidgetFrame>
+      {data.kpis.openLeads ? (
+        <WidgetFrame title="New leads" isLoading={loading} isError={error} onRetry={onRetry}>
+          <BarChart points={data.series.leads} label="New leads over time" />
+        </WidgetFrame>
+      ) : null}
+      {data.kpis.pendingInvoices || data.kpis.revenue ? (
+        <WidgetFrame title="Invoices" isLoading={loading} isError={error} onRetry={onRetry}>
+          {hasMoneySeries(data.series.invoices) ? (
+            <>
+              <InvoiceChart points={data.series.invoices} label="Invoice totals and paid amounts" />
+              <p className="mt-2 text-xs text-muted">Blue is issued totals. Green is paid amounts.</p>
+            </>
+          ) : (
+            <EmptyState title="No data yet" description="Xog ku filan oo lagu sameeyo jaantuskan weli ma jirto." />
+          )}
+        </WidgetFrame>
+      ) : null}
+    </div>
+  );
+}
+
+function RecentProjects({
+  data,
+  loading,
+  error,
+  onRetry,
+}: {
+  data?: DashboardOverview;
+  loading: boolean;
+  error: boolean;
+  onRetry: () => void;
+}): ReactNode {
+  const href = data?.surface === 'portal' ? '/portal/projects' : '/projects';
+  const rows = data?.recent.projects ?? [];
+  if (!data?.kpis.projects && !loading) return null;
+  return (
+    <WidgetFrame
+      title="Recent projects"
+      action={<ViewAll to={href} />}
+      isLoading={loading}
+      isError={error}
+      onRetry={onRetry}
+      empty={rows.length === 0}
+    >
+      <ul>
+        {rows.map((project) => {
+          const progress = projectProgress(project.taskTotal, project.taskDone);
+          return (
+            <li key={project.id} className="border-b border-border py-3 last:border-b-0">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-ink">{project.name}</p>
+                  <p className="text-xs text-muted">
+                    {project.clientName ? `Client: ${project.clientName}` : 'No client'}
+                    {project.managerName ? ` · ${project.managerName}` : ''}
+                  </p>
+                  <p className="text-xs text-muted">
+                    Due {formatLongDate(project.dueDate)}
+                    {progress !== null ? ` · Progress ${progress}%` : ''}
+                  </p>
+                </div>
+                <StatusPill
+                  label={PROJECT_STATUS_LABELS_EN[project.status]}
+                  tone={PROJECT_TONE[project.status] ?? 'neutral'}
+                />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </WidgetFrame>
+  );
+}
+
+function RecentTasks({
+  data,
+  loading,
+  error,
+  onRetry,
+}: {
+  data?: DashboardOverview;
+  loading: boolean;
+  error: boolean;
+  onRetry: () => void;
+}): ReactNode {
+  const rows = data?.recent.tasks ?? [];
+  if (!data?.kpis.openTasks && !loading) return null;
+  return (
+    <WidgetFrame
+      title="Recent tasks"
+      action={<ViewAll to="/tasks" />}
+      isLoading={loading}
+      isError={error}
+      onRetry={onRetry}
+      empty={rows.length === 0}
+    >
+      <ul>
+        {rows.map((task) => (
+          <li key={task.id} className="flex items-start justify-between gap-3 border-b border-border py-3 last:border-b-0">
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-ink">{task.title}</p>
+              <p className="truncate text-xs text-muted">
+                {task.projectName}
+                {task.assigneeName ? ` · ${task.assigneeName}` : ''}
+                {task.dueDate ? ` · Due ${formatLongDate(task.dueDate)}` : ''}
+              </p>
+            </div>
+            <StatusPill
+              label={TASK_STATUS_LABELS_EN[task.status]}
+              tone={task.status === 'DONE' ? 'success' : task.status === 'IN_REVIEW' ? 'warning' : 'brand'}
+            />
+          </li>
+        ))}
+      </ul>
+    </WidgetFrame>
+  );
+}
+
+function RecentLeads({
+  data,
+  loading,
+  error,
+  onRetry,
+}: {
+  data?: DashboardOverview;
+  loading: boolean;
+  error: boolean;
+  onRetry: () => void;
+}): ReactNode {
+  const rows = data?.recent.leads ?? [];
+  if (!data?.kpis.openLeads && !loading) return null;
+  return (
+    <WidgetFrame
+      title="Recent leads"
+      action={<ViewAll to="/leads" />}
+      isLoading={loading}
+      isError={error}
+      onRetry={onRetry}
+      empty={rows.length === 0}
+    >
+      <ul>
+        {rows.map((lead) => (
+          <li key={lead.id} className="border-b border-border py-3 last:border-b-0">
+            <p className="font-semibold text-ink">{lead.name}</p>
+            <p className="text-xs text-muted">
+              {lead.email} · {lead.status} · {formatLongDate(lead.createdAt)}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </WidgetFrame>
+  );
+}
+
+function RecentTickets({
+  data,
+  loading,
+  error,
+  onRetry,
+}: {
+  data?: DashboardOverview;
+  loading: boolean;
+  error: boolean;
+  onRetry: () => void;
+}): ReactNode {
+  const rows = data?.recent.tickets ?? [];
+  if (!data?.kpis.openTickets && !loading) return null;
+  const summary = data
+    ? [
+        ['Open', data.ticketStatus.OPEN ?? 0],
+        ['In progress', data.ticketStatus.IN_PROGRESS ?? 0],
+        ['Waiting', data.ticketStatus.WAITING ?? 0],
+        ['Resolved', data.ticketStatus.RESOLVED ?? 0],
+      ]
+    : [];
+  return (
+    <WidgetFrame
+      title="Support"
+      action={<ViewAll to="/tickets" />}
+      isLoading={loading}
+      isError={error}
+      onRetry={onRetry}
+      empty={rows.length === 0 && summary.every(([, count]) => count === 0)}
+    >
+      <ul className="mb-3 grid grid-cols-2 gap-2 text-sm">
+        {summary.map(([label, count]) => (
+          <li key={label} className="rounded-md bg-canvas px-3 py-2 text-muted">
+            {label}
+            <span className="ms-2 font-semibold text-ink">{count}</span>
+          </li>
+        ))}
+      </ul>
+      <ul>
+        {rows.map((ticket) => (
+          <li key={ticket.id} className="border-b border-border py-3 last:border-b-0">
+            <p className="truncate font-semibold text-ink">{ticket.subject}</p>
+            <p className="text-xs text-muted">
+              {ticket.code} · {TICKET_STATUS_LABELS_EN[ticket.status]} · {ticket.clientName}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </WidgetFrame>
+  );
+}
+
+function Upcoming({
+  data,
+  loading,
+  error,
+  onRetry,
+}: {
+  data?: DashboardOverview;
+  loading: boolean;
+  error: boolean;
+  onRetry: () => void;
+}): ReactNode {
+  const rows = data?.upcoming ?? [];
+  return (
+    <WidgetFrame
+      title="Upcoming"
+      isLoading={loading}
+      isError={error}
+      onRetry={onRetry}
+      empty={rows.length === 0}
+    >
+      <ol className="border-s border-border ps-4">
+        {rows.map((item) => (
+          <li key={item.id} className="relative pb-4 last:pb-0">
+            <span className="absolute -start-[21px] top-1.5 h-2.5 w-2.5 rounded-full bg-brand" />
+            <p className="text-xs font-medium text-muted">{formatLongDate(item.dueDate)}</p>
+            <Link to={item.href} className="font-semibold text-ink hover:text-brand">
+              {item.title}
+            </Link>
+            {item.meta ? <p className="text-xs text-muted">{item.meta}</p> : null}
+          </li>
+        ))}
+      </ol>
+    </WidgetFrame>
+  );
+}
+
+function Activity({
+  data,
+  loading,
+  error,
+  onRetry,
+}: {
+  data?: DashboardOverview;
+  loading: boolean;
+  error: boolean;
+  onRetry: () => void;
+}): ReactNode {
+  const rows = data?.activity ?? [];
+  return (
+    <WidgetFrame
+      title="Recent activity"
+      isLoading={loading}
+      isError={error}
+      onRetry={onRetry}
+      empty={rows.length === 0}
+    >
+      <ul>
+        {rows.map((item) => (
+          <li key={item.id} className="border-b border-border py-3 last:border-b-0">
+            <p className="font-medium text-ink">{activityLabel(item.action, item.subjectType)}</p>
+            <p className="text-xs text-muted">{formatLongDate(item.createdAt)}</p>
+          </li>
+        ))}
+      </ul>
+    </WidgetFrame>
+  );
+}
+
+function ViewAll({ to }: { to: string }): ReactNode {
+  return (
+    <Link
+      to={to}
+      className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+    >
+      View all
+      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+    </Link>
   );
 }

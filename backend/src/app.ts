@@ -39,6 +39,7 @@ import {
   auditRouter,
   notificationsRouter,
 } from './routes/ops-extra.routes';
+import { dashboardRouter } from './routes/dashboard.routes';
 
 export function createApp(): Express {
   const app = express();
@@ -91,6 +92,7 @@ export function createApp(): Express {
   app.use('/api/v1/media', mediaRouter);
   app.use('/api/v1/audit-logs', auditRouter);
   app.use('/api/v1/notifications', notificationsRouter);
+  app.use('/api/v1/dashboard', dashboardRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
