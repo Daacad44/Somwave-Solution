@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatDate, toDateInputValue } from './date';
+import { formatDate, formatLongDate, greetingForNow, toDateInputValue } from './date';
 
 describe('formatDate', () => {
   it('formats a UTC instant in Africa/Mogadishu as a calendar date', () => {
@@ -10,6 +10,18 @@ describe('formatDate', () => {
     expect(formatDate(null)).toBe('—');
     expect(formatDate(undefined)).toBe('—');
     expect(formatDate('not-a-date')).toBe('—');
+  });
+});
+
+describe('formatLongDate', () => {
+  it('formats a readable calendar date', () => {
+    expect(formatLongDate('2026-09-30T00:00:00.000Z')).toBe('Sep 30, 2026');
+  });
+});
+
+describe('greetingForNow', () => {
+  it('returns morning before noon in Africa/Mogadishu', () => {
+    expect(greetingForNow(new Date('2026-09-25T06:00:00.000Z'))).toBe('Good morning');
   });
 });
 

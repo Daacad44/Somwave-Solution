@@ -4,12 +4,14 @@ import { Button } from '../ui/Button';
 export interface ErrorStateProps {
   title?: string;
   description?: string;
+  retryLabel?: string;
   onRetry?: () => void;
 }
 
 export function ErrorState({
   title = 'Something went wrong',
   description,
+  retryLabel = 'Try again',
   onRetry,
 }: ErrorStateProps): ReactNode {
   return (
@@ -18,7 +20,7 @@ export function ErrorState({
       {description ? <p className="text-base text-muted">{description}</p> : null}
       {onRetry ? (
         <Button variant="secondary" className="mt-2" onClick={onRetry}>
-          Try again
+          {retryLabel}
         </Button>
       ) : null}
     </div>

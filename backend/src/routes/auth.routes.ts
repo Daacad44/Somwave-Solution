@@ -1,9 +1,12 @@
 import { Router } from 'express';
 import {
   confirmTwoFactorSchema,
+  disableTwoFactorSchema,
   forgotPasswordSchema,
   loginSchema,
+  regenerateBackupCodesSchema,
   resetPasswordSchema,
+  updateProfileSchema,
   verifyTwoFactorSchema,
 } from '@somwave/shared';
 import { validate } from '../middleware/validate';
@@ -32,10 +35,28 @@ authRouter.post('/reset-password', validate(resetPasswordSchema), authController
 authRouter.post('/refresh', authController.refresh);
 authRouter.post('/logout', authController.logout);
 authRouter.get('/me', requireAuth, authController.me);
+authRouter.patch(
+  '/me',
+  requireAuth,
+  validate(updateProfileSchema),
+  authController.updateProfile,
+);
 authRouter.post('/2fa/setup', requireAuth, authController.startTwoFactor);
 authRouter.post(
   '/2fa/confirm',
   requireAuth,
   validate(confirmTwoFactorSchema),
   authController.confirmTwoFactor,
+);
+authRouter.post(
+  '/2fa/disable',
+  requireAuth,
+  validate(disableTwoFactorSchema),
+  authController.disableTwoFactor,
+);
+authRouter.post(
+  '/2fa/backup-codes',
+  requireAuth,
+  validate(regenerateBackupCodesSchema),
+  authController.regenerateBackupCodes,
 );

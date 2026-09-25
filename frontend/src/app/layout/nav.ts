@@ -12,7 +12,7 @@ export type NavGroup = {
   items: NavItem[];
 };
 
-const CONTENT_ITEMS: NavItem[] = [
+const WEBSITE_ITEMS: NavItem[] = [
   { to: '/cms/services', label: 'Services', permission: PERMISSIONS.CONTENT_READ },
   { to: '/cms/posts', label: 'Articles', permission: PERMISSIONS.CONTENT_READ },
   { to: '/cms/portfolio', label: 'Portfolio', permission: PERMISSIONS.CONTENT_READ },
@@ -24,34 +24,22 @@ const CONTENT_ITEMS: NavItem[] = [
   { to: '/media', label: 'Media', permission: PERMISSIONS.MEDIA_READ },
 ];
 
-const DELIVERY_ITEMS: NavItem[] = [
+const OPERATIONS_ITEMS: NavItem[] = [
   { to: '/projects', label: 'Projects', permission: PERMISSIONS.PROJECTS_READ },
   { to: '/tasks', label: 'Tasks', permission: PERMISSIONS.TASKS_READ },
   { to: '/milestones', label: 'Milestones', permission: PERMISSIONS.MILESTONES_READ },
   { to: '/timesheets', label: 'Timesheets', permission: PERMISSIONS.TIMESHEETS_READ },
+  { to: '/clients', label: 'Clients', permission: PERMISSIONS.CLIENTS_READ },
+  { to: '/leads', label: 'Leads', permission: PERMISSIONS.LEADS_READ },
   { to: '/tickets', label: 'Tickets', permission: PERMISSIONS.TICKETS_READ },
-];
-
-const PEOPLE_ITEMS: NavItem[] = [
+  { to: '/invoices', label: 'Invoices', permission: PERMISSIONS.INVOICES_READ },
   { to: '/employees', label: 'Employees', permission: PERMISSIONS.EMPLOYEES_READ },
   { to: '/attendance', label: 'Attendance', permission: PERMISSIONS.ATTENDANCE_READ },
   { to: '/leave', label: 'Leave', permission: PERMISSIONS.LEAVE_READ },
   { to: '/applications', label: 'Applications', permission: PERMISSIONS.APPLICATIONS_READ },
-  { to: '/users', label: 'Users', permission: PERMISSIONS.USERS_READ },
-];
-
-const MONEY_ITEMS: NavItem[] = [
-  { to: '/invoices', label: 'Invoices', permission: PERMISSIONS.INVOICES_READ },
-];
-
-const GROWTH_ITEMS: NavItem[] = [
-  { to: '/leads', label: 'Leads', permission: PERMISSIONS.LEADS_READ },
-  { to: '/clients', label: 'Clients', permission: PERMISSIONS.CLIENTS_READ },
-];
-
-const SYSTEM_ITEMS: NavItem[] = [
-  { to: '/roles', label: 'Roles', permission: PERMISSIONS.ROLES_READ },
   { to: '/documents', label: 'Documents', permission: PERMISSIONS.DOCUMENTS_READ },
+  { to: '/users', label: 'Users', permission: PERMISSIONS.USERS_READ },
+  { to: '/roles', label: 'Roles', permission: PERMISSIONS.ROLES_READ },
   { to: '/audit', label: 'Audit', permission: PERMISSIONS.AUDIT_READ },
 ];
 
@@ -96,15 +84,11 @@ function pushGroup(groups: NavGroup[], heading: string, items: NavItem[]): void 
 /** Sidebar groups for the signed-in user. Permission-gated; CLIENT stays off Operations. */
 export function visibleNavGroups(user: AuthUser | null | undefined): NavGroup[] {
   const groups: NavGroup[] = [];
-  pushGroup(groups, 'Content', permitted(user, CONTENT_ITEMS));
+  pushGroup(groups, 'Website', permitted(user, WEBSITE_ITEMS));
 
   const isInternal = hasInternalSurface(user);
   if (isInternal) {
-    pushGroup(groups, 'Delivery', permitted(user, DELIVERY_ITEMS));
-    pushGroup(groups, 'People', permitted(user, PEOPLE_ITEMS));
-    pushGroup(groups, 'Money', permitted(user, MONEY_ITEMS));
-    pushGroup(groups, 'Growth', permitted(user, GROWTH_ITEMS));
-    pushGroup(groups, 'System', permitted(user, SYSTEM_ITEMS));
+    pushGroup(groups, 'Operations', permitted(user, OPERATIONS_ITEMS));
   }
 
   if (hasPermission(user, PERMISSIONS.PORTAL_READ)) {
@@ -122,11 +106,7 @@ export function visibleNavGroups(user: AuthUser | null | undefined): NavGroup[] 
 }
 
 export const NAV_GROUPS: NavGroup[] = [
-  { heading: 'Content', items: CONTENT_ITEMS },
-  { heading: 'Delivery', items: DELIVERY_ITEMS },
-  { heading: 'People', items: PEOPLE_ITEMS },
-  { heading: 'Money', items: MONEY_ITEMS },
-  { heading: 'Growth', items: GROWTH_ITEMS },
-  { heading: 'System', items: SYSTEM_ITEMS },
+  { heading: 'Website', items: WEBSITE_ITEMS },
+  { heading: 'Operations', items: OPERATIONS_ITEMS },
   { heading: 'Portal', items: PORTAL_ITEMS },
 ];

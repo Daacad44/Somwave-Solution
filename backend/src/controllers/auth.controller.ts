@@ -1,9 +1,12 @@
 import type { NextFunction, Request, Response } from 'express';
 import type {
   ConfirmTwoFactorInput,
+  DisableTwoFactorInput,
   ForgotPasswordInput,
   LoginInput,
+  RegenerateBackupCodesInput,
   ResetPasswordInput,
+  UpdateProfileInput,
   VerifyTwoFactorInput,
 } from '@somwave/shared';
 import { AppError, sendData } from '../lib/http';
@@ -126,4 +129,49 @@ export async function resetPassword(
 
 export async function me(req: Request, res: Response): Promise<void> {
   sendData(res, { user: req.authUser });
+}
+
+export async function updateProfile(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const userId = req.authUser?.id;
+    if (!userId) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+    const { name } = req.body as UpdateProfileInput;
+    sendData(res, { user: await authService.updateOwnProfile(userId, name) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function disableTwoFactor(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const userId = req.authUser?.id;
+    if (!userId) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+    const { code } = req.body as DisableTwoFactorInput;
+    sendData(res, { user: await authService.disableTwoFactor(userId, code) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function regenerateBackupCodes(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const userId = req.authUser?.id;
+    if (!userId) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+    const { code } = req.body as RegenerateBackupCodesInput;
+    sendData(res, await authService.regenerateBackupCodes(userId, code));
+  } catch (err) {
+    next(err);
+  }
 }

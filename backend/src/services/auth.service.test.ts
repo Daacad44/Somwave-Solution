@@ -38,6 +38,7 @@ import {
   login,
   startTwoFactorEnrolment,
   confirmTwoFactorEnrolment,
+  disableTwoFactor,
   requestPasswordReset,
 } from './auth.service';
 
@@ -123,6 +124,17 @@ describe('two-factor enrolment', () => {
     const result = await confirmTwoFactorEnrolment('user_1', '123456');
     expect(result.user.twoFactorEnabled).toBe(true);
     expect(result.backupCodes).toHaveLength(8);
+  });
+
+  it('refuses disable when the role requires 2FA', async () => {
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({
+      ...user,
+      twoFactorEnabled: true,
+      twoFactorSecret: 'stored',
+    } as never);
+    await expect(disableTwoFactor('user_1', '123456')).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
   });
 
   it('rejects a wrong confirmation code', async () => {

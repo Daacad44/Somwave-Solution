@@ -39,6 +39,21 @@ export const confirmTwoFactorSchema = z.object({
 
 export type ConfirmTwoFactorInput = z.infer<typeof confirmTwoFactorSchema>;
 
+export const disableTwoFactorSchema = z.object({
+  code: z.string().trim().min(6, 'Koodhka waa khalad').max(16),
+});
+
+export type DisableTwoFactorInput = z.infer<typeof disableTwoFactorSchema>;
+
+export const regenerateBackupCodesSchema = confirmTwoFactorSchema;
+export type RegenerateBackupCodesInput = z.infer<typeof regenerateBackupCodesSchema>;
+
+export const updateProfileSchema = z.object({
+  name: z.string().trim().min(1, 'Magaca waa waajib').max(120),
+});
+
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
 export interface AuthUser {
   id: string;
   email: string;

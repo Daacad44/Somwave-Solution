@@ -137,6 +137,20 @@ export async function startTwoFactorEnrolment(
   return { otpauthUrl: totpUri(user.email, secret), secret };
 }
 
+async function issueBackupCodes(userId: string): Promise<string[]> {
+  const backupCodes = Array.from({ length: 8 }, () => randomBytes(4).toString('hex'));
+  await prisma.$transaction([
+    prisma.twoFactorBackupCode.deleteMany({ where: { userId } }),
+    prisma.twoFactorBackupCode.createMany({
+      data: backupCodes.map((plain) => ({
+        userId,
+        codeHash: hashRefreshToken(plain),
+      })),
+    }),
+  ]);
+  return backupCodes;
+}
+
 export async function confirmTwoFactorEnrolment(
   userId: string,
   code: string,
@@ -153,23 +167,62 @@ export async function confirmTwoFactorEnrolment(
   if (!valid) {
     throw new AppError('VALIDATION_ERROR', 400, 'Koodhka 2FA waa khalad');
   }
-  const backupCodes = Array.from({ length: 8 }, () => randomBytes(4).toString('hex'));
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: user.id },
-      data: { twoFactorEnabled: true },
-    }),
-    prisma.twoFactorBackupCode.deleteMany({ where: { userId: user.id } }),
-    prisma.twoFactorBackupCode.createMany({
-      data: backupCodes.map((plain) => ({
-        userId: user.id,
-        codeHash: hashRefreshToken(plain),
-      })),
-    }),
-  ]);
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { twoFactorEnabled: true },
+  });
+  const backupCodes = await issueBackupCodes(user.id);
   const updated = await loadActiveUser({ id: user.id });
   if (!updated) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
   return { user: toAuthUser(updated), backupCodes };
+}
+
+async function assertCurrentTwoFactorCode(user: UserWithRoles, code: string): Promise<void> {
+  if (!user.twoFactorEnabled || !user.twoFactorSecret) {
+    throw new AppError('VALIDATION_ERROR', 400, '2FA kuma shaqeynayo akoonkaagan');
+  }
+  const totpOk = await verifyTotp(user.twoFactorSecret, code);
+  if (totpOk) return;
+  const used = await consumeBackupCode(user.id, code);
+  if (!used) throw new AppError('VALIDATION_ERROR', 400, 'Koodhka 2FA waa khalad');
+}
+
+export async function disableTwoFactor(userId: string, code: string): Promise<AuthUser> {
+  const user = await loadActiveUser({ id: userId });
+  if (!user) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+  if (isTwoFactorRequired(user.roles.map((row) => row.role.name))) {
+    throw new AppError('FORBIDDEN', 403, 'Doorkaagan wuxuu u baahan yahay 2FA');
+  }
+  await assertCurrentTwoFactorCode(user, code);
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: user.id },
+      data: { twoFactorEnabled: false, twoFactorSecret: null },
+    }),
+    prisma.twoFactorBackupCode.deleteMany({ where: { userId: user.id } }),
+  ]);
+  const updated = await loadActiveUser({ id: user.id });
+  if (!updated) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+  return toAuthUser(updated);
+}
+
+export async function regenerateBackupCodes(
+  userId: string,
+  code: string,
+): Promise<{ backupCodes: string[] }> {
+  const user = await loadActiveUser({ id: userId });
+  if (!user) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+  await assertCurrentTwoFactorCode(user, code);
+  return { backupCodes: await issueBackupCodes(user.id) };
+}
+
+export async function updateOwnProfile(userId: string, name: string): Promise<AuthUser> {
+  const user = await loadActiveUser({ id: userId });
+  if (!user) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+  await prisma.user.update({ where: { id: user.id }, data: { name } });
+  const updated = await loadActiveUser({ id: user.id });
+  if (!updated) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+  return toAuthUser(updated);
 }
 
 export async function refreshSession(rawToken: string): Promise<IssuedSession> {
