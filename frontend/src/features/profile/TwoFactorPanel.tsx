@@ -48,13 +48,7 @@ function QrCode({ value }: { value: string }): ReactNode {
   );
 }
 
-function BackupCodes({
-  codes,
-  onDone,
-}: {
-  codes: string[];
-  onDone: () => void;
-}): ReactNode {
+function BackupCodes({ codes, onDone }: { codes: string[]; onDone: () => void }): ReactNode {
   const [copied, setCopied] = useState(false);
 
   const copy = async (): Promise<void> => {
@@ -282,17 +276,22 @@ export function TwoFactorPanel(): ReactNode {
         <Badge tone="warning">Not enabled</Badge>
       </div>
 
-      <ol className="mt-5 flex flex-wrap gap-2 text-xs font-medium text-muted" aria-label="Setup steps">
-        {['Enable', 'QR code', 'Secret', 'Verify', 'Confirm', 'Backup codes'].map((label, index) => (
-          <li
-            key={label}
-            className={
-              step === index + 1 ? 'rounded-full bg-brand-soft px-2 py-1 text-brand' : 'px-2 py-1'
-            }
-          >
-            {index + 1}. {label}
-          </li>
-        ))}
+      <ol
+        className="mt-5 flex flex-wrap gap-2 text-xs font-medium text-muted"
+        aria-label="Setup steps"
+      >
+        {['Enable', 'QR code', 'Secret', 'Verify', 'Confirm', 'Backup codes'].map(
+          (label, index) => (
+            <li
+              key={label}
+              className={
+                step === index + 1 ? 'rounded-full bg-brand-soft px-2 py-1 text-brand' : 'px-2 py-1'
+              }
+            >
+              {index + 1}. {label}
+            </li>
+          ),
+        )}
       </ol>
 
       {step === 1 ? (

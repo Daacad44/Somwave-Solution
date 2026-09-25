@@ -129,7 +129,7 @@ export function InternalDashboard({
             label="Total projects"
             to="/projects"
             icon={Folder}
-            kpi={kpis.projects}
+            kpi={kpis?.projects}
             isLoading={isLoading}
             isError={isError}
           />
@@ -139,7 +139,7 @@ export function InternalDashboard({
             label="Active projects"
             to="/projects"
             icon={Folder}
-            kpi={kpis.activeProjects}
+            kpi={kpis?.activeProjects}
             isLoading={isLoading}
             isError={isError}
           />
@@ -149,7 +149,7 @@ export function InternalDashboard({
             label="Open tasks"
             to="/tasks"
             icon={ListTodo}
-            kpi={kpis.openTasks}
+            kpi={kpis?.openTasks}
             isLoading={isLoading}
             isError={isError}
           />
@@ -159,7 +159,7 @@ export function InternalDashboard({
             label="Open leads"
             to="/leads"
             icon={Users}
-            kpi={kpis.openLeads}
+            kpi={kpis?.openLeads}
             isLoading={isLoading}
             isError={isError}
           />
@@ -169,7 +169,7 @@ export function InternalDashboard({
             label="Active clients"
             to="/clients"
             icon={Building2}
-            kpi={kpis.activeClients}
+            kpi={kpis?.activeClients}
             isLoading={isLoading}
             isError={isError}
           />
@@ -179,7 +179,7 @@ export function InternalDashboard({
             label="Open tickets"
             to="/tickets"
             icon={Headphones}
-            kpi={kpis.openTickets}
+            kpi={kpis?.openTickets}
             isLoading={isLoading}
             isError={isError}
           />
@@ -189,7 +189,7 @@ export function InternalDashboard({
             label="Pending invoices"
             to="/invoices"
             icon={Receipt}
-            kpi={kpis.pendingInvoices}
+            kpi={kpis?.pendingInvoices}
             isLoading={isLoading}
             isError={isError}
           />
@@ -199,7 +199,7 @@ export function InternalDashboard({
             label="Revenue"
             to="/invoices"
             icon={Receipt}
-            kpi={kpis.revenue}
+            kpi={kpis?.revenue}
             formatValue={formatUsd}
             isLoading={isLoading}
             isError={isError}
@@ -318,7 +318,7 @@ export function InternalDashboard({
               <WidgetSkeleton />
             ) : isError ? (
               <WidgetError onRetry={onRetry} />
-            ) : !data.recent.leads.length ? (
+            ) : !data?.recent.leads.length ? (
               <WidgetEmpty />
             ) : (
               <ul>
@@ -346,7 +346,10 @@ export function InternalDashboard({
                 <ul className="grid grid-cols-2 gap-2 text-sm">
                   {data?.ticketStatus.map((slice) => (
                     <li key={slice.key} className="rounded-lg bg-canvas px-3 py-2">
-                      <p className="text-xs text-muted">{TICKET_STATUS_LABELS[slice.key as keyof typeof TICKET_STATUS_LABELS] ?? slice.label}</p>
+                      <p className="text-xs text-muted">
+                        {TICKET_STATUS_LABELS[slice.key as keyof typeof TICKET_STATUS_LABELS] ??
+                          slice.label}
+                      </p>
                       <p className="text-lg font-semibold text-ink">{slice.value}</p>
                     </li>
                   ))}
@@ -378,7 +381,7 @@ export function InternalDashboard({
           ) : isError ? (
             <WidgetError onRetry={onRetry} />
           ) : (
-            <AreaChart points={data.series.invoices} label="Invoice totals" />
+            <AreaChart points={data?.series.invoices ?? []} label="Invoice totals" />
           )}
         </Widget>
       ) : null}

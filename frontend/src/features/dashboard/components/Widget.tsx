@@ -52,7 +52,11 @@ export function WidgetError({ onRetry }: { onRetry: () => void }): ReactNode {
   );
 }
 
-export function WidgetEmpty({ children = 'Wax xog ah lama hayo.' }: { children?: ReactNode }): ReactNode {
+export function WidgetEmpty({
+  children = 'Wax xog ah lama hayo.',
+}: {
+  children?: ReactNode;
+}): ReactNode {
   return <p className="text-sm text-muted">{children}</p>;
 }
 

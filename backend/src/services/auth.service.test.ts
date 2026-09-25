@@ -131,7 +131,11 @@ describe('two-factor enrolment', () => {
     const enabled = { ...user, twoFactorEnabled: true, twoFactorSecret: 'stored' };
     vi.mocked(prisma.user.findFirst)
       .mockResolvedValueOnce(enabled as never)
-      .mockResolvedValueOnce({ ...enabled, twoFactorEnabled: false, twoFactorSecret: null } as never);
+      .mockResolvedValueOnce({
+        ...enabled,
+        twoFactorEnabled: false,
+        twoFactorSecret: null,
+      } as never);
     vi.mocked(verifyTotp).mockResolvedValue(true);
     vi.mocked(prisma.user.update).mockResolvedValue(enabled as never);
     vi.mocked(prisma.twoFactorBackupCode.deleteMany).mockResolvedValue({ count: 2 } as never);

@@ -14,12 +14,7 @@ import {
   type PermissionKey,
 } from '@somwave/shared';
 import { prisma } from '../lib/prisma';
-import {
-  bucketAmountsByDay,
-  bucketByDay,
-  computeTrend,
-  resolvePeriod,
-} from './dashboard.period';
+import { bucketAmountsByDay, bucketByDay, computeTrend, resolvePeriod } from './dashboard.period';
 
 const RECENT_LIMIT = 6;
 const UPCOMING_DAYS = 30;
@@ -143,19 +138,28 @@ async function getClientDashboard(
       ? prisma.project.findMany({
           where: clientWhere,
           orderBy: { updatedAt: 'desc' },
-          include: { manager: { select: { name: true } }, client: { select: { companyName: true } } },
+          include: {
+            manager: { select: { name: true } },
+            client: { select: { companyName: true } },
+          },
         })
       : Promise.resolve([]),
     can(user, PERMISSIONS.PORTAL_READ)
       ? prisma.project.count({
-          where: { ...clientWhere, createdAt: { gte: bounds.previousStart, lt: bounds.previousEnd } },
+          where: {
+            ...clientWhere,
+            createdAt: { gte: bounds.previousStart, lt: bounds.previousEnd },
+          },
         })
       : Promise.resolve(0),
     can(user, PERMISSIONS.TICKETS_READ)
       ? prisma.supportTicket.findMany({
           where: clientWhere,
           orderBy: { createdAt: 'desc' },
-          include: { client: { select: { companyName: true } }, assignee: { select: { name: true } } },
+          include: {
+            client: { select: { companyName: true } },
+            assignee: { select: { name: true } },
+          },
         })
       : Promise.resolve([]),
     can(user, PERMISSIONS.TICKETS_READ)
@@ -234,7 +238,9 @@ async function getClientDashboard(
 
   const upcoming: DashboardUpcomingItem[] = [
     ...projects
-      .filter((row) => row.dueDate && row.dueDate >= bounds.start && row.dueDate <= bounds.upcomingUntil)
+      .filter(
+        (row) => row.dueDate && row.dueDate >= bounds.start && row.dueDate <= bounds.upcomingUntil,
+      )
       .map((row) => ({
         id: `project-${row.id}`,
         title: row.name,
@@ -309,13 +315,25 @@ async function getClientDashboard(
     ...empty,
     kpis: {
       projects: can(user, PERMISSIONS.PORTAL_READ)
-        ? kpi(projects.length, previousProjects, `${projects.filter((row) => row.status === 'ACTIVE').length} active`)
+        ? kpi(
+            projects.length,
+            previousProjects,
+            `${projects.filter((row) => row.status === 'ACTIVE').length} active`,
+          )
         : undefined,
       openTickets: can(user, PERMISSIONS.TICKETS_READ)
-        ? kpi(openTickets.length, previousOpenTickets, `${tickets.filter((row) => row.status === 'WAITING').length} waiting`)
+        ? kpi(
+            openTickets.length,
+            previousOpenTickets,
+            `${tickets.filter((row) => row.status === 'WAITING').length} waiting`,
+          )
         : undefined,
       pendingInvoices: can(user, PERMISSIONS.INVOICES_READ)
-        ? kpi(pendingInvoices.length, previousPending, `${invoices.filter((row) => row.status === 'OVERDUE').length} overdue`)
+        ? kpi(
+            pendingInvoices.length,
+            previousPending,
+            `${invoices.filter((row) => row.status === 'OVERDUE').length} overdue`,
+          )
         : undefined,
       revenue: can(user, PERMISSIONS.INVOICES_READ)
         ? kpi(Math.round(revenue * 100) / 100, prevRevenue)
@@ -616,10 +634,10 @@ async function getInternalDashboard(
         ? kpi(projectStats.active, projectStats.previousActive)
         : undefined,
       openTasks: taskStats ? kpi(taskStats.open, taskStats.previousOpen) : undefined,
-      openLeads: leadStats ? kpi(leadStats.open, leadStats.previousOpen, `${leadStats.total} total`) : undefined,
-      activeClients: clientStats
-        ? kpi(clientStats.active, clientStats.previousActive)
+      openLeads: leadStats
+        ? kpi(leadStats.open, leadStats.previousOpen, `${leadStats.total} total`)
         : undefined,
+      activeClients: clientStats ? kpi(clientStats.active, clientStats.previousActive) : undefined,
       openTickets: ticketStats ? kpi(ticketStats.open, ticketStats.previousOpen) : undefined,
       pendingInvoices: invoiceStats
         ? kpi(invoiceStats.pending, invoiceStats.previousPending, `${invoiceStats.overdue} overdue`)
@@ -690,7 +708,12 @@ function emptyPayload(
   };
 }
 
-async function loadProjectStats(bounds: { start: Date; end: Date; previousStart: Date; previousEnd: Date }) {
+async function loadProjectStats(bounds: {
+  start: Date;
+  end: Date;
+  previousStart: Date;
+  previousEnd: Date;
+}) {
   const [total, active, previousTotal, previousActive, created] = await Promise.all([
     prisma.project.count({ where: { deletedAt: null } }),
     prisma.project.count({ where: { deletedAt: null, status: 'ACTIVE' } }),
@@ -747,7 +770,12 @@ async function loadTaskStats(
   return { open, previousOpen, byStatus, createdInRange: created.map((row) => row.createdAt) };
 }
 
-async function loadLeadStats(bounds: { start: Date; end: Date; previousStart: Date; previousEnd: Date }) {
+async function loadLeadStats(bounds: {
+  start: Date;
+  end: Date;
+  previousStart: Date;
+  previousEnd: Date;
+}) {
   const [total, open, previousOpen, created] = await Promise.all([
     prisma.inquiry.count(),
     prisma.inquiry.count({ where: { status: 'NEW' } }),
@@ -879,7 +907,9 @@ async function loadRecentProjects(): Promise<DashboardPayload['recent']['project
   });
 }
 
-async function loadRecentTasks(assigneeId: string | null): Promise<DashboardPayload['recent']['tasks']> {
+async function loadRecentTasks(
+  assigneeId: string | null,
+): Promise<DashboardPayload['recent']['tasks']> {
   const rows = await prisma.task.findMany({
     where: { deletedAt: null, ...(assigneeId ? { assigneeId } : {}) },
     orderBy: { createdAt: 'desc' },
@@ -933,10 +963,7 @@ async function loadRecentTickets(): Promise<DashboardPayload['recent']['tickets'
 }
 
 async function loadContentCounts() {
-  const [services, posts] = await Promise.all([
-    prisma.service.count(),
-    prisma.post.count(),
-  ]);
+  const [services, posts] = await Promise.all([prisma.service.count(), prisma.post.count()]);
   return { services, posts };
 }
 

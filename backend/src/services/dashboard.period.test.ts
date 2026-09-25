@@ -24,9 +24,11 @@ describe('dashboard period', () => {
     const start = '2026-09-20T21:00:00.000Z';
     const end = '2026-09-23T21:00:00.000Z';
     const series = bucketByDay([new Date('2026-09-21T08:00:00.000Z')], start, end);
-    expect(series.every((point) => point.value === 0 || point.date === ymdKey(new Date('2026-09-21T08:00:00.000Z')))).toBe(
-      true,
-    );
+    expect(
+      series.every(
+        (point) => point.value === 0 || point.date === ymdKey(new Date('2026-09-21T08:00:00.000Z')),
+      ),
+    ).toBe(true);
     expect(series.reduce((sum, point) => sum + point.value, 0)).toBe(1);
   });
 });

@@ -34,8 +34,8 @@ describe('dashboard metrics', () => {
 
   it('hides create actions the user cannot perform', () => {
     expect(visibleQuickActions(user([PERMISSIONS.PROJECTS_READ]))).toEqual([]);
-    expect(visibleQuickActions(user([PERMISSIONS.PROJECTS_CREATE])).map((item) => item.to)).toEqual([
-      '/projects',
-    ]);
+    expect(visibleQuickActions(user([PERMISSIONS.PROJECTS_CREATE])).map((item) => item.to)).toEqual(
+      ['/projects'],
+    );
   });
 });

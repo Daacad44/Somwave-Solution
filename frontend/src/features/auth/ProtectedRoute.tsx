@@ -13,8 +13,7 @@ export function ProtectedRoute(): ReactNode {
   if (isError || !user) {
     return <Navigate to="/login" replace />;
   }
-  const onProfile =
-    location.pathname === '/profile' || location.pathname.startsWith('/profile/');
+  const onProfile = location.pathname === '/profile' || location.pathname.startsWith('/profile/');
   if (user.twoFactorRequired && !user.twoFactorEnabled && !onProfile) {
     return <Navigate to="/profile?tab=security" replace />;
   }

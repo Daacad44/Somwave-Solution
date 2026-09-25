@@ -33,7 +33,10 @@ export function AreaChart({
   });
   const line = coords.map((c, i) => `${i === 0 ? 'M' : 'L'}${c.x} ${c.y}`).join(' ');
   const area = `${line} L${coords[coords.length - 1]?.x ?? pad.l} ${pad.t + innerH} L${coords[0]?.x ?? pad.l} ${pad.t + innerH} Z`;
-  const ticks = coords.filter((_, index) => index === 0 || index === coords.length - 1 || index === Math.floor(coords.length / 2));
+  const ticks = coords.filter(
+    (_, index) =>
+      index === 0 || index === coords.length - 1 || index === Math.floor(coords.length / 2),
+  );
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="h-56 w-full" role="img" aria-label={label}>
@@ -110,7 +113,13 @@ export function DonutChart({
   return (
     <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
       <svg viewBox={`0 0 ${size} ${size}`} className="h-44 w-44" role="img" aria-label={label}>
-        <circle cx={size / 2} cy={size / 2} r={r} className="fill-none stroke-canvas" strokeWidth="18" />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          className="fill-none stroke-canvas"
+          strokeWidth="18"
+        />
         {slices.map((slice, index) => {
           const len = (slice.value / total) * c;
           const dash = `${len} ${c - len}`;

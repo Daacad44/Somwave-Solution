@@ -118,7 +118,10 @@ export function ClientDashboard({
             </ul>
           )}
         </Widget>
-        <Widget title="Upcoming milestones" action={{ to: '/portal/milestones', label: 'View all' }}>
+        <Widget
+          title="Upcoming milestones"
+          action={{ to: '/portal/milestones', label: 'View all' }}
+        >
           {isLoading ? (
             <WidgetSkeleton />
           ) : isError ? (

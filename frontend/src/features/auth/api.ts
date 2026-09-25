@@ -39,9 +39,7 @@ export function confirmTwoFactorSetup(
   });
 }
 
-export function disableTwoFactor(
-  input: ConfirmTwoFactorInput,
-): Promise<{ user: AuthUser }> {
+export function disableTwoFactor(input: ConfirmTwoFactorInput): Promise<{ user: AuthUser }> {
   return apiFetch<{ user: AuthUser }>('/auth/2fa/disable', {
     method: 'POST',
     body: JSON.stringify(input),

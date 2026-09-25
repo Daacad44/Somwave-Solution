@@ -8,7 +8,7 @@ const ECC_CODEWORDS = [
 
 function gexp(n: number): number {
   let x = 1;
-  for (let i = 0; i < n; i += 1) x = x << 1 ^ (x & 0x80 ? 0x11d : 0);
+  for (let i = 0; i < n; i += 1) x = (x << 1) ^ (x & 0x80 ? 0x11d : 0);
   return x;
 }
 
