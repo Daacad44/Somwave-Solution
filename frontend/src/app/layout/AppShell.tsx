@@ -7,27 +7,30 @@ import {
   ChevronDown,
   CircleHelp,
   ClipboardList,
+  Clock,
   BarChart3,
   FileText,
   Flag,
   Folder,
+  Headphones,
   Home,
   Image,
+  KeyRound,
   LayoutGrid,
   ListTodo,
   Mail,
   Menu,
   MessageSquare,
+  Receipt,
   Search,
   Shield,
   Users,
   type LucideIcon,
 } from 'lucide-react';
 import { useCurrentUser, useLogout } from '../../features/auth/hooks';
-import { hasPermission } from '../../lib/rbac';
 import { cn } from '../../lib/cn';
 import { BrandLogo } from '../../components/brand/BrandLogo';
-import { NAV_GROUPS } from './nav';
+import { visibleNavGroups } from './nav';
 
 const ICONS: Record<string, LucideIcon> = {
   '/cms/services': LayoutGrid,
@@ -44,6 +47,13 @@ const ICONS: Record<string, LucideIcon> = {
   '/clients': Building2,
   '/leads': BarChart3,
   '/applications': ClipboardList,
+  '/timesheets': Clock,
+  '/invoices': Receipt,
+  '/tickets': Headphones,
+  '/users': Users,
+  '/roles': KeyRound,
+  '/portal/projects': Folder,
+  '/portal/milestones': Flag,
 };
 
 function initials(name: string): string {
@@ -132,33 +142,29 @@ export function AppShell(): ReactNode {
             <Shield className="h-[18px] w-[18px]" aria-hidden="true" />
             Security
           </NavLink>
-          {NAV_GROUPS.map((group) => {
-            const items = group.items.filter((item) => hasPermission(user, item.permission));
-            if (items.length === 0) return null;
-            return (
-              <div key={group.heading} className="mt-5">
-                <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-sidebar-muted">
-                  {group.heading}
-                </p>
-                <div className="flex flex-col gap-0.5">
-                  {items.map((item) => {
-                    const Icon = ICONS[item.to] ?? Folder;
-                    return (
-                      <NavLink
-                        key={item.to}
-                        to={item.to}
-                        className={linkClass}
-                        onClick={closeDrawer}
-                      >
-                        <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
-                        {item.label}
-                      </NavLink>
-                    );
-                  })}
-                </div>
+          {visibleNavGroups(user).map((group) => (
+            <div key={group.heading} className="mt-5">
+              <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-sidebar-muted">
+                {group.heading}
+              </p>
+              <div className="flex flex-col gap-0.5">
+                {group.items.map((item) => {
+                  const Icon = ICONS[item.to] ?? Folder;
+                  return (
+                    <NavLink
+                      key={`${group.heading}-${item.to}`}
+                      to={item.to}
+                      className={linkClass}
+                      onClick={closeDrawer}
+                    >
+                      <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+                      {item.label}
+                    </NavLink>
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </nav>
         <div className="p-3">
           <div className="rounded-lg bg-white/5 px-3 py-3">
@@ -204,10 +210,6 @@ export function AppShell(): ReactNode {
               aria-label="Notifications"
             >
               <Bell className="h-5 w-5" aria-hidden="true" />
-              <span
-                className="absolute end-2 top-2 h-2 w-2 rounded-full bg-error"
-                aria-hidden="true"
-              />
             </button>
             <div className="relative" ref={menuRef}>
               <button

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { PERMISSIONS, type AuthUser } from '@somwave/shared';
 import { hasPermission } from '../../lib/rbac';
-import { listInvoices, listLeads, listTickets } from '../ops/api';
+import { listInvoices, listLeads, listPortalProjects, listTickets } from '../ops/api';
 import { listProjects } from '../projects/api';
 import { listTasks } from '../tasks/api';
 
@@ -13,6 +13,8 @@ export function useDashboard(user: AuthUser | null | undefined) {
   const leadsEnabled = hasPermission(user, PERMISSIONS.LEADS_READ);
   const invoicesEnabled = hasPermission(user, PERMISSIONS.INVOICES_READ);
   const ticketsEnabled = hasPermission(user, PERMISSIONS.TICKETS_READ);
+  const portalProjectsEnabled =
+    hasPermission(user, PERMISSIONS.PORTAL_READ) && !projectsEnabled && Boolean(user?.clientId);
 
   const projects = useQuery({
     queryKey: ['dashboard', 'projects'],
@@ -56,6 +58,12 @@ export function useDashboard(user: AuthUser | null | undefined) {
     enabled: ticketsEnabled,
     staleTime: STALE_TIME,
   });
+  const portalProjects = useQuery({
+    queryKey: ['dashboard', 'portal-projects'],
+    queryFn: listPortalProjects,
+    enabled: portalProjectsEnabled,
+    staleTime: STALE_TIME,
+  });
 
   const refetchMetrics = (): void => {
     if (projectsEnabled) {
@@ -69,6 +77,7 @@ export function useDashboard(user: AuthUser | null | undefined) {
     if (leadsEnabled) void leads.refetch();
     if (invoicesEnabled) void invoices.refetch();
     if (ticketsEnabled) void tickets.refetch();
+    if (portalProjectsEnabled) void portalProjects.refetch();
   };
 
   return {
@@ -77,6 +86,7 @@ export function useDashboard(user: AuthUser | null | undefined) {
     leadsEnabled,
     invoicesEnabled,
     ticketsEnabled,
+    portalProjectsEnabled,
     projects,
     activeProjects,
     tasks,
@@ -84,6 +94,7 @@ export function useDashboard(user: AuthUser | null | undefined) {
     leads,
     invoices,
     tickets,
+    portalProjects,
     refetchMetrics,
   };
 }
