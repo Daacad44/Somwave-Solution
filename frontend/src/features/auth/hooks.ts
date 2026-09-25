@@ -1,11 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { AuthUser, ConfirmTwoFactorInput, VerifyTwoFactorInput } from '@somwave/shared';
+import type {
+  AuthUser,
+  ConfirmTwoFactorInput,
+  DisableTwoFactorInput,
+  RegenerateBackupCodesInput,
+  UpdateProfileInput,
+  VerifyTwoFactorInput,
+} from '@somwave/shared';
 import {
   confirmTwoFactorSetup,
+  disableTwoFactor,
   fetchCurrentUser,
+  forgotPassword,
   login,
   logout,
+  regenerateBackupCodes,
+  resetPassword,
   startTwoFactorSetup,
+  updateProfile,
   verifyTwoFactorLogin,
 } from './api';
 
@@ -54,6 +66,40 @@ export function useConfirmTwoFactor() {
       queryClient.setQueryData(CURRENT_USER_KEY, user);
     },
   });
+}
+
+export function useDisableTwoFactor() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: DisableTwoFactorInput) => disableTwoFactor(input),
+    onSuccess: ({ user }) => {
+      queryClient.setQueryData(CURRENT_USER_KEY, user);
+    },
+  });
+}
+
+export function useRegenerateBackupCodes() {
+  return useMutation({
+    mutationFn: (input: RegenerateBackupCodesInput) => regenerateBackupCodes(input),
+  });
+}
+
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateProfileInput) => updateProfile(input),
+    onSuccess: ({ user }) => {
+      queryClient.setQueryData(CURRENT_USER_KEY, user);
+    },
+  });
+}
+
+export function useForgotPassword() {
+  return useMutation({ mutationFn: forgotPassword });
+}
+
+export function useResetPassword() {
+  return useMutation({ mutationFn: resetPassword });
 }
 
 export function useLogout() {

@@ -14,6 +14,7 @@ export function TwoFactorSetupPage(): ReactNode {
   const start = useStartTwoFactor();
   const confirm = useConfirmTwoFactor();
   const [setup, setSetup] = useState<{ otpauthUrl: string; secret: string } | null>(null);
+  const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
   const form = useForm<ConfirmTwoFactorInput>({
     resolver: zodResolver(confirmTwoFactorSchema),
     defaultValues: { code: '' },
@@ -25,8 +26,8 @@ export function TwoFactorSetupPage(): ReactNode {
   };
 
   const onConfirm = form.handleSubmit(async (values) => {
-    await confirm.mutateAsync(values);
-    navigate('/', { replace: true });
+    const result = await confirm.mutateAsync(values);
+    setBackupCodes(result.backupCodes);
   });
 
   const error =
@@ -37,6 +38,27 @@ export function TwoFactorSetupPage(): ReactNode {
         : start.error || confirm.error
           ? 'Wax baa qaldamay'
           : null;
+
+  if (backupCodes) {
+    return (
+      <section>
+        <h1 className="text-2xl font-semibold text-ink">Koodhyada kaydka</h1>
+        <p className="mt-2 max-w-xl text-base text-muted">
+          Kaydi koodhyadan meel ammaan ah. Mid kasta hal mar ayaa la isticmaali karaa.
+        </p>
+        <ul className="mt-4 grid max-w-md grid-cols-2 gap-2 font-mono text-sm text-ink">
+          {backupCodes.map((code) => (
+            <li key={code} className="rounded-md border border-border bg-surface px-3 py-2">
+              {code}
+            </li>
+          ))}
+        </ul>
+        <Button className="mt-6" onClick={() => navigate('/', { replace: true })}>
+          Waan kaydiyay
+        </Button>
+      </section>
+    );
+  }
 
   if (user?.twoFactorEnabled) {
     return (

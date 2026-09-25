@@ -43,6 +43,22 @@ export const PERMISSIONS = {
   TICKETS_CREATE: 'tickets.create',
   TICKETS_UPDATE: 'tickets.update',
   PORTAL_READ: 'portal.read',
+  EMPLOYEES_READ: 'employees.read',
+  EMPLOYEES_CREATE: 'employees.create',
+  EMPLOYEES_UPDATE: 'employees.update',
+  ATTENDANCE_READ: 'attendance.read',
+  ATTENDANCE_CREATE: 'attendance.create',
+  LEAVE_READ: 'leave.read',
+  LEAVE_CREATE: 'leave.create',
+  LEAVE_UPDATE: 'leave.update',
+  DOCUMENTS_READ: 'documents.read',
+  DOCUMENTS_CREATE: 'documents.create',
+  DOCUMENTS_DELETE: 'documents.delete',
+  MEDIA_READ: 'media.read',
+  MEDIA_CREATE: 'media.create',
+  MEDIA_DELETE: 'media.delete',
+  AUDIT_READ: 'audit.read',
+  NOTIFICATIONS_READ: 'notifications.read',
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

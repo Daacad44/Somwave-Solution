@@ -2,6 +2,17 @@
 
 Every slice in this branch is recorded here. Status is about this change set, not the whole platform.
 
+## 2026-09-25 — Master requirement alignment (`cursor/master-requirement-align-9571`)
+
+| Step | Slice | Status |
+| --- | --- | --- |
+| D1 | `docs/SOMWAVE_MASTER_REQUIREMENT.md` + short alignment plan | ✅ |
+| D2 | Nav: Website / Operations / Portal from existing permissions | ✅ |
+| D3 | `RequirePermission` on app routes | ✅ |
+| D4 | Client dashboard my-projects card; remove invented % deltas | ✅ |
+
+**Not in this slice:** Media Library, i18n URLs, S3, documents, Stripe/eDahab, HR/finance/CRM depth.
+
 ## 2026-09-22 — Gate 3 staging prep (B) + P1 EVC Plus (`cursor/p1-evc-plus-ae9d`)
 
 | Step | Slice | Status |

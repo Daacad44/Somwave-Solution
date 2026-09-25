@@ -48,6 +48,29 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   return (await request<T>(path, init)).data;
 }
 
+/** Authenticated binary download — still the only module that calls fetch. */
+export async function apiDownload(path: string, fileName: string): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(`${import.meta.env.VITE_API_URL}${path}`, { credentials: 'include' });
+  } catch {
+    throw new ApiError('INTERNAL_ERROR', 'Network error');
+  }
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as {
+      error?: { code?: ErrorCode; message?: string };
+    } | null;
+    throw new ApiError(body?.error?.code ?? 'INTERNAL_ERROR', body?.error?.message);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 // For paginated list endpoints — returns the payload together with meta.total (§10).
 export async function apiFetchPaged<T>(
   path: string,

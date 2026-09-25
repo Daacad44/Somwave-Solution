@@ -1,7 +1,7 @@
 import { type ReactNode, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   loginSchema,
   verifyTwoFactorSchema,
@@ -114,6 +114,11 @@ export function LoginPage(): ReactNode {
         >
           Soo gal
         </Button>
+        <p className="text-sm text-muted">
+          <Link className="text-brand underline-offset-2 hover:underline" to="/forgot-password">
+            Ma hilmaamtay furaha?
+          </Link>
+        </p>
       </form>
     </main>
   );

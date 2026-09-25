@@ -7,6 +7,8 @@ export const createInquirySchema = z.object({
   email: z.string().trim().email('Fadlan geli iimayl sax ah'),
   phone: z.string().trim().max(40).optional(),
   message: z.string().trim().min(10, 'Fariintu waa inay ka badan tahay 10 xaraf').max(4000),
+  // Honeypot — browsers leave this empty; bots often fill it.
+  website: z.string().trim().max(200).optional(),
 });
 
 export type CreateInquiryInput = z.infer<typeof createInquirySchema>;

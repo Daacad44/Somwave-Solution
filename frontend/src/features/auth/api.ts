@@ -1,7 +1,12 @@
 import type {
   AuthUser,
   ConfirmTwoFactorInput,
+  DisableTwoFactorInput,
+  ForgotPasswordInput,
   LoginInput,
+  RegenerateBackupCodesInput,
+  ResetPasswordInput,
+  UpdateProfileInput,
   VerifyTwoFactorInput,
 } from '@somwave/shared';
 import { apiFetch, ApiError } from '../../lib/apiClient';
@@ -28,8 +33,47 @@ export function startTwoFactorSetup(): Promise<{ otpauthUrl: string; secret: str
   return apiFetch<{ otpauthUrl: string; secret: string }>('/auth/2fa/setup', { method: 'POST' });
 }
 
-export function confirmTwoFactorSetup(input: ConfirmTwoFactorInput): Promise<{ user: AuthUser }> {
-  return apiFetch<{ user: AuthUser }>('/auth/2fa/confirm', {
+export function confirmTwoFactorSetup(
+  input: ConfirmTwoFactorInput,
+): Promise<{ user: AuthUser; backupCodes: string[] }> {
+  return apiFetch<{ user: AuthUser; backupCodes: string[] }>('/auth/2fa/confirm', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function disableTwoFactor(input: DisableTwoFactorInput): Promise<{ user: AuthUser }> {
+  return apiFetch<{ user: AuthUser }>('/auth/2fa/disable', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function regenerateBackupCodes(
+  input: RegenerateBackupCodesInput,
+): Promise<{ backupCodes: string[] }> {
+  return apiFetch<{ backupCodes: string[] }>('/auth/2fa/backup-codes', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateProfile(input: UpdateProfileInput): Promise<{ user: AuthUser }> {
+  return apiFetch<{ user: AuthUser }>('/auth/me', {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export function forgotPassword(input: ForgotPasswordInput): Promise<{ ok: boolean }> {
+  return apiFetch<{ ok: boolean }>('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function resetPassword(input: ResetPasswordInput): Promise<{ ok: boolean }> {
+  return apiFetch<{ ok: boolean }>('/auth/reset-password', {
     method: 'POST',
     body: JSON.stringify(input),
   });

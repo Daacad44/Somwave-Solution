@@ -21,6 +21,8 @@ npm workspaces (`CLAUDE.md` §6):
 | `frontend`        | `@somwave/frontend` | React 18 + Vite                        | internal + CMS + portal shell             |
 | `backend`         | `@somwave/backend`  | Node 20 + Express                      | `/api/v1` + `/health`                     |
 
+Feature catalog (the three audiences): [`docs/SOMWAVE_FEATURES.md`](./docs/SOMWAVE_FEATURES.md).  
+Implementation constitution: [`docs/SOMWAVE_MASTER_REQUIREMENT.md`](./docs/SOMWAVE_MASTER_REQUIREMENT.md).  
 Current implementation vs remaining work: [`docs/STATUS_REPORT.md`](./docs/STATUS_REPORT.md), [`docs/WORKLOG.md`](./docs/WORKLOG.md), [`docs/FRONTEND_VISIBILITY.md`](./docs/FRONTEND_VISIBILITY.md).
 
 ## Build order

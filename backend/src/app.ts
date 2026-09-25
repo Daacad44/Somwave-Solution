@@ -30,6 +30,16 @@ import {
 } from './routes/platform.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { paymentWebhooksRouter } from './routes/payment.webhook.routes';
+import {
+  employeesRouter,
+  attendanceRouter,
+  leaveRouter,
+  documentsRouter,
+  mediaRouter,
+  auditRouter,
+  notificationsRouter,
+} from './routes/ops-extra.routes';
+import { dashboardRouter } from './routes/dashboard.routes';
 
 export function createApp(): Express {
   const app = express();
@@ -48,6 +58,8 @@ export function createApp(): Express {
     express.raw({ type: 'application/json', limit: '256kb' }),
     paymentWebhooksRouter,
   );
+  app.use('/api/v1/media', express.json({ limit: '35mb' }));
+  app.use('/api/v1/documents', express.json({ limit: '35mb' }));
   app.use(express.json({ limit: '1mb' }));
   app.use(pinoHttp({ logger }));
 
@@ -73,6 +85,14 @@ export function createApp(): Express {
   app.use('/api/v1/payments', paymentsRouter);
   app.use('/api/v1/support-tickets', ticketsRouter);
   app.use('/api/v1/portal', portalRouter);
+  app.use('/api/v1/employees', employeesRouter);
+  app.use('/api/v1/attendance', attendanceRouter);
+  app.use('/api/v1/leave-requests', leaveRouter);
+  app.use('/api/v1/documents', documentsRouter);
+  app.use('/api/v1/media', mediaRouter);
+  app.use('/api/v1/audit-logs', auditRouter);
+  app.use('/api/v1/notifications', notificationsRouter);
+  app.use('/api/v1/dashboard', dashboardRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

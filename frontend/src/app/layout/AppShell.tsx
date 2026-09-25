@@ -1,33 +1,43 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   Bell,
   Briefcase,
   Building2,
+  CalendarDays,
   ChevronDown,
   CircleHelp,
   ClipboardList,
+  Clock,
   BarChart3,
   FileText,
   Flag,
   Folder,
+  Headphones,
   Home,
   Image,
+  KeyRound,
   LayoutGrid,
   ListTodo,
+  LogOut,
   Mail,
   Menu,
   MessageSquare,
+  Receipt,
   Search,
+  Settings,
   Shield,
+  UserRound,
   Users,
+  X,
   type LucideIcon,
 } from 'lucide-react';
+import { PERMISSIONS } from '@somwave/shared';
 import { useCurrentUser, useLogout } from '../../features/auth/hooks';
 import { hasPermission } from '../../lib/rbac';
 import { cn } from '../../lib/cn';
 import { BrandLogo } from '../../components/brand/BrandLogo';
-import { NAV_GROUPS } from './nav';
+import { visibleNavGroups } from './nav';
 
 const ICONS: Record<string, LucideIcon> = {
   '/cms/services': LayoutGrid,
@@ -44,6 +54,20 @@ const ICONS: Record<string, LucideIcon> = {
   '/clients': Building2,
   '/leads': BarChart3,
   '/applications': ClipboardList,
+  '/timesheets': Clock,
+  '/invoices': Receipt,
+  '/tickets': Headphones,
+  '/users': Users,
+  '/roles': KeyRound,
+  '/portal/projects': Folder,
+  '/portal/milestones': Flag,
+  '/employees': Users,
+  '/attendance': Clock,
+  '/leave': CalendarDays,
+  '/documents': FileText,
+  '/media': Image,
+  '/audit': ClipboardList,
+  '/notifications': Bell,
 };
 
 function initials(name: string): string {
@@ -84,6 +108,29 @@ export function AppShell(): ReactNode {
     return () => document.removeEventListener('mousedown', onPointer);
   }, []);
 
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false);
+        if (window.matchMedia('(max-width: 1023px)').matches) setOpen(false);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    if (open && !desktop.matches) {
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = '';
+      };
+    }
+    document.body.style.overflow = '';
+    return undefined;
+  }, [open]);
+
   const onLogout = async (): Promise<void> => {
     await logout.mutateAsync();
     navigate('/login', { replace: true });
@@ -101,11 +148,11 @@ export function AppShell(): ReactNode {
     );
 
   return (
-    <div className="flex min-h-screen bg-canvas">
+    <div className="flex min-h-screen overflow-x-hidden bg-canvas">
       {open ? (
         <button
           type="button"
-          className="shell-scrim fixed inset-0 z-30 lg:hidden"
+          className="shell-scrim fixed inset-0 z-40 lg:hidden"
           aria-label="Close navigation"
           onClick={() => setOpen(false)}
         />
@@ -113,56 +160,56 @@ export function AppShell(): ReactNode {
       <aside
         id="app-nav"
         className={cn(
-          'fixed bottom-0 start-0 top-16 z-40 w-[272px] shrink-0 flex-col bg-sidebar text-surface print:hidden lg:sticky lg:top-0 lg:h-screen',
-          open ? 'flex' : 'hidden',
+          'fixed inset-y-0 start-0 z-50 flex w-[min(20rem,88vw)] max-w-full shrink-0 flex-col bg-sidebar text-surface shadow-lg transition-transform duration-200 print:hidden lg:sticky lg:top-0 lg:z-40 lg:h-screen lg:w-[272px] lg:max-w-none lg:shadow-none',
+          open ? 'translate-x-0' : '-translate-x-full lg:hidden rtl:translate-x-full',
         )}
       >
-        <div className="flex items-center px-4 py-4">
-          <BrandLogo className="w-[200px]" />
+        <div className="flex items-center justify-between gap-2 px-4 py-4">
+          <BrandLogo className="w-[168px] lg:w-[200px]" />
+          <button
+            type="button"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-surface hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand lg:hidden"
+            aria-label="Close navigation"
+            onClick={() => setOpen(false)}
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
         </div>
         <nav
-          className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 pb-4"
+          className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden px-3 pb-4"
           aria-label="Navigation"
         >
           <NavLink to="/" end className={linkClass} onClick={closeDrawer}>
             <Home className="h-[18px] w-[18px]" aria-hidden="true" />
             Home
           </NavLink>
-          <NavLink to="/settings/2fa" className={linkClass} onClick={closeDrawer}>
-            <Shield className="h-[18px] w-[18px]" aria-hidden="true" />
-            Security
-          </NavLink>
-          {NAV_GROUPS.map((group) => {
-            const items = group.items.filter((item) => hasPermission(user, item.permission));
-            if (items.length === 0) return null;
-            return (
-              <div key={group.heading} className="mt-5">
-                <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-sidebar-muted">
-                  {group.heading}
-                </p>
-                <div className="flex flex-col gap-0.5">
-                  {items.map((item) => {
-                    const Icon = ICONS[item.to] ?? Folder;
-                    return (
-                      <NavLink
-                        key={item.to}
-                        to={item.to}
-                        className={linkClass}
-                        onClick={closeDrawer}
-                      >
-                        <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
-                        {item.label}
-                      </NavLink>
-                    );
-                  })}
-                </div>
+          {visibleNavGroups(user).map((group) => (
+            <div key={group.heading} className="mt-5">
+              <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-sidebar-muted">
+                {group.heading}
+              </p>
+              <div className="flex flex-col gap-0.5">
+                {group.items.map((item) => {
+                  const Icon = ICONS[item.to] ?? Folder;
+                  return (
+                    <NavLink
+                      key={`${group.heading}-${item.to}`}
+                      to={item.to}
+                      className={linkClass}
+                      onClick={closeDrawer}
+                    >
+                      <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+                      {item.label}
+                    </NavLink>
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </nav>
-        <div className="p-3">
+        <div className="shrink-0 p-3">
           <div className="rounded-lg bg-white/5 px-3 py-3">
-            <BrandLogo className="w-[168px]" />
+            <BrandLogo className="w-[148px]" />
             <p className="mt-2 text-xs leading-5 text-sidebar-muted">
               Building a brighter tomorrow with technology.
             </p>
@@ -171,7 +218,7 @@ export function AppShell(): ReactNode {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-50 flex h-16 items-center gap-3 border-b border-border bg-surface px-4 print:hidden md:px-6">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-surface px-4 print:hidden md:px-6">
           <button
             type="button"
             className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-ink hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
@@ -198,17 +245,15 @@ export function AppShell(): ReactNode {
             </kbd>
           </label>
           <div className="ms-auto flex items-center gap-2">
-            <button
-              type="button"
-              className="relative inline-flex h-11 w-11 items-center justify-center rounded-lg text-ink hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              aria-label="Notifications"
-            >
-              <Bell className="h-5 w-5" aria-hidden="true" />
-              <span
-                className="absolute end-2 top-2 h-2 w-2 rounded-full bg-error"
-                aria-hidden="true"
-              />
-            </button>
+            {hasPermission(user, PERMISSIONS.NOTIFICATIONS_READ) ? (
+              <NavLink
+                to="/notifications"
+                className="relative inline-flex h-11 w-11 items-center justify-center rounded-lg text-ink hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                aria-label="Notifications"
+              >
+                <Bell className="h-5 w-5" aria-hidden="true" />
+              </NavLink>
+            ) : null}
             <div className="relative" ref={menuRef}>
               <button
                 type="button"
@@ -231,15 +276,43 @@ export function AppShell(): ReactNode {
               {menuOpen ? (
                 <div
                   role="menu"
-                  className="absolute end-0 top-12 z-20 min-w-40 rounded-lg border border-border bg-surface p-1 shadow-md"
+                  className="absolute end-0 top-12 z-20 min-w-52 rounded-lg border border-border bg-surface p-1 shadow-md"
                 >
+                  <Link
+                    role="menuitem"
+                    to="/profile"
+                    className="flex min-h-11 w-full items-center gap-2 rounded-md px-3 text-sm text-ink hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <UserRound className="h-4 w-4 text-muted" aria-hidden="true" />
+                    Profile
+                  </Link>
+                  <Link
+                    role="menuitem"
+                    to="/profile?tab=personal"
+                    className="flex min-h-11 w-full items-center gap-2 rounded-md px-3 text-sm text-ink hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <Settings className="h-4 w-4 text-muted" aria-hidden="true" />
+                    Account settings
+                  </Link>
+                  <Link
+                    role="menuitem"
+                    to="/profile?tab=security"
+                    className="flex min-h-11 w-full items-center gap-2 rounded-md px-3 text-sm text-ink hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <Shield className="h-4 w-4 text-muted" aria-hidden="true" />
+                    Security
+                  </Link>
                   <button
                     type="button"
                     role="menuitem"
-                    className="flex min-h-11 w-full items-center rounded-md px-3 text-sm text-ink hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    className="flex min-h-11 w-full items-center gap-2 rounded-md px-3 text-sm text-ink hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                     disabled={logout.isPending}
                     onClick={onLogout}
                   >
+                    <LogOut className="h-4 w-4 text-muted" aria-hidden="true" />
                     {logout.isPending ? 'Signing out…' : 'Sign out'}
                   </button>
                 </div>
@@ -247,7 +320,7 @@ export function AppShell(): ReactNode {
             </div>
           </div>
         </header>
-        <main className="min-w-0 flex-1 px-4 py-5 md:px-6 lg:px-8">
+        <main className="min-w-0 flex-1 overflow-x-hidden px-4 py-5 md:px-6 lg:px-8">
           <Outlet />
         </main>
       </div>

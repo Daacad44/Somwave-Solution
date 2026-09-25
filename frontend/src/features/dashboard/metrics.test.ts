@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-  countInvoices,
-  countLeads,
-  countOpenTasks,
-  countOpenTickets,
-  formatRoleName,
-} from './metrics';
+import { formatMoney, formatRoleName, hasSeriesValues, kpiTrend, projectProgress } from './metrics';
+import { trendFromCounts } from './trend';
 
 describe('dashboard metrics', () => {
   it('formats stored role names for display', () => {
@@ -13,33 +8,23 @@ describe('dashboard metrics', () => {
     expect(formatRoleName('CLIENT')).toBe('Client');
   });
 
-  it('counts tasks that are not done', () => {
-    expect(countOpenTasks(12, 5)).toBe(7);
-    expect(countOpenTasks(2, 5)).toBe(0);
+  it('does not invent a trend without a previous baseline', () => {
+    expect(trendFromCounts(8, 0)).toBeNull();
+    expect(kpiTrend({ value: 8, previous: null })).toBeNull();
+    expect(kpiTrend({ value: 8, previous: 4 })).toBe(100);
   });
 
-  it('counts new leads separately from the full inbox', () => {
-    expect(countLeads([{ status: 'NEW' }, { status: 'READ' }, { status: 'NEW' }])).toEqual({
-      total: 3,
-      fresh: 2,
-    });
+  it('omits project progress when there are no tasks', () => {
+    expect(projectProgress(0, 0)).toBeNull();
+    expect(projectProgress(4, 3)).toBe(75);
   });
 
-  it('counts invoices that still need attention', () => {
-    expect(
-      countInvoices([
-        { status: 'DRAFT' },
-        { status: 'SENT' },
-        { status: 'PAID' },
-        { status: 'OVERDUE' },
-        { status: 'VOID' },
-      ]),
-    ).toEqual({ open: 3, overdue: 1 });
+  it('formats money from real totals', () => {
+    expect(formatMoney('1200.00')).toBe('$1,200');
   });
 
-  it('counts tickets that are not resolved', () => {
-    expect(
-      countOpenTickets([{ status: 'OPEN' }, { status: 'RESOLVED' }, { status: 'WAITING' }]),
-    ).toBe(2);
+  it('treats all-zero series as empty', () => {
+    expect(hasSeriesValues([{ value: 0 }])).toBe(false);
+    expect(hasSeriesValues([{ value: 2 }])).toBe(true);
   });
 });
