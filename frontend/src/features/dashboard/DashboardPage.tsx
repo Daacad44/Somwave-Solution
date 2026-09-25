@@ -3,14 +3,11 @@ import { Link } from 'react-router-dom';
 import { formatInTimeZone } from 'date-fns-tz';
 import {
   ArrowRight,
-  Calendar,
-  ChevronDown,
   FileText,
   Folder,
   Headphones,
   Home,
   ListTodo,
-  MoreHorizontal,
   Shield,
   Users,
   type LucideIcon,
@@ -147,8 +144,6 @@ function MetricCard({
   label,
   value,
   hint,
-  delta,
-  deltaClass,
   icon: Icon,
   iconClass,
   spark,
@@ -160,8 +155,6 @@ function MetricCard({
   label: string;
   value: number | null;
   hint: string;
-  delta: string;
-  deltaClass: string;
   icon: LucideIcon;
   iconClass: string;
   spark: string;
@@ -188,7 +181,6 @@ function MetricCard({
             </span>
             <span className="text-sm font-medium text-muted">{label}</span>
           </div>
-          <span className={cn('text-xs font-semibold', deltaClass)}>{delta}</span>
         </div>
         {isLoading ? (
           <Skeleton className="mt-3 h-8 w-16" />
@@ -264,16 +256,22 @@ export function DashboardPage(): ReactNode {
       <div>
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Overview</h2>
-          <button
-            type="button"
-            className="inline-flex h-11 items-center gap-2 rounded-lg border border-border bg-surface px-3 text-sm font-medium text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-          >
-            <Calendar className="h-4 w-4 text-muted" aria-hidden="true" />
-            This month
-            <ChevronDown className="h-4 w-4 text-muted" aria-hidden="true" />
-          </button>
         </div>
         <ul className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {dash.portalProjectsEnabled ? (
+            <MetricCard
+              label="My projects"
+              to="/portal/projects"
+              value={dash.portalProjects.data?.length ?? null}
+              hint="Projects linked to your account"
+              icon={Folder}
+              iconClass="bg-brand-soft text-brand"
+              spark="M2 22 L14 18 L24 20 L36 12 L46 14 L62 6"
+              sparkClass="text-brand"
+              isLoading={dash.portalProjects.isLoading}
+              isError={dash.portalProjects.isError}
+            />
+          ) : null}
           {dash.projectsEnabled ? (
             <MetricCard
               label="Projects"
@@ -284,8 +282,6 @@ export function DashboardPage(): ReactNode {
                   ? `${dash.activeProjects.data.meta.total} active`
                   : 'Active projects'
               }
-              delta="+14%"
-              deltaClass="text-success"
               icon={Folder}
               iconClass="bg-brand-soft text-brand"
               spark="M2 22 L14 18 L24 20 L36 12 L46 14 L62 6"
@@ -300,8 +296,6 @@ export function DashboardPage(): ReactNode {
               to="/tasks"
               value={openTasks}
               hint="Still to do, in progress, or in review"
-              delta="+25%"
-              deltaClass="text-success"
               icon={ListTodo}
               iconClass="bg-warning-soft text-warning"
               spark="M2 20 L12 22 L24 14 L34 16 L46 8 L62 12"
@@ -316,8 +310,6 @@ export function DashboardPage(): ReactNode {
               to="/leads"
               value={leadCounts?.total ?? null}
               hint={leadCounts ? `${leadCounts.fresh} new` : 'New enquiries'}
-              delta="+100%"
-              deltaClass="text-success"
               icon={Users}
               iconClass="bg-brand-soft text-brand"
               spark="M2 24 L16 20 L26 18 L38 10 L50 8 L62 4"
@@ -332,8 +324,6 @@ export function DashboardPage(): ReactNode {
               to="/invoices"
               value={invoiceCounts?.open ?? null}
               hint={invoiceCounts ? `${invoiceCounts.overdue} overdue` : 'Still open'}
-              delta="-25%"
-              deltaClass="text-error"
               icon={FileText}
               iconClass="bg-invoice-soft text-invoice"
               spark="M2 10 L14 12 L26 8 L36 18 L48 16 L62 24"
@@ -348,8 +338,6 @@ export function DashboardPage(): ReactNode {
               to="/tickets"
               value={openTickets}
               hint="Waiting on a reply or a fix"
-              delta="+0%"
-              deltaClass="text-muted"
               icon={Headphones}
               iconClass="bg-success-soft text-success"
               spark="M2 16 L14 18 L26 14 L38 16 L50 12 L62 14"
@@ -408,13 +396,6 @@ export function DashboardPage(): ReactNode {
                       label={PROJECT_STATUS_LABELS_EN[project.status]}
                       tone={PROJECT_TONE[project.status]}
                     />
-                    <button
-                      type="button"
-                      className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-muted hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                      aria-label={`Actions for ${project.name}`}
-                    >
-                      <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-                    </button>
                   </li>
                 ))}
               </ul>
@@ -470,13 +451,6 @@ export function DashboardPage(): ReactNode {
                         label={TASK_STATUS_LABELS_EN[task.status]}
                         tone={TASK_TONE[task.status]}
                       />
-                      <button
-                        type="button"
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-muted hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                        aria-label={`Actions for ${task.title}`}
-                      >
-                        <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-                      </button>
                     </li>
                   );
                 })}

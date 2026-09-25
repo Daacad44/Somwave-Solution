@@ -1,8 +1,10 @@
 import { type ReactNode, lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
+import { PERMISSIONS, type PermissionKey } from '@somwave/shared';
 import { LoginPage } from '../features/auth/LoginPage';
 import { TwoFactorSetupPage } from '../features/auth/TwoFactorSetupPage';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
+import { RequirePermission } from '../features/auth/RequirePermission';
 import { AppShell } from './layout/AppShell';
 import { LoadingState } from '../components/states';
 
@@ -93,6 +95,20 @@ function LazyPage({ children }: { children: ReactNode }): ReactNode {
   return <Suspense fallback={<LoadingState rows={6} />}>{children}</Suspense>;
 }
 
+function Guarded({
+  permission,
+  children,
+}: {
+  permission: PermissionKey;
+  children: ReactNode;
+}): ReactNode {
+  return (
+    <RequirePermission permission={permission}>
+      <LazyPage>{children}</LazyPage>
+    </RequirePermission>
+  );
+}
+
 export function App(): ReactNode {
   return (
     <Routes>
@@ -118,193 +134,193 @@ export function App(): ReactNode {
           <Route
             path="/users"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.USERS_READ}>
                 <UsersPage />
-              </LazyPage>
+              </Guarded>
             }
           />
           <Route
             path="/roles"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.ROLES_READ}>
                 <RolesPage />
-              </LazyPage>
+              </Guarded>
             }
           />
           <Route
             path="/projects"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.PROJECTS_READ}>
                 <ProjectsPage />
-              </LazyPage>
+              </Guarded>
             }
           />
           <Route
             path="/tasks"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.TASKS_READ}>
                 <TasksPage />
-              </LazyPage>
+              </Guarded>
             }
           />
           <Route
             path="/milestones"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.MILESTONES_READ}>
                 <MilestonesPage />
-              </LazyPage>
+              </Guarded>
             }
           />
           <Route
             path="/cms/services"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.CONTENT_READ}>
                 <ServicesAdminPage />
-              </LazyPage>
+              </Guarded>
             }
           />
           <Route
             path="/cms/posts"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.CONTENT_READ}>
                 <PostsAdminPage />
-              </LazyPage>
+              </Guarded>
             }
           />
           <Route
             path="/cms/portfolio"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.CONTENT_READ}>
                 <PortfolioAdminPage />
-              </LazyPage>
+              </Guarded>
             }
           />
           <Route
             path="/cms/careers"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.CONTENT_READ}>
                 <CareersAdminPage />
-              </LazyPage>
+              </Guarded>
             }
           />
           <Route
             path="/cms/testimonials"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.CONTENT_READ}>
                 <TestimonialsAdminPage />
-              </LazyPage>
+              </Guarded>
             }
           />
           <Route
             path="/cms/team"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.CONTENT_READ}>
                 <TeamAdminPage />
-              </LazyPage>
+              </Guarded>
             }
           />
           <Route
             path="/cms/faqs"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.CONTENT_READ}>
                 <FaqAdminPage />
-              </LazyPage>
+              </Guarded>
             }
           />
           <Route
             path="/cms/subscribers"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.CONTENT_READ}>
                 <SubscribersAdminPage />
-              </LazyPage>
+              </Guarded>
             }
           />
           <Route
             path="/leads"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.LEADS_READ}>
                 <LeadsPage />
-              </LazyPage>
+              </Guarded>
             }
           />
           <Route
             path="/applications"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.APPLICATIONS_READ}>
                 <ApplicationsPage />
-              </LazyPage>
+              </Guarded>
             }
           />
           <Route
             path="/clients"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.CLIENTS_READ}>
                 <ClientsPage />
-              </LazyPage>
+              </Guarded>
             }
           />
           <Route
             path="/timesheets"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.TIMESHEETS_READ}>
                 <TimesheetsPage />
-              </LazyPage>
+              </Guarded>
             }
           />
           <Route
             path="/invoices"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.INVOICES_READ}>
                 <InvoicesPage />
-              </LazyPage>
+              </Guarded>
             }
           />
           <Route
             path="/invoices/:id/print"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.INVOICES_READ}>
                 <InvoicePrintPage />
-              </LazyPage>
+              </Guarded>
             }
           />
           <Route
             path="/invoices/:id"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.INVOICES_READ}>
                 <InvoiceDetailPage />
-              </LazyPage>
+              </Guarded>
             }
           />
           <Route
             path="/tickets"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.TICKETS_READ}>
                 <TicketsPage />
-              </LazyPage>
+              </Guarded>
             }
           />
           <Route
             path="/tickets/:id"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.TICKETS_READ}>
                 <TicketDetailPage />
-              </LazyPage>
+              </Guarded>
             }
           />
           <Route
             path="/portal/projects"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.PORTAL_READ}>
                 <PortalProjectsPage />
-              </LazyPage>
+              </Guarded>
             }
           />
           <Route
             path="/portal/milestones"
             element={
-              <LazyPage>
+              <Guarded permission={PERMISSIONS.PORTAL_READ}>
                 <PortalMilestonesPage />
-              </LazyPage>
+              </Guarded>
             }
           />
         </Route>

@@ -4,7 +4,10 @@
 
 Somwave is a single platform serving three audiences: a public marketing website, a client portal, and an internal company management system. It serves prospects, clients, and staff so that prospects can evaluate and contact the company, clients can see their projects and pay their invoices without phoning anyone, and staff can run projects, HR, and finance in one place instead of Excel and WhatsApp.
 
-You are the engineer on this project. Build in the stack and style described below. When something here contradicts what you would normally do, this document wins.
+Product requirements: [`docs/SOMWAVE_FEATURES.md`](docs/SOMWAVE_FEATURES.md).  
+Implementation constitution: [`docs/SOMWAVE_MASTER_REQUIREMENT.md`](docs/SOMWAVE_MASTER_REQUIREMENT.md).
+
+You are the engineer on this project. Build in the stack and style described below. When something here contradicts what you would normally do, this document wins for stack, gates, and conventions. Product scope (current vs planned) is those two docs.
 
 ---
 

@@ -48,6 +48,8 @@ CMS ayaa qora content-ka  ◄────  EDITOR / CMS
 
 **Xeerka muhiimka ah:** Portal-ku **ma abuuro** mashruuc ama qaansheeg. Waxaas waxaa ka soo baxa nidaamka gudaha; portal-ku wuxuu akhriyaa wuxuuna bixiyaa.
 
+Xeerka fulinta: [`SOMWAVE_MASTER_REQUIREMENT.md`](./SOMWAVE_MASTER_REQUIREMENT.md). Nav-ka React wuxuu u kala baxaa Website / Operations / Portal iyadoo permissions + `clientId` loo eegayo — `CLIENT` ma arko Operations.
+
 ---
 
 ## 3. Qaybta 1 — Websaydhka dadweynaha

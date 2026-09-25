@@ -4,7 +4,7 @@
 
 Somwave is three systems on one backend: Public Site (Astro), Internal + CMS (React), Client Portal (React). Mobile remains out of scope until P1–P4 are stable.
 
-The product feature catalog for those three audiences is **[SOMWAVE_FEATURES.md](./SOMWAVE_FEATURES.md)**.
+The product feature catalog for those three audiences is **[SOMWAVE_FEATURES.md](./SOMWAVE_FEATURES.md)**. The implementation constitution is **[SOMWAVE_MASTER_REQUIREMENT.md](./SOMWAVE_MASTER_REQUIREMENT.md)**.
 
 ## Snapshot
 
