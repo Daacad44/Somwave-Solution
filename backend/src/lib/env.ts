@@ -26,6 +26,12 @@ const envSchema = z
     PAYMENT_EVC_API_KEY: z.string().min(8).optional(),
     PAYMENT_EVC_MERCHANT_ID: z.string().min(1).optional(),
     PAYMENT_EVC_WEBHOOK_SECRET: z.string().min(16).optional(),
+    S3_BUCKET: z.string().min(1).optional(),
+    S3_REGION: z.string().min(1).optional(),
+    S3_ENDPOINT: z.string().url().optional(),
+    S3_ACCESS_KEY: z.string().min(1).optional(),
+    S3_SECRET_KEY: z.string().min(1).optional(),
+    APP_PUBLIC_URL: z.string().url().optional(),
   })
   .superRefine((value, ctx) => {
     if (!value.SMTP_HOST) return;

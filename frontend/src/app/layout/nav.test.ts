@@ -32,6 +32,8 @@ describe('visibleNavGroups', () => {
         PERMISSIONS.INVOICES_READ,
         PERMISSIONS.PAYMENTS_READ,
         PERMISSIONS.PAYMENTS_CREATE,
+        PERMISSIONS.DOCUMENTS_READ,
+        PERMISSIONS.NOTIFICATIONS_READ,
       ],
     });
     expect(hasInternalSurface(client)).toBe(false);
@@ -42,6 +44,7 @@ describe('visibleNavGroups', () => {
       '/portal/milestones',
       '/tickets',
       '/invoices',
+      '/documents',
     ]);
   });
 
@@ -54,17 +57,17 @@ describe('visibleNavGroups', () => {
     expect(paths('Portal', visibleNavGroups(client))).toEqual(['/tickets', '/invoices']);
   });
 
-  it('shows Website only for content permissions', () => {
+  it('shows Content only for content permissions', () => {
     const editor = user({
       roles: [ROLES.EDITOR],
       permissions: [PERMISSIONS.CONTENT_READ, PERMISSIONS.CONTENT_UPDATE],
     });
     const groups = visibleNavGroups(editor);
-    expect(groups.map((group) => group.heading)).toEqual(['Website']);
-    expect(paths('Website', groups)).toContain('/cms/services');
+    expect(groups.map((group) => group.heading)).toEqual(['Content']);
+    expect(paths('Content', groups)).toContain('/cms/services');
   });
 
-  it('shows Operations modules a staff member can actually open', () => {
+  it('shows Delivery modules a staff member can actually open', () => {
     const staff = user({
       permissions: [
         PERMISSIONS.PROJECTS_READ,
@@ -76,8 +79,8 @@ describe('visibleNavGroups', () => {
       ],
     });
     const groups = visibleNavGroups(staff);
-    expect(groups.map((group) => group.heading)).toEqual(['Operations']);
-    expect(paths('Operations', groups)).toEqual([
+    expect(groups.map((group) => group.heading)).toEqual(['Delivery']);
+    expect(paths('Delivery', groups)).toEqual([
       '/projects',
       '/tasks',
       '/milestones',
@@ -97,7 +100,8 @@ describe('visibleNavGroups', () => {
       ],
     });
     const groups = visibleNavGroups(manager);
-    expect(paths('Operations', groups)).toEqual(['/projects', '/invoices', '/tickets']);
+    expect(paths('Delivery', groups)).toEqual(['/projects', '/tickets']);
+    expect(paths('Money', groups)).toEqual(['/invoices']);
     expect(paths('Portal', groups)).toEqual([]);
   });
 });

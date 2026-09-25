@@ -4,6 +4,7 @@ import {
   Bell,
   Briefcase,
   Building2,
+  CalendarDays,
   ChevronDown,
   CircleHelp,
   ClipboardList,
@@ -27,7 +28,9 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
+import { PERMISSIONS } from '@somwave/shared';
 import { useCurrentUser, useLogout } from '../../features/auth/hooks';
+import { hasPermission } from '../../lib/rbac';
 import { cn } from '../../lib/cn';
 import { BrandLogo } from '../../components/brand/BrandLogo';
 import { visibleNavGroups } from './nav';
@@ -54,6 +57,13 @@ const ICONS: Record<string, LucideIcon> = {
   '/roles': KeyRound,
   '/portal/projects': Folder,
   '/portal/milestones': Flag,
+  '/employees': Users,
+  '/attendance': Clock,
+  '/leave': CalendarDays,
+  '/documents': FileText,
+  '/media': Image,
+  '/audit': ClipboardList,
+  '/notifications': Bell,
 };
 
 function initials(name: string): string {
@@ -204,13 +214,15 @@ export function AppShell(): ReactNode {
             </kbd>
           </label>
           <div className="ms-auto flex items-center gap-2">
-            <button
-              type="button"
-              className="relative inline-flex h-11 w-11 items-center justify-center rounded-lg text-ink hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              aria-label="Notifications"
-            >
-              <Bell className="h-5 w-5" aria-hidden="true" />
-            </button>
+            {hasPermission(user, PERMISSIONS.NOTIFICATIONS_READ) ? (
+              <NavLink
+                to="/notifications"
+                className="relative inline-flex h-11 w-11 items-center justify-center rounded-lg text-ink hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                aria-label="Notifications"
+              >
+                <Bell className="h-5 w-5" aria-hidden="true" />
+              </NavLink>
+            ) : null}
             <div className="relative" ref={menuRef}>
               <button
                 type="button"

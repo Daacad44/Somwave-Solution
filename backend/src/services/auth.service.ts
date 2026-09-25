@@ -17,6 +17,10 @@ import {
 } from '../lib/tokens';
 import { createTotpSecret, totpUri, verifyTotp } from '../lib/totp';
 import { logger } from '../lib/logger';
+import { sendMail } from '../lib/mailer';
+import { PASSWORD_RESET_V1 } from '../mail/templates';
+import { env, corsOrigins } from '../lib/env';
+import { randomBytes } from 'node:crypto';
 
 export interface IssuedSession {
   user: AuthUser;
@@ -110,10 +114,10 @@ export async function verifyTwoFactorLogin(
   if (!user?.twoFactorEnabled || !user.twoFactorSecret) {
     throw new AppError('UNAUTHORIZED', 401, 'Fadlan mar kale gal');
   }
-  const valid = await verifyTotp(user.twoFactorSecret, code);
-  if (!valid) {
-    throw new AppError('UNAUTHORIZED', 401, 'Koodhka 2FA waa khalad');
-  }
+  const totpOk = await verifyTotp(user.twoFactorSecret, code);
+  if (totpOk) return issueSession(user);
+  const used = await consumeBackupCode(user.id, code);
+  if (!used) throw new AppError('UNAUTHORIZED', 401, 'Koodhka 2FA waa khalad');
   return issueSession(user);
 }
 
@@ -133,7 +137,10 @@ export async function startTwoFactorEnrolment(
   return { otpauthUrl: totpUri(user.email, secret), secret };
 }
 
-export async function confirmTwoFactorEnrolment(userId: string, code: string): Promise<AuthUser> {
+export async function confirmTwoFactorEnrolment(
+  userId: string,
+  code: string,
+): Promise<{ user: AuthUser; backupCodes: string[] }> {
   const user = await loadActiveUser({ id: userId });
   if (!user) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
   if (user.twoFactorEnabled) {
@@ -146,12 +153,23 @@ export async function confirmTwoFactorEnrolment(userId: string, code: string): P
   if (!valid) {
     throw new AppError('VALIDATION_ERROR', 400, 'Koodhka 2FA waa khalad');
   }
-  const updated = await prisma.user.update({
-    where: { id: user.id },
-    data: { twoFactorEnabled: true },
-    include: userWithRolesInclude,
-  });
-  return toAuthUser(updated);
+  const backupCodes = Array.from({ length: 8 }, () => randomBytes(4).toString('hex'));
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: user.id },
+      data: { twoFactorEnabled: true },
+    }),
+    prisma.twoFactorBackupCode.deleteMany({ where: { userId: user.id } }),
+    prisma.twoFactorBackupCode.createMany({
+      data: backupCodes.map((plain) => ({
+        userId: user.id,
+        codeHash: hashRefreshToken(plain),
+      })),
+    }),
+  ]);
+  const updated = await loadActiveUser({ id: user.id });
+  if (!updated) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+  return { user: toAuthUser(updated), backupCodes };
 }
 
 export async function refreshSession(rawToken: string): Promise<IssuedSession> {
@@ -205,6 +223,61 @@ export async function logout(rawToken: string | undefined): Promise<void> {
 export async function getUserAuthContext(userId: string): Promise<AuthUser | null> {
   const user = await loadActiveUser({ id: userId });
   return user ? toAuthUser(user) : null;
+}
+
+export async function requestPasswordReset(email: string): Promise<void> {
+  const user = await loadActiveUser({ email });
+  if (!user) return;
+  const token = generateRefreshToken();
+  await prisma.passwordResetToken.create({
+    data: {
+      userId: user.id,
+      tokenHash: hashRefreshToken(token),
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    },
+  });
+  const base = env.APP_PUBLIC_URL ?? corsOrigins[0] ?? 'http://localhost:5173';
+  await sendMail({
+    to: user.email,
+    template: PASSWORD_RESET_V1,
+    vars: { resetUrl: `${base.replace(/\/$/, '')}/reset-password?token=${token}` },
+  });
+}
+
+export async function resetPassword(token: string, password: string): Promise<void> {
+  const row = await prisma.passwordResetToken.findUnique({
+    where: { tokenHash: hashRefreshToken(token) },
+  });
+  if (!row || row.usedAt || row.expiresAt.getTime() <= Date.now()) {
+    throw new AppError('NOT_FOUND', 404, 'Xiriirka dib-u-dejinta waa dhacay');
+  }
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: row.userId },
+      data: { passwordHash: await hashPassword(password) },
+    }),
+    prisma.passwordResetToken.update({
+      where: { id: row.id },
+      data: { usedAt: new Date() },
+    }),
+    prisma.refreshToken.updateMany({
+      where: { userId: row.userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    }),
+  ]);
+}
+
+async function consumeBackupCode(userId: string, code: string): Promise<boolean> {
+  const rows = await prisma.twoFactorBackupCode.findMany({
+    where: { userId, usedAt: null },
+  });
+  const match = rows.find((row) => row.codeHash === hashRefreshToken(code.trim().toLowerCase()));
+  if (!match) return false;
+  await prisma.twoFactorBackupCode.update({
+    where: { id: match.id },
+    data: { usedAt: new Date() },
+  });
+  return true;
 }
 
 export { hashPassword };

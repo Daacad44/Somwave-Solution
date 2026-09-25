@@ -8,6 +8,8 @@ import { redis } from '../lib/redis';
 import { AppError } from '../lib/http';
 import { notifyAddress, sendMail } from '../lib/mailer';
 import { ENQUIRY_NOTIFY_V1 } from '../mail/templates';
+import { notifyUsersWithPermission } from '../lib/notify';
+import { PERMISSIONS } from '@somwave/shared';
 
 const IDEMPOTENCY_TTL_SECONDS = 60 * 60 * 24; // 24h
 
@@ -15,6 +17,9 @@ export async function createInquiry(
   input: CreateInquiryInput,
   idempotencyKey: string,
 ): Promise<{ id: string }> {
+  if (input.website && input.website.length > 0) {
+    return { id: 'ignored' };
+  }
   const cacheKey = `idem:inquiry:${idempotencyKey}`;
 
   const existingId = await safeGet(cacheKey);
@@ -31,6 +36,11 @@ export async function createInquiry(
   });
 
   await safeSet(cacheKey, inquiry.id);
+  await notifyUsersWithPermission(
+    PERMISSIONS.LEADS_READ,
+    'Lead cusub',
+    `${input.name} wuxuu soo diray foomka xiriirka.`,
+  );
   const notifyTo = notifyAddress();
   if (notifyTo) {
     await sendMail({

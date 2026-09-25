@@ -6,6 +6,8 @@ vi.mock('../lib/prisma', () => ({
   },
 }));
 vi.mock('../lib/redis', () => ({ redis: { get: vi.fn(), set: vi.fn() } }));
+vi.mock('../lib/notify', () => ({ notifyUsersWithPermission: vi.fn() }));
+vi.mock('../lib/mailer', () => ({ notifyAddress: vi.fn(), sendMail: vi.fn() }));
 
 import { prisma } from '../lib/prisma';
 import { redis } from '../lib/redis';
@@ -27,6 +29,12 @@ describe('createInquiry', () => {
     expect(result).toEqual({ id: 'inq_1' });
     expect(prisma.inquiry.create).toHaveBeenCalledOnce();
     expect(redis.set).toHaveBeenCalledWith('idem:inquiry:key-1', 'inq_1', 'EX', 60 * 60 * 24);
+  });
+
+  it('ignores a honeypot submission without writing a row', async () => {
+    const result = await createInquiry({ ...input, website: 'https://spam.example' }, 'bot-1');
+    expect(result).toEqual({ id: 'ignored' });
+    expect(prisma.inquiry.create).not.toHaveBeenCalled();
   });
 
   it('returns the existing enquiry for a repeated key without creating again', async () => {

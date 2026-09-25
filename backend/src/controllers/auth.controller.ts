@@ -1,5 +1,11 @@
 import type { NextFunction, Request, Response } from 'express';
-import type { ConfirmTwoFactorInput, LoginInput, VerifyTwoFactorInput } from '@somwave/shared';
+import type {
+  ConfirmTwoFactorInput,
+  ForgotPasswordInput,
+  LoginInput,
+  ResetPasswordInput,
+  VerifyTwoFactorInput,
+} from '@somwave/shared';
 import { AppError, sendData } from '../lib/http';
 import { setAuthCookies, clearAuthCookies, readRefreshCookie } from '../lib/cookies';
 import * as authService from '../services/auth.service';
@@ -62,7 +68,7 @@ export async function confirmTwoFactor(
     const userId = req.authUser?.id;
     if (!userId) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
     const { code } = req.body as ConfirmTwoFactorInput;
-    sendData(res, { user: await authService.confirmTwoFactorEnrolment(userId, code) });
+    sendData(res, await authService.confirmTwoFactorEnrolment(userId, code));
   } catch (err) {
     next(err);
   }
@@ -85,6 +91,34 @@ export async function logout(req: Request, res: Response, next: NextFunction): P
     await authService.logout(readRefreshCookie(req));
     clearAuthCookies(res);
     sendData(res, { success: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function forgotPassword(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { email } = req.body as ForgotPasswordInput;
+    await authService.requestPasswordReset(email);
+    sendData(res, { ok: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function resetPassword(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { token, password } = req.body as ResetPasswordInput;
+    await authService.resetPassword(token, password);
+    sendData(res, { ok: true });
   } catch (err) {
     next(err);
   }

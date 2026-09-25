@@ -37,6 +37,26 @@ import {
   createTicketReply,
   listPortalProjects,
   listPortalMilestones,
+  listEmployees,
+  listEmployeeCandidates,
+  createEmployee,
+  listAttendance,
+  checkIn,
+  checkOut,
+  listLeave,
+  createLeave,
+  updateLeave,
+  listDocuments,
+  createDocument,
+  deleteDocument,
+  downloadDocument,
+  listMedia,
+  createMedia,
+  deleteMedia,
+  downloadMedia,
+  listAuditLogs,
+  listNotifications,
+  markNotificationRead,
 } from './api';
 
 export function useLeads() {
@@ -219,4 +239,123 @@ export function usePortalProjects() {
 }
 export function usePortalMilestones() {
   return useQuery({ queryKey: ['portal-milestones'], queryFn: listPortalMilestones });
+}
+
+export function useEmployees() {
+  return useQuery({ queryKey: ['employees'], queryFn: listEmployees });
+}
+export function useEmployeeCandidates(enabled: boolean) {
+  return useQuery({
+    queryKey: ['employee-candidates'],
+    queryFn: listEmployeeCandidates,
+    enabled,
+  });
+}
+export function useCreateEmployee() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: createEmployee,
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['employees'] });
+      void client.invalidateQueries({ queryKey: ['employee-candidates'] });
+    },
+  });
+}
+export function useAttendance() {
+  return useQuery({ queryKey: ['attendance'], queryFn: listAttendance });
+}
+export function useCheckIn() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: checkIn,
+    onSuccess: () => client.invalidateQueries({ queryKey: ['attendance'] }),
+  });
+}
+export function useCheckOut() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: checkOut,
+    onSuccess: () => client.invalidateQueries({ queryKey: ['attendance'] }),
+  });
+}
+export function useLeave() {
+  return useQuery({ queryKey: ['leave'], queryFn: listLeave });
+}
+export function useCreateLeave() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: createLeave,
+    onSuccess: () => client.invalidateQueries({ queryKey: ['leave'] }),
+  });
+}
+export function useUpdateLeave() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: string;
+      input: import('@somwave/shared').UpdateLeaveRequestInput;
+    }) => updateLeave(id, input),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['leave'] }),
+  });
+}
+export function useDocuments() {
+  return useQuery({ queryKey: ['documents'], queryFn: listDocuments });
+}
+export function useCreateDocument() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: createDocument,
+    onSuccess: () => client.invalidateQueries({ queryKey: ['documents'] }),
+  });
+}
+export function useDeleteDocument() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: deleteDocument,
+    onSuccess: () => client.invalidateQueries({ queryKey: ['documents'] }),
+  });
+}
+export function useDownloadDocument() {
+  return useMutation({
+    mutationFn: ({ id, fileName }: { id: string; fileName: string }) =>
+      downloadDocument(id, fileName),
+  });
+}
+export function useMedia() {
+  return useQuery({ queryKey: ['media'], queryFn: listMedia });
+}
+export function useCreateMedia() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: createMedia,
+    onSuccess: () => client.invalidateQueries({ queryKey: ['media'] }),
+  });
+}
+export function useDeleteMedia() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: deleteMedia,
+    onSuccess: () => client.invalidateQueries({ queryKey: ['media'] }),
+  });
+}
+export function useDownloadMedia() {
+  return useMutation({
+    mutationFn: ({ id, fileName }: { id: string; fileName: string }) => downloadMedia(id, fileName),
+  });
+}
+export function useAuditLogs() {
+  return useQuery({ queryKey: ['audit'], queryFn: listAuditLogs });
+}
+export function useNotifications() {
+  return useQuery({ queryKey: ['notifications'], queryFn: listNotifications });
+}
+export function useMarkNotificationRead() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: markNotificationRead,
+    onSuccess: () => client.invalidateQueries({ queryKey: ['notifications'] }),
+  });
 }
