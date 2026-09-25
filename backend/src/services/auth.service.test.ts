@@ -38,6 +38,8 @@ import {
   login,
   startTwoFactorEnrolment,
   confirmTwoFactorEnrolment,
+  disableTwoFactor,
+  regenerateBackupCodes,
   requestPasswordReset,
 } from './auth.service';
 
@@ -122,6 +124,38 @@ describe('two-factor enrolment', () => {
     vi.mocked(prisma.twoFactorBackupCode.createMany).mockResolvedValue({ count: 8 } as never);
     const result = await confirmTwoFactorEnrolment('user_1', '123456');
     expect(result.user.twoFactorEnabled).toBe(true);
+    expect(result.backupCodes).toHaveLength(8);
+  });
+
+  it('disables 2FA after a valid code and clears the secret', async () => {
+    const enabled = { ...user, twoFactorEnabled: true, twoFactorSecret: 'stored' };
+    vi.mocked(prisma.user.findFirst)
+      .mockResolvedValueOnce(enabled as never)
+      .mockResolvedValueOnce({ ...enabled, twoFactorEnabled: false, twoFactorSecret: null } as never);
+    vi.mocked(verifyTotp).mockResolvedValue(true);
+    vi.mocked(prisma.user.update).mockResolvedValue(enabled as never);
+    vi.mocked(prisma.twoFactorBackupCode.deleteMany).mockResolvedValue({ count: 2 } as never);
+    const result = await disableTwoFactor('user_1', '123456');
+    expect(result.twoFactorEnabled).toBe(false);
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ twoFactorEnabled: false, twoFactorSecret: null }),
+      }),
+    );
+  });
+
+  it('rejects disable when 2FA is not enabled', async () => {
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(user as never);
+    await expect(disableTwoFactor('user_1', '123456')).rejects.toMatchObject({ code: 'CONFLICT' });
+  });
+
+  it('rotates backup codes after a valid authenticator code', async () => {
+    const enabled = { ...user, twoFactorEnabled: true, twoFactorSecret: 'stored' };
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(enabled as never);
+    vi.mocked(verifyTotp).mockResolvedValue(true);
+    vi.mocked(prisma.twoFactorBackupCode.deleteMany).mockResolvedValue({ count: 8 } as never);
+    vi.mocked(prisma.twoFactorBackupCode.createMany).mockResolvedValue({ count: 8 } as never);
+    const result = await regenerateBackupCodes('user_1', '123456');
     expect(result.backupCodes).toHaveLength(8);
   });
 

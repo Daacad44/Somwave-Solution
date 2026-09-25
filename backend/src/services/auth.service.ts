@@ -172,6 +172,86 @@ export async function confirmTwoFactorEnrolment(
   return { user: toAuthUser(updated), backupCodes };
 }
 
+export async function disableTwoFactor(userId: string, code: string): Promise<AuthUser> {
+  const user = await loadActiveUser({ id: userId });
+  if (!user) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+  if (!user.twoFactorEnabled || !user.twoFactorSecret) {
+    throw new AppError('CONFLICT', 409, '2FA lama shidin');
+  }
+  const totpOk = await verifyTotp(user.twoFactorSecret, code);
+  if (!totpOk) {
+    throw new AppError('VALIDATION_ERROR', 400, 'Koodhka 2FA waa khalad');
+  }
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: user.id },
+      data: { twoFactorEnabled: false, twoFactorSecret: null },
+    }),
+    prisma.twoFactorBackupCode.deleteMany({ where: { userId: user.id } }),
+  ]);
+  const updated = await loadActiveUser({ id: user.id });
+  if (!updated) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+  return toAuthUser(updated);
+}
+
+export async function regenerateBackupCodes(
+  userId: string,
+  code: string,
+): Promise<{ backupCodes: string[] }> {
+  const user = await loadActiveUser({ id: userId });
+  if (!user) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+  if (!user.twoFactorEnabled || !user.twoFactorSecret) {
+    throw new AppError('CONFLICT', 409, '2FA lama shidin');
+  }
+  const totpOk = await verifyTotp(user.twoFactorSecret, code);
+  if (!totpOk) {
+    throw new AppError('VALIDATION_ERROR', 400, 'Koodhka 2FA waa khalad');
+  }
+  const backupCodes = Array.from({ length: 8 }, () => randomBytes(4).toString('hex'));
+  await prisma.$transaction([
+    prisma.twoFactorBackupCode.deleteMany({ where: { userId: user.id } }),
+    prisma.twoFactorBackupCode.createMany({
+      data: backupCodes.map((plain) => ({
+        userId: user.id,
+        codeHash: hashRefreshToken(plain),
+      })),
+    }),
+  ]);
+  return { backupCodes };
+}
+
+export async function updateOwnProfile(userId: string, name: string): Promise<AuthUser> {
+  const user = await loadActiveUser({ id: userId });
+  if (!user) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+  await prisma.user.update({ where: { id: user.id }, data: { name } });
+  const updated = await loadActiveUser({ id: user.id });
+  if (!updated) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+  return toAuthUser(updated);
+}
+
+export async function changeOwnPassword(
+  userId: string,
+  currentPassword: string,
+  nextPassword: string,
+): Promise<void> {
+  const user = await loadActiveUser({ id: userId });
+  if (!user) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+  const ok = await verifyPassword(currentPassword, user.passwordHash);
+  if (!ok) {
+    throw new AppError('VALIDATION_ERROR', 400, 'Furaha hadda waa khalad');
+  }
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash: await hashPassword(nextPassword) },
+    }),
+    prisma.refreshToken.updateMany({
+      where: { userId: user.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    }),
+  ]);
+}
+
 export async function refreshSession(rawToken: string): Promise<IssuedSession> {
   const tokenHash = hashRefreshToken(rawToken);
   const existing = await prisma.refreshToken.findUnique({ where: { tokenHash } });

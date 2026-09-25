@@ -12,6 +12,7 @@ import { logger } from './lib/logger';
 import { apiRateLimiter } from './middleware/rateLimit';
 import { healthRouter } from './routes/health.routes';
 import { authRouter } from './routes/auth.routes';
+import { dashboardRouter } from './routes/dashboard.routes';
 import { publicRouter } from './routes/public.routes';
 import { usersRouter, rolesRouter, permissionsRouter } from './routes/user.routes';
 import { projectsRouter } from './routes/project.routes';
@@ -69,6 +70,7 @@ export function createApp(): Express {
   // Feature routers mount under /api/v1.
   app.use('/api/v1/public', publicRouter);
   app.use('/api/v1/auth', authRouter);
+  app.use('/api/v1/dashboard', dashboardRouter);
   app.use('/api/v1/users', usersRouter);
   app.use('/api/v1/roles', rolesRouter);
   app.use('/api/v1/permissions', permissionsRouter);

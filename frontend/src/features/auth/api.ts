@@ -39,6 +39,41 @@ export function confirmTwoFactorSetup(
   });
 }
 
+export function disableTwoFactor(
+  input: ConfirmTwoFactorInput,
+): Promise<{ user: AuthUser }> {
+  return apiFetch<{ user: AuthUser }>('/auth/2fa/disable', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function regenerateBackupCodes(
+  input: ConfirmTwoFactorInput,
+): Promise<{ backupCodes: string[] }> {
+  return apiFetch<{ backupCodes: string[] }>('/auth/2fa/backup-codes', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateOwnProfile(input: { name: string }): Promise<{ user: AuthUser }> {
+  return apiFetch<{ user: AuthUser }>('/auth/profile', {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export function changeOwnPassword(input: {
+  currentPassword: string;
+  password: string;
+}): Promise<{ ok: boolean }> {
+  return apiFetch<{ ok: boolean }>('/auth/password', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
 export function forgotPassword(input: ForgotPasswordInput): Promise<{ ok: boolean }> {
   return apiFetch<{ ok: boolean }>('/auth/forgot-password', {
     method: 'POST',

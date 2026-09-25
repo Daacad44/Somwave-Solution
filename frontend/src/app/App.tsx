@@ -113,6 +113,9 @@ const AuditPage = lazy(() =>
 const NotificationsPage = lazy(() =>
   import('../features/ops/NotificationsPage').then((m) => ({ default: m.NotificationsPage })),
 );
+const ProfilePage = lazy(() =>
+  import('../features/profile/ProfilePage').then((m) => ({ default: m.ProfilePage })),
+);
 
 function LazyPage({ children }: { children: ReactNode }): ReactNode {
   return <Suspense fallback={<LoadingState rows={6} />}>{children}</Suspense>;
@@ -145,6 +148,14 @@ export function App(): ReactNode {
             element={
               <LazyPage>
                 <TwoFactorSetupPage />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <LazyPage>
+                <ProfilePage />
               </LazyPage>
             }
           />

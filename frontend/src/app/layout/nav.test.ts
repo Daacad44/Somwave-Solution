@@ -46,6 +46,7 @@ describe('visibleNavGroups', () => {
       '/invoices',
       '/documents',
     ]);
+    expect(paths('Operations', groups)).toEqual([]);
   });
 
   it('hides portal project links when portal.read is present but clientId is missing', () => {
@@ -57,17 +58,18 @@ describe('visibleNavGroups', () => {
     expect(paths('Portal', visibleNavGroups(client))).toEqual(['/tickets', '/invoices']);
   });
 
-  it('shows Content only for content permissions', () => {
+  it('shows Website only for content permissions', () => {
     const editor = user({
       roles: [ROLES.EDITOR],
       permissions: [PERMISSIONS.CONTENT_READ, PERMISSIONS.CONTENT_UPDATE],
     });
     const groups = visibleNavGroups(editor);
-    expect(groups.map((group) => group.heading)).toEqual(['Content']);
-    expect(paths('Content', groups)).toContain('/cms/services');
+    expect(groups.map((group) => group.heading)).toEqual(['Website']);
+    expect(paths('Website', groups)).toContain('/cms/services');
+    expect(paths('Operations', groups)).toEqual([]);
   });
 
-  it('shows Delivery modules a staff member can actually open', () => {
+  it('shows Operations modules a staff member can actually open', () => {
     const staff = user({
       permissions: [
         PERMISSIONS.PROJECTS_READ,
@@ -79,8 +81,8 @@ describe('visibleNavGroups', () => {
       ],
     });
     const groups = visibleNavGroups(staff);
-    expect(groups.map((group) => group.heading)).toEqual(['Delivery']);
-    expect(paths('Delivery', groups)).toEqual([
+    expect(groups.map((group) => group.heading)).toEqual(['Operations']);
+    expect(paths('Operations', groups)).toEqual([
       '/projects',
       '/tasks',
       '/milestones',
@@ -100,8 +102,16 @@ describe('visibleNavGroups', () => {
       ],
     });
     const groups = visibleNavGroups(manager);
-    expect(paths('Delivery', groups)).toEqual(['/projects', '/tickets']);
-    expect(paths('Money', groups)).toEqual(['/invoices']);
+    expect(paths('Operations', groups)).toEqual(['/projects', '/tickets', '/invoices']);
     expect(paths('Portal', groups)).toEqual([]);
+  });
+
+  it('never exposes a standalone Security item', () => {
+    const admin = user({
+      roles: [ROLES.SUPER_ADMIN],
+      permissions: [PERMISSIONS.PROJECTS_READ, PERMISSIONS.CONTENT_READ],
+    });
+    const items = visibleNavGroups(admin).flatMap((group) => group.items);
+    expect(items.some((item) => item.to.includes('2fa') || item.label === 'Security')).toBe(false);
   });
 });

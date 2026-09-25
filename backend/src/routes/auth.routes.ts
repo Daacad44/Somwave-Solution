@@ -1,9 +1,13 @@
 import { Router } from 'express';
 import {
+  changeOwnPasswordSchema,
   confirmTwoFactorSchema,
+  disableTwoFactorSchema,
   forgotPasswordSchema,
   loginSchema,
+  regenerateBackupCodesSchema,
   resetPasswordSchema,
+  updateOwnProfileSchema,
   verifyTwoFactorSchema,
 } from '@somwave/shared';
 import { validate } from '../middleware/validate';
@@ -38,4 +42,28 @@ authRouter.post(
   requireAuth,
   validate(confirmTwoFactorSchema),
   authController.confirmTwoFactor,
+);
+authRouter.post(
+  '/2fa/disable',
+  requireAuth,
+  validate(disableTwoFactorSchema),
+  authController.disableTwoFactor,
+);
+authRouter.post(
+  '/2fa/backup-codes',
+  requireAuth,
+  validate(regenerateBackupCodesSchema),
+  authController.regenerateBackupCodes,
+);
+authRouter.patch(
+  '/profile',
+  requireAuth,
+  validate(updateOwnProfileSchema),
+  authController.updateProfile,
+);
+authRouter.post(
+  '/password',
+  requireAuth,
+  validate(changeOwnPasswordSchema),
+  authController.changePassword,
 );

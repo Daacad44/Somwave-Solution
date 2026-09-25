@@ -36,4 +36,5 @@ export * from './schemas/document';
 export * from './schemas/media';
 export * from './schemas/audit';
 export * from './schemas/notification';
+export * from './schemas/dashboard';
 export * from './types/paymentGateway';

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   Bell,
@@ -19,13 +19,16 @@ import {
   KeyRound,
   LayoutGrid,
   ListTodo,
+  LogOut,
   Mail,
   Menu,
   MessageSquare,
   Receipt,
-  Search,
+  Settings,
   Shield,
+  UserRound,
   Users,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 import { PERMISSIONS } from '@somwave/shared';
@@ -33,6 +36,7 @@ import { useCurrentUser, useLogout } from '../../features/auth/hooks';
 import { hasPermission } from '../../lib/rbac';
 import { cn } from '../../lib/cn';
 import { BrandLogo } from '../../components/brand/BrandLogo';
+import { formatRoleName, initials } from '../../lib/name';
 import { visibleNavGroups } from './nav';
 
 const ICONS: Record<string, LucideIcon> = {
@@ -66,35 +70,24 @@ const ICONS: Record<string, LucideIcon> = {
   '/notifications': Bell,
 };
 
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  return (
-    parts
-      .slice(0, 2)
-      .map((part) => part.charAt(0).toUpperCase())
-      .join('') || 'SA'
-  );
+export function headerRole(roles: readonly string[]): string {
+  if (roles.includes('SUPER_ADMIN')) return 'Administrator';
+  if (roles[0]) return formatRoleName(roles[0]);
+  return 'Administrator';
 }
 
-function headerRole(roles: readonly string[]): string {
-  if (roles.includes('SUPER_ADMIN')) return 'Administrator';
-  if (roles[0]) {
-    return roles[0]
-      .split('_')
-      .filter(Boolean)
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-      .join(' ');
-  }
-  return 'Administrator';
+function isDesktop(): boolean {
+  return window.matchMedia('(min-width: 1024px)').matches;
 }
 
 export function AppShell(): ReactNode {
   const { data: user } = useCurrentUser();
   const logout = useLogout();
   const navigate = useNavigate();
-  const [open, setOpen] = useState(() => window.matchMedia('(min-width: 1024px)').matches);
+  const [open, setOpen] = useState(isDesktop);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
 
   useEffect(() => {
     const onPointer = (event: MouseEvent): void => {
@@ -104,13 +97,40 @@ export function AppShell(): ReactNode {
     return () => document.removeEventListener('mousedown', onPointer);
   }, []);
 
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false);
+        if (!isDesktop()) setOpen(false);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+
+  useEffect(() => {
+    if (open && !isDesktop()) {
+      const previous = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = previous;
+      };
+    }
+    return undefined;
+  }, [open]);
+
   const onLogout = async (): Promise<void> => {
     await logout.mutateAsync();
     navigate('/login', { replace: true });
   };
 
   const closeDrawer = (): void => {
-    if (window.matchMedia('(max-width: 1023px)').matches) setOpen(false);
+    if (!isDesktop()) setOpen(false);
+  };
+
+  const go = (to: string): void => {
+    setMenuOpen(false);
+    navigate(to);
   };
 
   const linkClass = ({ isActive }: { isActive: boolean }): string =>
@@ -121,7 +141,7 @@ export function AppShell(): ReactNode {
     );
 
   return (
-    <div className="flex min-h-screen bg-canvas">
+    <div className="flex min-h-screen overflow-x-hidden bg-canvas">
       {open ? (
         <button
           type="button"
@@ -133,24 +153,33 @@ export function AppShell(): ReactNode {
       <aside
         id="app-nav"
         className={cn(
-          'fixed bottom-0 start-0 top-16 z-40 w-[272px] shrink-0 flex-col bg-sidebar text-surface print:hidden lg:sticky lg:top-0 lg:h-screen',
-          open ? 'flex' : 'hidden',
+          'fixed inset-y-0 start-0 z-40 flex h-dvh w-[min(20rem,100%)] max-w-full flex-col overflow-x-hidden bg-sidebar text-surface transition-transform duration-200 ease-out print:hidden',
+          'lg:sticky lg:top-0 lg:z-0 lg:h-screen lg:w-[272px] lg:max-w-none lg:translate-x-0',
+          open ? 'translate-x-0' : '-translate-x-full rtl:translate-x-full lg:hidden',
         )}
+        aria-labelledby={titleId}
       >
-        <div className="flex items-center px-4 py-4">
-          <BrandLogo className="w-[200px]" />
+        <div className="flex items-center justify-between gap-2 px-4 py-4">
+          <BrandLogo className="w-[168px] lg:w-[200px]" />
+          <button
+            type="button"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-surface hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand lg:hidden"
+            aria-label="Close navigation"
+            onClick={() => setOpen(false)}
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
         </div>
         <nav
-          className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 pb-4"
+          className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden px-3 pb-4"
           aria-label="Navigation"
         >
+          <p id={titleId} className="sr-only">
+            Somwave navigation
+          </p>
           <NavLink to="/" end className={linkClass} onClick={closeDrawer}>
             <Home className="h-[18px] w-[18px]" aria-hidden="true" />
             Home
-          </NavLink>
-          <NavLink to="/settings/2fa" className={linkClass} onClick={closeDrawer}>
-            <Shield className="h-[18px] w-[18px]" aria-hidden="true" />
-            Security
           </NavLink>
           {visibleNavGroups(user).map((group) => (
             <div key={group.heading} className="mt-5">
@@ -176,9 +205,9 @@ export function AppShell(): ReactNode {
             </div>
           ))}
         </nav>
-        <div className="p-3">
+        <div className="shrink-0 p-3">
           <div className="rounded-lg bg-white/5 px-3 py-3">
-            <BrandLogo className="w-[168px]" />
+            <BrandLogo className="w-[148px]" />
             <p className="mt-2 text-xs leading-5 text-sidebar-muted">
               Building a brighter tomorrow with technology.
             </p>
@@ -198,21 +227,7 @@ export function AppShell(): ReactNode {
           >
             <Menu className="h-5 w-5" aria-hidden="true" />
           </button>
-          <label className="relative hidden min-w-0 flex-1 sm:block sm:max-w-md">
-            <span className="sr-only">Search</span>
-            <Search
-              className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
-              aria-hidden="true"
-            />
-            <input
-              type="search"
-              placeholder="Search anything..."
-              className="h-11 w-full rounded-lg border border-border bg-canvas ps-10 pe-16 text-sm text-ink placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            />
-            <kbd className="pointer-events-none absolute end-2 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded-md border border-border bg-surface px-1.5 py-0.5 text-[11px] font-medium text-muted md:inline-flex">
-              ⌘ K
-            </kbd>
-          </label>
+          <div className="min-w-0 flex-1" />
           <div className="ms-auto flex items-center gap-2">
             {hasPermission(user, PERMISSIONS.NOTIFICATIONS_READ) ? (
               <NavLink
@@ -245,15 +260,43 @@ export function AppShell(): ReactNode {
               {menuOpen ? (
                 <div
                   role="menu"
-                  className="absolute end-0 top-12 z-20 min-w-40 rounded-lg border border-border bg-surface p-1 shadow-md"
+                  className="absolute end-0 top-12 z-20 min-w-52 rounded-lg border border-border bg-surface p-1 shadow-md"
                 >
                   <button
                     type="button"
                     role="menuitem"
-                    className="flex min-h-11 w-full items-center rounded-md px-3 text-sm text-ink hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    className="flex min-h-11 w-full items-center gap-2 rounded-md px-3 text-sm text-ink hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    onClick={() => go('/profile')}
+                  >
+                    <UserRound className="h-4 w-4 text-muted" aria-hidden="true" />
+                    Profile
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="flex min-h-11 w-full items-center gap-2 rounded-md px-3 text-sm text-ink hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    onClick={() => go('/profile?tab=account')}
+                  >
+                    <Settings className="h-4 w-4 text-muted" aria-hidden="true" />
+                    Account settings
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="flex min-h-11 w-full items-center gap-2 rounded-md px-3 text-sm text-ink hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    onClick={() => go('/profile?tab=security')}
+                  >
+                    <Shield className="h-4 w-4 text-muted" aria-hidden="true" />
+                    Security
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="flex min-h-11 w-full items-center gap-2 rounded-md px-3 text-sm text-ink hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                     disabled={logout.isPending}
                     onClick={onLogout}
                   >
+                    <LogOut className="h-4 w-4 text-muted" aria-hidden="true" />
                     {logout.isPending ? 'Signing out…' : 'Sign out'}
                   </button>
                 </div>

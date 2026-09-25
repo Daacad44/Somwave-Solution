@@ -1,9 +1,13 @@
 import type { NextFunction, Request, Response } from 'express';
 import type {
+  ChangeOwnPasswordInput,
   ConfirmTwoFactorInput,
+  DisableTwoFactorInput,
   ForgotPasswordInput,
   LoginInput,
+  RegenerateBackupCodesInput,
   ResetPasswordInput,
+  UpdateOwnProfileInput,
   VerifyTwoFactorInput,
 } from '@somwave/shared';
 import { AppError, sendData } from '../lib/http';
@@ -118,6 +122,68 @@ export async function resetPassword(
   try {
     const { token, password } = req.body as ResetPasswordInput;
     await authService.resetPassword(token, password);
+    sendData(res, { ok: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function disableTwoFactor(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const userId = req.authUser?.id;
+    if (!userId) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+    const { code } = req.body as DisableTwoFactorInput;
+    sendData(res, { user: await authService.disableTwoFactor(userId, code) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function regenerateBackupCodes(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const userId = req.authUser?.id;
+    if (!userId) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+    const { code } = req.body as RegenerateBackupCodesInput;
+    sendData(res, await authService.regenerateBackupCodes(userId, code));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateProfile(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const userId = req.authUser?.id;
+    if (!userId) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+    const { name } = req.body as UpdateOwnProfileInput;
+    sendData(res, { user: await authService.updateOwnProfile(userId, name) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function changePassword(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const userId = req.authUser?.id;
+    if (!userId) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+    const { currentPassword, password } = req.body as ChangeOwnPasswordInput;
+    await authService.changeOwnPassword(userId, currentPassword, password);
+    clearAuthCookies(res);
     sendData(res, { ok: true });
   } catch (err) {
     next(err);
