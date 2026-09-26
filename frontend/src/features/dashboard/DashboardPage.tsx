@@ -555,8 +555,8 @@ export function DashboardPage(): ReactNode {
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">{kpis}</ul>
       ) : (
         <EmptyState
-          title="Wax xog ah lama hayo."
-          description="No metrics are available for your role."
+          title="No metrics yet"
+          description="Metrics appear here once your role can read projects, tasks, clients, or invoices."
         />
       )}
 

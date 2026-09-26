@@ -1,0 +1,110 @@
+---
+import PageLayout from '../../../layouts/PageLayout.astro';
+import ProductPreview from '../../../components/home/ProductPreview.astro';
+import { homeProjects } from '../../../lib/homeContent';
+
+export function getStaticPaths() {
+  return homeProjects.map((project) => ({
+    params: { slug: project.slug },
+    props: { project },
+  }));
+}
+
+const { project } = Astro.props;
+const related = homeProjects.filter((item) => item.slug !== project.slug);
+---
+
+<PageLayout title={`${project.title} — Somwave`} description={project.description}>
+  <article class="mx-auto max-w-site px-4 py-16 sm:px-6">
+    <nav class="text-sm text-muted" aria-label="Breadcrumb">
+      <a href="/" class="font-semibold text-brand">Home</a>
+      <span aria-hidden="true"> / </span>
+      <a href="/#shaqooyinkayaga" class="font-semibold text-brand">Shaqooyinkayaga</a>
+      <span aria-hidden="true"> / </span>
+      <span>{project.title}</span>
+    </nav>
+
+    <header class="mt-8 grid items-center gap-8 lg:grid-cols-2">
+      <div>
+        <p class="text-sm font-semibold text-brand">{project.category}</p>
+        <h1 class="mt-2 text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">{project.title}</h1>
+        <p class="mt-4 text-lg leading-relaxed text-muted">{project.description}</p>
+        <p class="mt-3 text-sm text-muted">
+          Tusaale shaqo oo muujinaya nooca nidaamka Somwave dhisayso. Ma aha macmiil la magacaabay.
+        </p>
+        <a
+          href="/nala-soo-xiriir"
+          class="mt-6 inline-flex h-12 items-center rounded-md bg-brand px-6 text-sm font-semibold text-surface hover:bg-brand-600"
+        >
+          Nala soo xiriir
+        </a>
+      </div>
+      <div class="overflow-hidden rounded-lg border border-border shadow-md">
+        <div class="aspect-[16/10]">
+          <ProductPreview scene={project.scene} label={project.title} />
+        </div>
+      </div>
+    </header>
+
+    <section class="mt-14">
+      <h2 class="text-2xl font-bold text-ink">Waxyaabaha muhiimka ah</h2>
+      <ul class="mt-4 grid gap-3 sm:grid-cols-2">
+        {
+          project.highlights.map((item) => (
+            <li class="rounded-lg border border-border bg-surface px-4 py-3 text-sm font-semibold text-ink">
+              {item}
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <section class="mt-12">
+      <h2 class="text-2xl font-bold text-ink">Astaamaha</h2>
+      <ul class="mt-4 list-disc space-y-2 ps-5 text-base leading-relaxed text-ink">
+        {project.features.map((item) => <li>{item}</li>)}
+      </ul>
+    </section>
+
+    <section class="mt-12">
+      <h2 class="text-2xl font-bold text-ink">Muuqaalka nidaamka</h2>
+      <div class="mt-4 overflow-hidden rounded-lg border border-border">
+        <div class="aspect-[16/9]">
+          <ProductPreview scene={project.scene} label={`${project.title} preview`} />
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-12">
+      <h2 class="text-2xl font-bold text-ink">Tiknoolojiyadda</h2>
+      <ul class="mt-4 flex flex-wrap gap-2">
+        {
+          project.technologies.map((item) => (
+            <li class="rounded-full border border-border px-3 py-1 text-sm font-semibold text-ink">
+              {item}
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <section class="mt-14">
+      <h2 class="text-2xl font-bold text-ink">Shaqooyin la mid ah</h2>
+      <ul class="mt-4 grid gap-4 sm:grid-cols-3">
+        {
+          related.map((item) => (
+            <li>
+              <a
+                href={`/shaqooyinka/tusaale/${item.slug}`}
+                class="block rounded-lg border border-border p-4 hover:border-brand"
+              >
+                <p class="font-semibold text-ink">{item.title}</p>
+                <p class="mt-1 text-sm text-brand">{item.category}</p>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+  </article>
+</PageLayout>

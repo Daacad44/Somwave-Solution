@@ -81,14 +81,9 @@ describe('visibleNavGroups', () => {
       ],
     });
     const groups = visibleNavGroups(staff);
-    expect(groups.map((group) => group.heading)).toEqual(['Operations']);
-    expect(paths('Operations', groups)).toEqual([
-      '/projects',
-      '/tasks',
-      '/milestones',
-      '/timesheets',
-      '/tickets',
-    ]);
+    expect(groups.map((group) => group.heading)).toEqual(['Operations', 'Project management']);
+    expect(paths('Operations', groups)).toEqual(['/projects', '/tasks', '/tickets']);
+    expect(paths('Project management', groups)).toEqual(['/milestones', '/timesheets']);
   });
 
   it('does not duplicate invoices on Portal when the user already has Operations', () => {
@@ -102,7 +97,8 @@ describe('visibleNavGroups', () => {
       ],
     });
     const groups = visibleNavGroups(manager);
-    expect(paths('Operations', groups)).toEqual(['/projects', '/tickets', '/invoices']);
+    expect(paths('Operations', groups)).toEqual(['/projects', '/tickets']);
+    expect(paths('Finance', groups)).toEqual(['/invoices']);
     expect(paths('Portal', groups)).toEqual([]);
   });
 
