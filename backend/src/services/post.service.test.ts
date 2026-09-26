@@ -145,6 +145,18 @@ describe('createPost', () => {
     expect(arg.data.authorName).toBeNull();
   });
 
+  it('uses the signed-in user name when the author field is blank', async () => {
+    vi.mocked(prisma.post.findUnique).mockResolvedValue(null as never);
+    vi.mocked(prisma.post.create).mockResolvedValue(adminRow as never);
+
+    await createPost({ ...createInput, authorName: '' }, 'Super Admin');
+
+    const arg = vi.mocked(prisma.post.create).mock.calls[0]?.[0] as {
+      data: { authorName: string | null };
+    };
+    expect(arg.data.authorName).toBe('Super Admin');
+  });
+
   it('sets publishedAt when created as published', async () => {
     vi.mocked(prisma.post.findUnique).mockResolvedValue(null as never);
     vi.mocked(prisma.post.create).mockResolvedValue(adminRow as never);
