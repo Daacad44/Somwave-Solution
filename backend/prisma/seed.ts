@@ -203,12 +203,14 @@ async function main(): Promise<void> {
       title: 'Sida loo doorto shirkad website oo ku habboon',
       excerpt: 'Afar shay oo aad fiirsato kahor intaadan dooran shirkad kuu dhista website.',
       body: 'Marka aad doorato shirkad website, fiiri khibradda, tayada naqshadda, taageerada kadib, iyo qiimaha cad. Shirkad wanaagsan waxay ku caawisaa inaad online si guul leh ugu koraan.',
+      authorName: 'Somwave',
     },
     {
       slug: 'muhiimadda-nidaamyada-gudaha',
       title: 'Muhiimadda nidaamyada gudaha ee ganacsiga',
       excerpt: 'Sababta ganacsigaagu uga baxo Excel iyo WhatsApp una gudbo nidaam buuxa.',
       body: 'Nidaamyada gudaha waxay hal meel isugu keenaan mashruucyada, shaqaalaha, iyo maaliyadda — taasoo yareysa khaladaadka oo kordhisa hufnaanta.',
+      authorName: 'Somwave',
     },
   ];
   for (const post of posts) {

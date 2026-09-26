@@ -14,6 +14,7 @@ export const publicPostSummarySchema = z.object({
   title: z.string(),
   excerpt: z.string(),
   coverImage: z.string().nullable(),
+  authorName: z.string().nullable(),
   publishedAt: z.string().nullable(), // ISO 8601
   category: publicCategorySchema.nullable(),
 });
@@ -44,6 +45,7 @@ export const adminPostSchema = z.object({
   excerpt: z.string(),
   body: z.string(),
   coverImage: z.string().nullable(),
+  authorName: z.string().nullable(),
   isPublished: z.boolean(),
   publishedAt: z.string().nullable(), // ISO 8601
   categoryId: z.string().nullable(),
@@ -64,6 +66,8 @@ export const createPostSchema = z.object({
   excerpt: z.string().trim().min(1, 'Kooban waa waajib').max(500),
   body: z.string().trim().min(1, 'Qoraalka waa waajib'),
   coverImage: z.string().url('Fadlan geli link sax ah').optional(),
+  // Blank is allowed — the CMS treats it as “no author”.
+  authorName: z.string().trim().max(120, 'Magaca qoraaga aad buu u dheer yahay').optional(),
   categoryId: z.string().optional(),
   isPublished: z.boolean().default(false),
 });
@@ -83,6 +87,12 @@ export const updatePostSchema = z
     excerpt: z.string().trim().min(1).max(500).optional(),
     body: z.string().trim().min(1).optional(),
     coverImage: z.string().url('Fadlan geli link sax ah').nullable().optional(),
+    authorName: z
+      .string()
+      .trim()
+      .max(120, 'Magaca qoraaga aad buu u dheer yahay')
+      .nullable()
+      .optional(),
     categoryId: z.string().nullable().optional(),
     isPublished: z.boolean().optional(),
   })

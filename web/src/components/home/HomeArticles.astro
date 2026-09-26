@@ -1,13 +1,21 @@
 ---
-import { homeArticles } from '../../lib/homeContent';
-import SceneCover from './SceneCover.astro';
+import { fetchLatestPosts } from '../../lib/api';
 import HomeIcon from './HomeIcon.astro';
+import type { PublicPostSummary } from '@somwave/shared';
+
+let posts: PublicPostSummary[] = [];
+let failed = false;
+try {
+  posts = await fetchLatestPosts();
+} catch {
+  failed = true;
+}
 
 function dateLabel(iso: string): string {
   return new Intl.DateTimeFormat('so', {
     dateStyle: 'long',
     timeZone: 'Africa/Mogadishu',
-  }).format(new Date(`${iso}T00:00:00Z`));
+  }).format(new Date(iso));
 }
 ---
 
@@ -31,33 +39,70 @@ function dateLabel(iso: string): string {
       </a>
     </div>
 
-    <div class="mt-10 grid gap-5 md:grid-cols-3">
-      {
-        homeArticles.map((item) => (
-          <article class="flex flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-sm transition-shadow hover:shadow-md">
-            <div class="aspect-[16/9] overflow-hidden">
-              <SceneCover scene={item.scene} label={item.title} />
-            </div>
-            <div class="flex flex-1 flex-col p-5">
-              <h3 class="text-lg font-semibold text-ink">
-                <a href={item.href} class="hover:text-brand">
-                  {item.title}
+    {
+      failed ? (
+        <p class="mt-10 rounded-lg border border-border bg-surface-alt p-6 text-muted">
+          Cilad ayaa dhacday markii maqaallada la soo raadinayay. Fadlan mar kale isku day.
+        </p>
+      ) : posts.length === 0 ? (
+        <p class="mt-10 rounded-lg border border-border bg-surface-alt p-6 text-muted">
+          Weli maqaallo lama daabicin.
+        </p>
+      ) : (
+        <div class="mt-10 grid gap-5 md:grid-cols-3">
+          {posts.map((item) => (
+            <article class="flex flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-sm transition-shadow hover:shadow-md">
+              <div class="aspect-[16/9] overflow-hidden bg-surface-alt">
+                {
+                  item.coverImage ? (
+                    <img
+                      src={item.coverImage}
+                      alt=""
+                      width="1280"
+                      height="720"
+                      loading="lazy"
+                      decoding="async"
+                      class="block h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span class="flex h-full min-h-[168px] items-center justify-center" aria-hidden="true">
+                      <span class="h-2.5 w-2.5 rounded-full bg-accent" />
+                    </span>
+                  )
+                }
+              </div>
+              <div class="flex flex-1 flex-col p-5">
+                <div class="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-accent-600">
+                  {item.category ? <span>{item.category.name}</span> : null}
+                  {item.authorName ? (
+                    <span class="font-medium normal-case tracking-normal text-muted">{item.authorName}</span>
+                  ) : null}
+                </div>
+                <h3 class="mt-2 text-lg font-semibold text-ink">
+                  <a href={`/blog/${item.slug}`} class="hover:text-brand">
+                    {item.title}
+                  </a>
+                </h3>
+                <p class="mt-2 line-clamp-3 flex-1 text-sm leading-relaxed text-muted">{item.excerpt}</p>
+                {
+                  item.publishedAt ? (
+                    <time class="mt-2 text-xs font-medium text-muted" datetime={item.publishedAt}>
+                      {dateLabel(item.publishedAt)}
+                    </time>
+                  ) : null
+                }
+                <a
+                  href={`/blog/${item.slug}`}
+                  class="mt-4 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-brand"
+                >
+                  Wax ka akhri
+                  <HomeIcon name="arrow" class="h-4 w-4" />
                 </a>
-              </h3>
-              <time class="mt-2 text-xs font-medium text-muted" datetime={item.date}>
-                {dateLabel(item.date)}
-              </time>
-              <a
-                href={item.href}
-                class="mt-4 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-brand"
-              >
-                Wax ka akhri
-                <HomeIcon name="arrow" class="h-4 w-4" />
-              </a>
-            </div>
-          </article>
-        ))
-      }
-    </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      )
+    }
   </div>
 </section>
