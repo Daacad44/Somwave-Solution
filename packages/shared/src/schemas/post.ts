@@ -1,39 +1,12 @@
 import { z } from 'zod';
+import { isStoredArticleImageUrl } from './articleImage';
 
-const COVER_IMAGE_MESSAGE =
-  'Fadlan geli link toos ah oo sawir ah (jpg, png, webp). Linkiga raadinta Google lama aqbalo.';
-
-const IMAGE_EXTENSION = /\.(avif|gif|jpe?g|png|svg|webp)$/i;
-
-/** A file or storage URL, not a search-results page such as google.com/imgres. */
-export function isDirectCoverImageUrl(value: string): boolean {
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    return false;
-  }
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
-  const host = url.hostname.toLowerCase();
-  const path = decodeURIComponent(url.pathname).toLowerCase();
-  if (path.includes('/imgres') || path === '/search' || path.startsWith('/search/')) return false;
-  const googleSearch =
-    (host === 'google.com' || host.endsWith('.google.com')) &&
-    !host.endsWith('.googleusercontent.com');
-  if (googleSearch) return false;
-  if ((host === 'bing.com' || host.endsWith('.bing.com')) && path.includes('/images')) {
-    return false;
-  }
-  if (IMAGE_EXTENSION.test(path)) return true;
-  if (host.endsWith('.googleusercontent.com')) return true;
-  if (path.includes('/media/') || path.includes('/uploads/')) return true;
-  return false;
-}
+const COVER_IMAGE_MESSAGE = 'Fadlan soo geli sawir JPG, PNG ama WEBP ah.';
 
 const coverImageInput = z
   .string()
   .trim()
-  .refine((value) => value === '' || isDirectCoverImageUrl(value), COVER_IMAGE_MESSAGE);
+  .refine((value) => value === '' || isStoredArticleImageUrl(value), COVER_IMAGE_MESSAGE);
 
 export const publicCategorySchema = z.object({
   slug: z.string(),
@@ -121,7 +94,9 @@ export const updatePostSchema = z
     title: z.string().trim().min(1).max(200).optional(),
     excerpt: z.string().trim().min(1).max(500).optional(),
     body: z.string().trim().min(1).optional(),
-    coverImage: coverImageInput.nullable().optional(),
+    // Updates may keep an image already stored on the row. New images must be
+    // an uploaded article-image URL; the service rejects pasted external links.
+    coverImage: z.string().trim().max(2000).nullable().optional(),
     authorName: z
       .string()
       .trim()

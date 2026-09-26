@@ -16,6 +16,7 @@ import type {
   UpdateTeamMemberInput,
   CreateFaqInput,
   UpdateFaqInput,
+  UploadArticleImageInput,
 } from '@somwave/shared';
 import { AppError, sendData } from '../lib/http';
 import * as serviceService from '../services/service.service';
@@ -26,6 +27,7 @@ import * as testimonialService from '../services/testimonial.service';
 import * as teamService from '../services/team.service';
 import * as faqService from '../services/faq.service';
 import * as subscriberService from '../services/subscriber.service';
+import * as articleImageService from '../services/articleImage.service';
 
 export async function listServices(
   _req: Request,
@@ -99,6 +101,33 @@ export async function listCategories(
 ): Promise<void> {
   try {
     sendData(res, await postService.listCategories());
+  } catch (err) {
+    next(err);
+  }
+}
+
+function articleImageUrl(req: Request): (id: string) => string {
+  const forwardedProto = req.get('x-forwarded-proto');
+  const proto = (forwardedProto ?? req.protocol).split(',')[0]?.trim() || 'https';
+  const forwardedHost = req.get('x-forwarded-host');
+  const host = (forwardedHost ?? req.get('host') ?? '').split(',')[0]?.trim();
+  return (id: string) => `${proto}://${host}/api/v1/public/article-images/${id}`;
+}
+
+export async function uploadArticleImage(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const actorId = req.authUser?.id;
+    if (!actorId) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+    const image = await articleImageService.uploadArticleImage(
+      req.body as UploadArticleImageInput,
+      actorId,
+      articleImageUrl(req),
+    );
+    sendData(res, image, 201);
   } catch (err) {
     next(err);
   }

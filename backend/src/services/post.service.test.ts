@@ -169,6 +169,14 @@ describe('createPost', () => {
     expect(arg.data.publishedAt).toBeInstanceOf(Date);
   });
 
+  it('rejects a pasted image URL', async () => {
+    vi.mocked(prisma.post.findUnique).mockResolvedValue(null as never);
+    await expect(
+      createPost({ ...createInput, coverImage: 'https://cdn.example.com/a.jpg' }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+    expect(prisma.post.create).not.toHaveBeenCalled();
+  });
+
   it('rejects a duplicate slug with CONFLICT', async () => {
     vi.mocked(prisma.post.findUnique).mockResolvedValue({ id: 'existing' } as never);
 

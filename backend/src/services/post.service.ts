@@ -13,6 +13,7 @@ import { MAX_PAGE_SIZE } from '@somwave/shared';
 import { prisma } from '../lib/prisma';
 import { redis } from '../lib/redis';
 import { AppError } from '../lib/http';
+import { releaseArticleImageUrl, resolveArticleCover } from './articleImage.service';
 
 const CACHE_TTL_SECONDS = 300;
 const CACHE_PREFIX = 'public:posts:';
@@ -59,12 +60,6 @@ const publicPostSelect = {
 
 /** Blank CMS input is stored as null so public pages omit the byline. */
 function authorOrNull(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const trimmed = value.trim();
-  return trimmed === '' ? null : trimmed;
-}
-
-function coverOrNull(value: string | null | undefined): string | null {
   if (!value) return null;
   const trimmed = value.trim();
   return trimmed === '' ? null : trimmed;
@@ -212,6 +207,7 @@ export async function createPost(
   const existing = await prisma.post.findUnique({ where: { slug: input.slug } });
   if (existing) throw new AppError('CONFLICT', 409, 'Slug-kan horey ayaa loo isticmaalay');
   await assertCategoryExists(input.categoryId);
+  const coverImage = await resolveArticleCover(input.coverImage);
 
   const row = await prisma.post.create({
     data: {
@@ -219,7 +215,7 @@ export async function createPost(
       title: input.title,
       excerpt: input.excerpt,
       body: input.body,
-      coverImage: coverOrNull(input.coverImage),
+      coverImage,
       authorName: authorOrNull(input.authorName) ?? authorOrNull(actorName),
       categoryId: categoryOrNull(input.categoryId),
       isPublished: input.isPublished,
@@ -240,6 +236,10 @@ export async function updatePost(id: string, input: UpdatePostInput): Promise<Ad
     if (clash) throw new AppError('CONFLICT', 409, 'Slug-kan horey ayaa loo isticmaalay');
   }
   if (input.categoryId) await assertCategoryExists(input.categoryId);
+  const nextCover =
+    input.coverImage !== undefined
+      ? await resolveArticleCover(input.coverImage, post.coverImage)
+      : undefined;
 
   // Stamp publishedAt the first time a post is published.
   const publishing = input.isPublished === true && !post.isPublished;
@@ -251,7 +251,7 @@ export async function updatePost(id: string, input: UpdatePostInput): Promise<Ad
       ...(input.title !== undefined ? { title: input.title } : {}),
       ...(input.excerpt !== undefined ? { excerpt: input.excerpt } : {}),
       ...(input.body !== undefined ? { body: input.body } : {}),
-      ...(input.coverImage !== undefined ? { coverImage: coverOrNull(input.coverImage) } : {}),
+      ...(nextCover !== undefined ? { coverImage: nextCover } : {}),
       ...(input.authorName !== undefined ? { authorName: authorOrNull(input.authorName) } : {}),
       ...(input.categoryId !== undefined ? { categoryId: categoryOrNull(input.categoryId) } : {}),
       ...(input.isPublished !== undefined ? { isPublished: input.isPublished } : {}),
@@ -260,6 +260,9 @@ export async function updatePost(id: string, input: UpdatePostInput): Promise<Ad
     select: adminPostSelect,
   });
   await invalidateCache();
+  if (nextCover !== undefined && nextCover !== post.coverImage) {
+    await releaseArticleImageUrl(post.coverImage);
+  }
   return toAdminPost(row);
 }
 
@@ -268,6 +271,7 @@ export async function deletePost(id: string): Promise<void> {
   if (!post) throw new AppError('NOT_FOUND', 404, 'Maqaalkan lama helin');
   await prisma.post.delete({ where: { id } });
   await invalidateCache();
+  await releaseArticleImageUrl(post.coverImage);
 }
 
 // The public list is cached per page/size, so clear the whole keyspace on a write.

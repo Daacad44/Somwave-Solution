@@ -6,6 +6,7 @@ import { listPublishedServices, getPublishedServiceBySlug } from '../services/se
 import { createInquiry as createInquiryService } from '../services/inquiry.service';
 import { listPublishedPortfolio, getPortfolioBySlug } from '../services/portfolio.service';
 import { listPublishedPosts, getPostBySlug } from '../services/post.service';
+import { readPublicArticleImage } from '../services/articleImage.service';
 import { listPublishedOpenings, getOpeningBySlug, applyToOpening } from '../services/job.service';
 import { listPublishedTestimonials } from '../services/testimonial.service';
 import { listPublishedTeam } from '../services/team.service';
@@ -85,6 +86,24 @@ export async function getPost(req: Request, res: Response, next: NextFunction): 
     const post = slug ? await getPostBySlug(slug) : null;
     if (!post) throw new AppError('NOT_FOUND', 404, 'Maqaalkan lama helin');
     sendData(res, post);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getArticleImage(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { id } = req.params;
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Sawirka lama helin');
+    const file = await readPublicArticleImage(id);
+    res.setHeader('Content-Type', file.mimeType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.send(file.bytes);
   } catch (err) {
     next(err);
   }

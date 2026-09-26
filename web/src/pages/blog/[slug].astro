@@ -49,11 +49,13 @@ const dateLabel = post?.publishedAt
         <p class="mt-4 text-lg leading-relaxed text-muted">{post.excerpt}</p>
 
         {post.coverImage ? (
-          <img
-            src={post.coverImage}
-            alt={post.title}
-            class="mt-8 w-full rounded-lg border border-border object-cover"
-          />
+          <div class="mt-8 aspect-video overflow-hidden rounded-lg border border-border bg-surface-alt">
+            <img
+              src={post.coverImage}
+              alt={post.title}
+              class="h-full w-full object-cover"
+            />
+          </div>
         ) : null}
 
         <div class="mt-8 whitespace-pre-line text-base leading-relaxed text-ink">{post.body}</div>

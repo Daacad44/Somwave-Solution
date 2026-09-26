@@ -132,6 +132,78 @@ export function apiDownload(path: string, fileName: string): Promise<void> {
   return download(path, fileName, false);
 }
 
+function uploadOnce<T>(
+  path: string,
+  payload: unknown,
+  onProgress: ((percent: number) => void) | undefined,
+  signal: AbortSignal | undefined,
+  alreadyRetried: boolean,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${import.meta.env.VITE_API_URL}${path}`);
+    xhr.withCredentials = true;
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    const fail = (error: ApiError): void => reject(error);
+    const onAbort = (): void => {
+      xhr.abort();
+    };
+    signal?.addEventListener('abort', onAbort, { once: true });
+    xhr.upload.onprogress = (event) => {
+      if (!onProgress || !event.lengthComputable || event.total === 0) return;
+      onProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+    };
+    xhr.onerror = () => fail(new ApiError('INTERNAL_ERROR', 'Network error'));
+    xhr.onabort = () => fail(new ApiError('INTERNAL_ERROR', 'Soo gelinta waa la joojiyay.'));
+    xhr.onload = () => {
+      signal?.removeEventListener('abort', onAbort);
+      const body = (() => {
+        try {
+          return JSON.parse(xhr.responseText) as {
+            data?: T;
+            error?: { code?: ErrorCode; message?: string; details?: unknown };
+          };
+        } catch {
+          return null;
+        }
+      })();
+      if (xhr.status === 401 && !alreadyRetried && shouldRefresh(path, xhr.status, false)) {
+        void refreshSession().then((refreshed) => {
+          if (refreshed) {
+            resolve(uploadOnce(path, payload, onProgress, signal, true));
+            return;
+          }
+          fail(new ApiError('UNAUTHORIZED', SESSION_EXPIRED, body?.error?.details));
+        });
+        return;
+      }
+      if (xhr.status < 200 || xhr.status >= 300) {
+        const code = body?.error?.code ?? 'INTERNAL_ERROR';
+        const message = code === 'UNAUTHORIZED' ? SESSION_EXPIRED : body?.error?.message;
+        fail(new ApiError(code, message, body?.error?.details));
+        return;
+      }
+      onProgress?.(100);
+      resolve(body?.data as T);
+    };
+    if (signal?.aborted) {
+      fail(new ApiError('INTERNAL_ERROR', 'Soo gelinta waa la joojiyay.'));
+      return;
+    }
+    xhr.send(JSON.stringify(payload));
+  });
+}
+
+/** Authenticated JSON upload with progress. Still the only module that talks to the API. */
+export function apiUpload<T>(
+  path: string,
+  payload: unknown,
+  onProgress?: (percent: number) => void,
+  signal?: AbortSignal,
+): Promise<T> {
+  return uploadOnce<T>(path, payload, onProgress, signal, false);
+}
+
 // For paginated list endpoints — returns the payload together with meta.total (§10).
 export async function apiFetchPaged<T>(
   path: string,
