@@ -75,7 +75,10 @@ export function holdsPermission(
   return user.permissions.includes(permission);
 }
 
-export function permissionKeysFor(roles: readonly string[], permissions: readonly string[]): string[] {
+export function permissionKeysFor(
+  roles: readonly string[],
+  permissions: readonly string[],
+): string[] {
   if (roles.includes(ROLES.SUPER_ADMIN)) {
     return [...new Set([...Object.values(PERMISSIONS), ...permissions])];
   }
