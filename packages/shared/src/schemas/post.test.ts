@@ -62,4 +62,17 @@ describe('createPostSchema', () => {
       createPostSchema.safeParse({ slug: 'Bad', title: 'T', excerpt: 'E', body: 'B' }).success,
     ).toBe(false);
   });
+
+  it('accepts a direct image URL and a blank image, and rejects a Google results link', () => {
+    const base = { slug: 'my-post', title: 'T', excerpt: 'E', body: 'B' };
+    expect(
+      createPostSchema.safeParse({ ...base, coverImage: 'https://cdn.example.com/a.jpg' }).success,
+    ).toBe(true);
+    expect(createPostSchema.safeParse({ ...base, coverImage: '' }).success).toBe(true);
+    const google = createPostSchema.safeParse({
+      ...base,
+      coverImage: 'https://www.google.com/imgres?q=ai&imgurl=https://cdn.example.com/a.jpg',
+    });
+    expect(google.success).toBe(false);
+  });
 });

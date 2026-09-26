@@ -64,6 +64,18 @@ function authorOrNull(value: string | null | undefined): string | null {
   return trimmed === '' ? null : trimmed;
 }
 
+function coverOrNull(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  return trimmed === '' ? null : trimmed;
+}
+
+function categoryOrNull(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  return trimmed === '' ? null : trimmed;
+}
+
 export interface PostPage {
   items: PublicPostSummary[];
   total: number;
@@ -193,7 +205,10 @@ async function assertCategoryExists(categoryId: string | null | undefined): Prom
   if (!category) throw new AppError('VALIDATION_ERROR', 400, 'Qaybta lama helin');
 }
 
-export async function createPost(input: CreatePostInput): Promise<AdminPost> {
+export async function createPost(
+  input: CreatePostInput,
+  actorName?: string | null,
+): Promise<AdminPost> {
   const existing = await prisma.post.findUnique({ where: { slug: input.slug } });
   if (existing) throw new AppError('CONFLICT', 409, 'Slug-kan horey ayaa loo isticmaalay');
   await assertCategoryExists(input.categoryId);
@@ -204,9 +219,9 @@ export async function createPost(input: CreatePostInput): Promise<AdminPost> {
       title: input.title,
       excerpt: input.excerpt,
       body: input.body,
-      coverImage: input.coverImage ?? null,
-      authorName: authorOrNull(input.authorName),
-      categoryId: input.categoryId ?? null,
+      coverImage: coverOrNull(input.coverImage),
+      authorName: authorOrNull(input.authorName) ?? authorOrNull(actorName),
+      categoryId: categoryOrNull(input.categoryId),
       isPublished: input.isPublished,
       publishedAt: input.isPublished ? new Date() : null,
     },
@@ -236,9 +251,9 @@ export async function updatePost(id: string, input: UpdatePostInput): Promise<Ad
       ...(input.title !== undefined ? { title: input.title } : {}),
       ...(input.excerpt !== undefined ? { excerpt: input.excerpt } : {}),
       ...(input.body !== undefined ? { body: input.body } : {}),
-      ...(input.coverImage !== undefined ? { coverImage: input.coverImage } : {}),
+      ...(input.coverImage !== undefined ? { coverImage: coverOrNull(input.coverImage) } : {}),
       ...(input.authorName !== undefined ? { authorName: authorOrNull(input.authorName) } : {}),
-      ...(input.categoryId !== undefined ? { categoryId: input.categoryId } : {}),
+      ...(input.categoryId !== undefined ? { categoryId: categoryOrNull(input.categoryId) } : {}),
       ...(input.isPublished !== undefined ? { isPublished: input.isPublished } : {}),
       ...(publishing && !post.publishedAt ? { publishedAt: new Date() } : {}),
     },

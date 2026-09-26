@@ -106,7 +106,7 @@ export async function listCategories(
 
 export async function createPost(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const post = await postService.createPost(req.body as CreatePostInput);
+    const post = await postService.createPost(req.body as CreatePostInput, req.authUser?.name);
     sendData(res, post, 201);
   } catch (err) {
     next(err);
