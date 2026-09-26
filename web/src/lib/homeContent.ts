@@ -3,11 +3,12 @@
 // can stay prerendered and visually identical to the reference.
 
 export const trustedClients = [
-  'Hormuud Telecom',
-  'Somtel',
-  'Dahabshiil',
-  'Premier Bank',
-  'Amal Bank',
+  { name: 'Hormuud Telecom', logo: '/clients/hormuud.png', width: 321, height: 135 },
+  { name: 'Somtel', logo: '/clients/somtel.png', width: 270, height: 122 },
+  { name: 'Dahabshiil', logo: '/clients/dahabshiil.png', width: 271, height: 151 },
+  { name: 'TAAJ', logo: '/clients/taaj.png', width: 259, height: 134 },
+  { name: 'Premier Bank', logo: '/clients/premier-bank.png', width: 250, height: 158 },
+  { name: 'Amal Bank', logo: '/clients/amal-bank.png', width: 256, height: 153 },
 ] as const;
 
 export const homeServices = [
