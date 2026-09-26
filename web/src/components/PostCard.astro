@@ -7,8 +7,10 @@ interface Props {
   excerpt: string;
   publishedAt: string | null;
   category: { slug: string; name: string } | null;
+  coverImage: string | null;
+  authorName: string | null;
 }
-const { slug, title, excerpt, publishedAt, category } = Astro.props;
+const { slug, title, excerpt, publishedAt, category, coverImage, authorName } = Astro.props;
 
 const dateLabel = publishedAt
   ? new Intl.DateTimeFormat('so', {
@@ -18,15 +20,25 @@ const dateLabel = publishedAt
   : null;
 ---
 
-<article class="flex flex-col rounded-lg border border-border bg-surface p-6 shadow-sm transition-shadow hover:shadow-md">
-  <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-accent-600">
-    {category ? <span>{category.name}</span> : null}
-    {category && dateLabel ? <span class="text-border" aria-hidden="true">•</span> : null}
-    {dateLabel ? <time class="text-muted" datetime={publishedAt}>{dateLabel}</time> : null}
+<article class="flex flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-sm transition-shadow hover:shadow-md">
+  {
+    coverImage ? (
+      <div class="aspect-[16/9] overflow-hidden bg-surface-alt">
+        <img src={coverImage} alt="" loading="lazy" class="h-full w-full object-cover" />
+      </div>
+    ) : null
+  }
+  <div class="flex flex-1 flex-col p-6">
+    <div class="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-accent-600">
+      {category ? <span>{category.name}</span> : null}
+      {category && dateLabel ? <span class="text-border" aria-hidden="true">•</span> : null}
+      {dateLabel ? <time class="text-muted" datetime={publishedAt}>{dateLabel}</time> : null}
+    </div>
+    <h3 class="mt-2 text-lg font-semibold text-ink">
+      <a href={`/blog/${slug}`} class="hover:text-primary-600">{title}</a>
+    </h3>
+    {authorName ? <p class="mt-1 text-sm text-muted">{authorName}</p> : null}
+    <p class="mt-2 flex-1 text-[15px] leading-relaxed text-muted">{excerpt}</p>
+    <a href={`/blog/${slug}`} class="mt-4 inline-flex min-h-11 items-center text-sm font-semibold text-accent-600">Akhri →</a>
   </div>
-  <h3 class="mt-2 text-lg font-semibold text-ink">
-    <a href={`/blog/${slug}`} class="hover:text-primary-600">{title}</a>
-  </h3>
-  <p class="mt-2 flex-1 text-[15px] leading-relaxed text-muted">{excerpt}</p>
-  <a href={`/blog/${slug}`} class="mt-4 text-sm font-semibold text-accent-600">Akhri →</a>
 </article>

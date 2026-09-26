@@ -23,6 +23,7 @@ interface PostRow {
   title: string;
   excerpt: string;
   coverImage: string | null;
+  authorName: string | null;
   publishedAt: Date | null;
   category: { slug: string; name: string } | null;
 }
@@ -34,9 +35,33 @@ function toSummary(row: PostRow): PublicPostSummary {
     title: row.title,
     excerpt: row.excerpt,
     coverImage: row.coverImage,
+    authorName: row.authorName,
     publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
     category: row.category,
   };
+}
+
+const publishedOrder = [
+  { publishedAt: { sort: 'desc' as const, nulls: 'last' as const } },
+  { createdAt: 'desc' as const },
+];
+
+const publicPostSelect = {
+  id: true,
+  slug: true,
+  title: true,
+  excerpt: true,
+  coverImage: true,
+  authorName: true,
+  publishedAt: true,
+  category: { select: { slug: true, name: true } },
+} as const;
+
+/** Blank CMS input is stored as null so public pages omit the byline. */
+function authorOrNull(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  return trimmed === '' ? null : trimmed;
 }
 
 export interface PostPage {
@@ -54,22 +79,15 @@ export async function listPublishedPosts(page: number, pageSize: number): Promis
   const cached = await safeGet(cacheKey);
   if (cached) return JSON.parse(cached) as PostPage;
 
+  // Drafts stay private: public callers only ever see isPublished rows.
   const where = { isPublished: true };
   const [rows, total] = await Promise.all([
     prisma.post.findMany({
       where,
-      orderBy: { publishedAt: 'desc' },
+      orderBy: publishedOrder,
       skip: (current - 1) * size,
       take: size,
-      select: {
-        id: true,
-        slug: true,
-        title: true,
-        excerpt: true,
-        coverImage: true,
-        publishedAt: true,
-        category: { select: { slug: true, name: true } },
-      },
+      select: publicPostSelect,
     }),
     prisma.post.count({ where }),
   ]);
@@ -80,18 +98,10 @@ export async function listPublishedPosts(page: number, pageSize: number): Promis
 }
 
 export async function getPostBySlug(slug: string): Promise<PublicPostDetail | null> {
+  // Same published-only filter as the list. A draft slug is indistinguishable from a missing one (404).
   const post = await prisma.post.findFirst({
     where: { slug, isPublished: true },
-    select: {
-      id: true,
-      slug: true,
-      title: true,
-      excerpt: true,
-      body: true,
-      coverImage: true,
-      publishedAt: true,
-      category: { select: { slug: true, name: true } },
-    },
+    select: { ...publicPostSelect, body: true },
   });
   if (!post) return null;
   return { ...toSummary(post), body: post.body };
@@ -122,6 +132,7 @@ const adminPostSelect = {
   excerpt: true,
   body: true,
   coverImage: true,
+  authorName: true,
   isPublished: true,
   publishedAt: true,
   categoryId: true,
@@ -136,6 +147,7 @@ type AdminPostRow = {
   excerpt: string;
   body: string;
   coverImage: string | null;
+  authorName: string | null;
   isPublished: boolean;
   publishedAt: Date | null;
   categoryId: string | null;
@@ -151,6 +163,7 @@ function toAdminPost(row: AdminPostRow): AdminPost {
     excerpt: row.excerpt,
     body: row.body,
     coverImage: row.coverImage,
+    authorName: row.authorName,
     isPublished: row.isPublished,
     publishedAt: row.publishedAt?.toISOString() ?? null,
     categoryId: row.categoryId,
@@ -192,6 +205,7 @@ export async function createPost(input: CreatePostInput): Promise<AdminPost> {
       excerpt: input.excerpt,
       body: input.body,
       coverImage: input.coverImage ?? null,
+      authorName: authorOrNull(input.authorName),
       categoryId: input.categoryId ?? null,
       isPublished: input.isPublished,
       publishedAt: input.isPublished ? new Date() : null,
@@ -223,6 +237,7 @@ export async function updatePost(id: string, input: UpdatePostInput): Promise<Ad
       ...(input.excerpt !== undefined ? { excerpt: input.excerpt } : {}),
       ...(input.body !== undefined ? { body: input.body } : {}),
       ...(input.coverImage !== undefined ? { coverImage: input.coverImage } : {}),
+      ...(input.authorName !== undefined ? { authorName: authorOrNull(input.authorName) } : {}),
       ...(input.categoryId !== undefined ? { categoryId: input.categoryId } : {}),
       ...(input.isPublished !== undefined ? { isPublished: input.isPublished } : {}),
       ...(publishing && !post.publishedAt ? { publishedAt: new Date() } : {}),

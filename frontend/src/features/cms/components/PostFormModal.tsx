@@ -45,6 +45,7 @@ export function PostFormModal({ open, onClose, categories, post }: PostFormModal
       excerpt: post?.excerpt ?? '',
       body: post?.body ?? '',
       coverImage: post?.coverImage ?? undefined,
+      authorName: post?.authorName ?? '',
       categoryId: post?.categoryId ?? undefined,
       isPublished: post?.isPublished ?? false,
     },
@@ -68,6 +69,7 @@ export function PostFormModal({ open, onClose, categories, post }: PostFormModal
             excerpt: values.excerpt,
             body: values.body,
             coverImage: orUndefined(values.coverImage) ?? null,
+            authorName: orUndefined(values.authorName) ?? null,
             categoryId: orUndefined(values.categoryId) ?? null,
             isPublished: values.isPublished,
           },
@@ -76,6 +78,7 @@ export function PostFormModal({ open, onClose, categories, post }: PostFormModal
         await createMutation.mutateAsync({
           ...values,
           coverImage: orUndefined(values.coverImage),
+          authorName: orUndefined(values.authorName),
           categoryId: orUndefined(values.categoryId),
         });
       }
@@ -100,6 +103,11 @@ export function PostFormModal({ open, onClose, categories, post }: PostFormModal
           {...register('slug')}
         />
         <Input label="Kooban" error={errors.excerpt?.message} {...register('excerpt')} />
+        <Input
+          label="Qoraaga (ikhtiyaari)"
+          error={errors.authorName?.message}
+          {...register('authorName')}
+        />
 
         <label className="flex flex-col gap-1">
           <span className="text-sm font-medium text-ink">Qoraalka</span>

@@ -1,5 +1,10 @@
 ---
+// SSR so the latest published articles are read on each request, not baked in
+// at build time. Other sections stay the existing static markup.
+export const prerender = false;
+
 import PageLayout from '../layouts/PageLayout.astro';
+import { markCmsPageFresh } from '../lib/publicCache';
 import Hero from '../components/Hero.astro';
 import TrustedLogos from '../components/home/TrustedLogos.astro';
 import HomeServices from '../components/home/HomeServices.astro';
@@ -10,6 +15,8 @@ import HomeStats from '../components/home/HomeStats.astro';
 import HomeTestimonials from '../components/home/HomeTestimonials.astro';
 import HomeArticles from '../components/home/HomeArticles.astro';
 import FinalCta from '../components/home/FinalCta.astro';
+
+markCmsPageFresh(Astro.response.headers);
 ---
 
 <PageLayout
