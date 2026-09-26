@@ -1,4 +1,12 @@
-import type { AdminClient, CreateClientInput, UpdateClientInput } from '@somwave/shared';
+import type {
+  AdminClient,
+  ClientProfile,
+  CreateClientInput,
+  InvoiceStatus,
+  ProjectStatus,
+  UpdateClientInput,
+} from '@somwave/shared';
+import { deriveProgress } from './project.service';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
 
@@ -46,4 +54,86 @@ export async function updateClient(id: string, input: UpdateClientInput): Promis
     },
   });
   return toAdmin(row);
+}
+
+function invoiceStatus(status: InvoiceStatus, dueDate: Date): InvoiceStatus {
+  if (status === 'SENT' && dueDate.getTime() < Date.now()) return 'OVERDUE';
+  return status;
+}
+
+export async function getClientProfile(id: string): Promise<ClientProfile> {
+  const client = await prisma.client.findFirst({ where: { id, deletedAt: null } });
+  if (!client) throw new AppError('NOT_FOUND', 404, 'Macmiilkan lama helin');
+
+  const [projects, invoices, tickets, documents] = await Promise.all([
+    prisma.project.findMany({
+      where: { clientId: id, deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: { id: true, name: true, status: true, dueDate: true },
+    }),
+    prisma.invoice.findMany({
+      where: { clientId: id, deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: { id: true, number: true, status: true, total: true, dueDate: true },
+    }),
+    prisma.supportTicket.findMany({
+      where: { clientId: id, deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: { id: true, code: true, subject: true, status: true, priority: true },
+    }),
+    prisma.clientDocument.findMany({
+      where: { clientId: id, deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: { id: true, title: true, createdAt: true },
+    }),
+  ]);
+
+  const projectIds = projects.map((project) => project.id);
+  const grouped =
+    projectIds.length === 0
+      ? []
+      : await prisma.task.groupBy({
+          by: ['projectId', 'status'],
+          where: { deletedAt: null, projectId: { in: projectIds } },
+          _count: { _all: true },
+        });
+
+  const totals = new Map<string, { total: number; done: number }>();
+  for (const row of grouped) {
+    const current = totals.get(row.projectId) ?? { total: 0, done: 0 };
+    current.total += row._count._all;
+    if (row.status === 'DONE') current.done += row._count._all;
+    totals.set(row.projectId, current);
+  }
+
+  return {
+    ...toAdmin(client),
+    projects: projects.map((project) => {
+      const counts = totals.get(project.id) ?? { total: 0, done: 0 };
+      return {
+        id: project.id,
+        name: project.name,
+        status: project.status as ProjectStatus,
+        dueDate: project.dueDate?.toISOString() ?? null,
+        progress: deriveProgress(counts.total, counts.done),
+      };
+    }),
+    invoices: invoices.map((invoice) => ({
+      id: invoice.id,
+      number: invoice.number,
+      status: invoiceStatus(invoice.status, invoice.dueDate),
+      total: invoice.total.toFixed(2),
+      dueDate: invoice.dueDate.toISOString(),
+    })),
+    tickets,
+    documents: documents.map((document) => ({
+      id: document.id,
+      title: document.title,
+      createdAt: document.createdAt.toISOString(),
+    })),
+  };
 }

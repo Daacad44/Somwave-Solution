@@ -2,7 +2,7 @@ import { type ReactNode } from 'react';
 import { EmptyState } from '../../components/states';
 import { cn } from '../../lib/cn';
 
-const EMPTY = 'Xog ku filan oo lagu sameeyo jaantuskan weli ma jirto.';
+const EMPTY = 'There is not enough activity in this range to draw the chart yet.';
 
 export function AreaChart({
   points,

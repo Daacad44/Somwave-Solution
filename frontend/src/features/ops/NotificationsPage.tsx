@@ -30,7 +30,10 @@ export function NotificationsPage(): ReactNode {
           </div>
         ) : rows.length === 0 ? (
           <div className="rounded-lg border border-border bg-surface">
-            <EmptyState title="Ogeysiis cusub majiro" />
+            <EmptyState
+              title="Ogeysiis cusub majiro"
+              description="Ogeysiisyada lead-yada cusub iyo dhacdooyinka kale ayaa halkan ka muuqan doona."
+            />
           </div>
         ) : (
           <ul className="flex flex-col gap-3">

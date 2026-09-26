@@ -40,6 +40,7 @@ import {
   notificationsRouter,
 } from './routes/ops-extra.routes';
 import { dashboardRouter } from './routes/dashboard.routes';
+import { searchRouter } from './routes/search.routes';
 
 export function createApp(): Express {
   const app = express();
@@ -93,6 +94,7 @@ export function createApp(): Express {
   app.use('/api/v1/audit-logs', auditRouter);
   app.use('/api/v1/notifications', notificationsRouter);
   app.use('/api/v1/dashboard', dashboardRouter);
+  app.use('/api/v1/search', searchRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

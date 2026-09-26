@@ -2,8 +2,9 @@
 import type {
   AdminProject,
   CreateProjectInput,
-  UpdateProjectInput,
   ProjectStatus,
+  ProjectWorkspace,
+  UpdateProjectInput,
 } from '@somwave/shared';
 import { apiFetch, apiFetchPaged, type PaginationMeta } from '../../lib/apiClient';
 
@@ -24,6 +25,10 @@ export function listProjects(
   if (params.search) query.set('search', params.search);
   if (params.status) query.set('status', params.status);
   return apiFetchPaged<AdminProject[]>(`/projects?${query.toString()}`);
+}
+
+export function getProjectWorkspace(id: string): Promise<ProjectWorkspace> {
+  return apiFetch<ProjectWorkspace>(`/projects/${id}/workspace`);
 }
 
 export function createProject(input: CreateProjectInput): Promise<AdminProject> {

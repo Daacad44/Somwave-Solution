@@ -11,12 +11,21 @@ vi.mock('../lib/prisma', () => ({
       update: vi.fn(),
     },
     user: { findFirst: vi.fn() },
+    task: { findMany: vi.fn(), count: vi.fn() },
+    milestone: { findMany: vi.fn() },
     $transaction: vi.fn((ops: unknown[]) => Promise.all(ops)),
   },
 }));
 
 import { prisma } from '../lib/prisma';
-import { createProject, updateProject, deleteProject, listProjects } from './project.service';
+import {
+  createProject,
+  deriveProjectHealth,
+  deriveProgress,
+  updateProject,
+  deleteProject,
+  listProjects,
+} from './project.service';
 
 const row = {
   id: 'prj_1',
@@ -102,5 +111,35 @@ describe('listProjects', () => {
     expect(result.pageSize).toBe(100);
     expect(result.items[0]?.budget).toBe('25000');
     expect(result.total).toBe(1);
+  });
+});
+
+describe('deriveProgress', () => {
+  it('returns null when there are no tasks', () => {
+    expect(deriveProgress(0, 0)).toBeNull();
+  });
+
+  it('rounds completed tasks', () => {
+    expect(deriveProgress(3, 1)).toBe(33);
+  });
+});
+
+describe('deriveProjectHealth', () => {
+  const now = new Date('2026-06-01T00:00:00Z');
+
+  it('marks a past due active project as overdue', () => {
+    expect(deriveProjectHealth({ status: 'ACTIVE', dueDate: '2026-05-01T00:00:00Z', now })).toBe(
+      'OVERDUE',
+    );
+  });
+
+  it('marks a project due within a week as at risk', () => {
+    expect(deriveProjectHealth({ status: 'ACTIVE', dueDate: '2026-06-04T00:00:00Z', now })).toBe(
+      'AT_RISK',
+    );
+  });
+
+  it('does not invent a health date for an undated project', () => {
+    expect(deriveProjectHealth({ status: 'PLANNING', dueDate: null, now })).toBe('NO_DATE');
   });
 });

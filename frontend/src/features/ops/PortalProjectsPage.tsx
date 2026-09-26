@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { PROJECT_STATUS_LABELS } from '@somwave/shared';
 import { Table, THead, TBody, Tr, Th, Td } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
@@ -23,7 +24,10 @@ export function PortalProjectsPage(): ReactNode {
             onRetry={() => query.refetch()}
           />
         ) : rows.length === 0 ? (
-          <EmptyState title="Mashruuc kuma xirna" />
+          <EmptyState
+            title="Mashruuc kuma xirna"
+            description="Mashruucyada kooxda gudaha kuu abuurtay ayaa halkan ka muuqan doona."
+          />
         ) : (
           <Table>
             <THead>
@@ -36,7 +40,14 @@ export function PortalProjectsPage(): ReactNode {
             <TBody>
               {rows.map((row) => (
                 <Tr key={row.id}>
-                  <Td className="font-medium">{row.name}</Td>
+                  <Td>
+                    <Link
+                      to={`/portal/projects/${row.id}`}
+                      className="font-medium text-ink hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    >
+                      {row.name}
+                    </Link>
+                  </Td>
                   <Td>
                     <Badge>{PROJECT_STATUS_LABELS[row.status]}</Badge>
                   </Td>

@@ -1,6 +1,7 @@
 // Projects management screen (I2.1). Table with search + status filter +
 // pagination, the four states (§12), and permission-gated actions (§13).
 import { type FormEvent, type ReactNode, useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { AdminProject, ProjectStatus } from '@somwave/shared';
 import { PERMISSIONS, PROJECT_STATUSES, PROJECT_STATUS_LABELS } from '@somwave/shared';
 import { Table, THead, TBody, Tr, Th, Td } from '../../components/ui/Table';
@@ -116,7 +117,11 @@ export function ProjectsPage(): ReactNode {
         ) : projects.length === 0 ? (
           <EmptyState
             title="Weli mashruuc ma jiro"
-            description={search || status ? 'Raadintaadu waxba ma soo celin.' : undefined}
+            description={
+              search || status
+                ? 'Raadintaadu waxba ma soo celin.'
+                : 'Abuur mashruucaaga koowaad si aad u raacdo shaqada, marxaladaha, iyo hawlaha.'
+            }
             action={canCreate ? <Button onClick={openCreate}>Mashruuc cusub</Button> : undefined}
           />
         ) : (
@@ -134,7 +139,14 @@ export function ProjectsPage(): ReactNode {
             <TBody>
               {projects.map((project) => (
                 <Tr key={project.id}>
-                  <Td className="font-medium">{project.name}</Td>
+                  <Td>
+                    <Link
+                      to={`/projects/${project.id}`}
+                      className="font-medium text-ink hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    >
+                      {project.name}
+                    </Link>
+                  </Td>
                   <Td>
                     <Badge tone={STATUS_TONE[project.status]}>
                       {PROJECT_STATUS_LABELS[project.status]}

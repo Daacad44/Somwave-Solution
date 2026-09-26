@@ -29,6 +29,7 @@ import * as paymentController from '../controllers/payment.controller';
 export const leadsRouter: Router = Router();
 leadsRouter.use(requireAuth);
 leadsRouter.get('/', rbac(PERMISSIONS.LEADS_READ), leadController.list);
+leadsRouter.post('/:id/convert', rbac(PERMISSIONS.LEADS_UPDATE), leadController.convert);
 leadsRouter.patch(
   '/:id',
   rbac(PERMISSIONS.LEADS_UPDATE),
@@ -49,6 +50,7 @@ applicationsRouter.patch(
 export const clientsRouter: Router = Router();
 clientsRouter.use(requireAuth);
 clientsRouter.get('/', rbac(PERMISSIONS.CLIENTS_READ), clientController.list);
+clientsRouter.get('/:id', rbac(PERMISSIONS.CLIENTS_READ), clientController.get);
 clientsRouter.post(
   '/',
   rbac(PERMISSIONS.CLIENTS_CREATE),
@@ -118,6 +120,7 @@ ticketsRouter.post(
 export const portalRouter: Router = Router();
 portalRouter.use(requireAuth);
 portalRouter.get('/projects', rbac(PERMISSIONS.PORTAL_READ), portalController.listProjects);
+portalRouter.get('/projects/:id', rbac(PERMISSIONS.PORTAL_READ), portalController.getProject);
 portalRouter.get('/milestones', rbac(PERMISSIONS.PORTAL_READ), portalController.listMilestones);
 
 export const paymentsRouter: Router = Router();

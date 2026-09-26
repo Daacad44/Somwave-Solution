@@ -6,6 +6,7 @@ import { forgotPasswordSchema, type ForgotPasswordInput } from '@somwave/shared'
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { useForgotPassword } from './hooks';
+import { AuthLayout } from './AuthLayout';
 
 export function ForgotPasswordPage(): ReactNode {
   const mutation = useForgotPassword();
@@ -18,18 +19,17 @@ export function ForgotPasswordPage(): ReactNode {
   });
 
   return (
-    <main className="auth-shell">
-      <form className="auth-card" onSubmit={onSubmit} noValidate>
-        <h1 className="text-2xl font-semibold text-ink">Dib-u-dejin furaha</h1>
+    <AuthLayout
+      title="Dib-u-dejin furaha"
+      subtitle="Geli iimaylkaaga. Ma sheegno in akoonku jiro iyo in kale."
+    >
+      <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
         {done ? (
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted" role="status">
             Haddii iimaylkaasi leeyahay akoon, waxaanu u diri doonnaa xiriir dib-u-dejin.
           </p>
         ) : (
           <>
-            <p className="text-sm text-muted">
-              Geli iimaylkaaga. Ma sheegno in akoonku jiro iyo in kale.
-            </p>
             <Input
               label="Iimayl"
               type="email"
@@ -46,6 +46,6 @@ export function ForgotPasswordPage(): ReactNode {
           Ku noqo soo-galidda
         </Link>
       </form>
-    </main>
+    </AuthLayout>
   );
 }

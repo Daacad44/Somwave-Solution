@@ -1,4 +1,5 @@
 import { type ReactNode, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -60,6 +61,7 @@ export function ClientsPage(): ReactNode {
         ) : rows.length === 0 ? (
           <EmptyState
             title="Macmiil majiro"
+            description="Abuur macmiil, ama u beddel lead, si aad u furto mashruucyo iyo biilal."
             action={canCreate ? <Button onClick={() => setOpen(true)}>Macmiil cusub</Button> : null}
           />
         ) : (
@@ -74,7 +76,14 @@ export function ClientsPage(): ReactNode {
             <TBody>
               {rows.map((row) => (
                 <Tr key={row.id}>
-                  <Td className="font-medium">{row.companyName}</Td>
+                  <Td>
+                    <Link
+                      to={`/clients/${row.id}`}
+                      className="font-medium text-ink hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    >
+                      {row.companyName}
+                    </Link>
+                  </Td>
                   <Td>{row.email ?? '—'}</Td>
                   <Td>
                     <Badge tone={row.status === 'ACTIVE' ? 'success' : 'neutral'}>

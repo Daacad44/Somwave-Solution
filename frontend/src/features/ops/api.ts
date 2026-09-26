@@ -1,5 +1,8 @@
 import type {
   AdminInquiry,
+  ClientProfile,
+  ConvertLeadResult,
+  ProjectWorkspace,
   UpdateInquiryInput,
   AdminJobApplication,
   UpdateJobApplicationInput,
@@ -30,6 +33,12 @@ export function listLeads(): Promise<AdminInquiry[]> {
 export function updateLead(id: string, input: UpdateInquiryInput): Promise<AdminInquiry> {
   return apiFetch<AdminInquiry>(`/leads/${id}`, { method: 'PATCH', body: JSON.stringify(input) });
 }
+export function convertLead(id: string): Promise<ConvertLeadResult> {
+  return apiFetch<ConvertLeadResult>(`/leads/${id}/convert`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
 
 export function listApplications(): Promise<AdminJobApplication[]> {
   return apiFetch<AdminJobApplication[]>('/job-applications');
@@ -49,6 +58,9 @@ export function listClients(): Promise<AdminClient[]> {
 }
 export function createClient(input: CreateClientInput): Promise<AdminClient> {
   return apiFetch<AdminClient>('/clients', { method: 'POST', body: JSON.stringify(input) });
+}
+export function getClientProfile(id: string): Promise<ClientProfile> {
+  return apiFetch<ClientProfile>(`/clients/${id}`);
 }
 
 export function listTimesheets(): Promise<AdminTimesheet[]> {
@@ -138,6 +150,9 @@ export function createTicketReply(
 
 export function listPortalProjects(): Promise<AdminProject[]> {
   return apiFetch<AdminProject[]>('/portal/projects');
+}
+export function getPortalProject(id: string): Promise<ProjectWorkspace> {
+  return apiFetch<ProjectWorkspace>(`/portal/projects/${id}`);
 }
 export function listPortalMilestones(): Promise<AdminMilestone[]> {
   return apiFetch<AdminMilestone[]>('/portal/milestones');
