@@ -91,7 +91,9 @@ export const homeProjects = [
     category: 'Web Development',
     description:
       'Madal e-commerce casri ah oo loogu talagalay ganacsiyada doonaya inay si fudud online uga iibiyaan alaabtooda.',
-    scene: 'shop' as const,
+    image: '/works/ecommerce.png',
+    imageWidth: 1536,
+    imageHeight: 1024,
     highlights: ['Dukaanka', 'Bogga alaabta', 'Shanta', 'Bixinta', 'Dashboard maamul'],
     features: [
       'Liiska alaabta iyo shaandhaynta',
@@ -107,7 +109,9 @@ export const homeProjects = [
     category: 'Custom Software',
     description:
       'Nidaam maamul iskuul oo isku keena ardayda, macallimiinta, xaadirinta, imtixaanaadka, iyo lacag-bixinta.',
-    scene: 'school' as const,
+    image: '/works/school.png',
+    imageWidth: 1536,
+    imageHeight: 1024,
     highlights: ['Dashboard', 'Arday', 'Macallimiin', 'Xaadirin', 'Jadwal', 'Warbixin'],
     features: [
       'Diiwaanka ardayda iyo macallimiinta',
@@ -123,7 +127,9 @@ export const homeProjects = [
     category: 'Web & Mobile',
     description:
       'Website iyo app safar oo diiwaangelinta duulimaadyada, huteelada, iyo xirmooyinka hal meel ka socda.',
-    scene: 'travel' as const,
+    image: '/works/travel.png',
+    imageWidth: 1536,
+    imageHeight: 1024,
     highlights: ['Bogga hore', 'Duulimaad', 'Huteel', 'Xirmooyin', 'Diiwaangelin'],
     features: [
       'Raadinta duulimaad iyo huteel',
@@ -139,7 +145,9 @@ export const homeProjects = [
     category: 'Web Development',
     description:
       'Suuq guryo oo leh raadinta hantida, khariidadda, wakiilada, iyo dashboard-ka milkiilaha.',
-    scene: 'estate' as const,
+    image: '/works/estate.png',
+    imageWidth: 1536,
+    imageHeight: 1024,
     highlights: ['Raadin', 'Guryo', 'Faahfaahin', 'Khariidad', 'Wakiilo', 'Dashboard'],
     features: [
       'Raadinta guryaha iyo nooca hantida',
