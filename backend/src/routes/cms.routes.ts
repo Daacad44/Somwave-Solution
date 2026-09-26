@@ -16,10 +16,11 @@ import {
   updateTeamMemberSchema,
   createFaqSchema,
   updateFaqSchema,
+  uploadArticleImageSchema,
   PERMISSIONS,
 } from '@somwave/shared';
 import { requireAuth } from '../middleware/auth';
-import { rbac } from '../middleware/rbac';
+import { rbac, rbacAny } from '../middleware/rbac';
 import { validate } from '../middleware/validate';
 import * as cmsController from '../controllers/cms.controller';
 
@@ -58,6 +59,13 @@ cmsRouter.patch(
   cmsController.updatePost,
 );
 cmsRouter.delete('/posts/:id', rbac(PERMISSIONS.CONTENT_DELETE), cmsController.deletePost);
+
+cmsRouter.post(
+  '/article-images',
+  rbacAny([PERMISSIONS.CONTENT_CREATE, PERMISSIONS.CONTENT_UPDATE]),
+  validate(uploadArticleImageSchema),
+  cmsController.uploadArticleImage,
+);
 
 cmsRouter.get('/portfolio', rbac(PERMISSIONS.CONTENT_READ), cmsController.listPortfolio);
 cmsRouter.post(

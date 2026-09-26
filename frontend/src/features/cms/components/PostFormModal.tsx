@@ -1,9 +1,10 @@
 // Create / edit a blog post in the CMS (W4.2). The shared schema drives the
 // resolver (§11). Writes invalidate the public blog cache server-side.
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
+  articleImageFileError,
   createPostSchema,
   type AdminPost,
   type AdminCategory,
@@ -13,8 +14,11 @@ import { Modal } from '../../../components/ui/Modal';
 import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
 import { Button } from '../../../components/ui/Button';
+import { useToast } from '../../../components/ui/Toast';
 import { ApiError } from '../../../lib/apiClient';
+import { uploadArticleImage } from '../api';
 import { useCreatePost, useUpdatePost } from '../hooks';
+import { ArticleImageField } from './ArticleImageField';
 
 export interface PostFormModalProps {
   open: boolean;
@@ -51,11 +55,29 @@ function articleErrorMessage(err: unknown): string {
   return err.message;
 }
 
+function uploadErrorMessage(err: unknown): string {
+  if (err instanceof ApiError && err.message === 'Soo gelinta waa la joojiyay.') return err.message;
+  if (!(err instanceof ApiError)) return 'Sawirka lama soo gelin karin. Fadlan mar kale isku day.';
+  if (err.code === 'UNAUTHORIZED') return 'Your session has expired. Please sign in again.';
+  if (err.code === 'FORBIDDEN') return 'Ma haysatid ogolaansho aad ku soo geliso sawir.';
+  if (err.code === 'VALIDATION_ERROR') return err.message || 'Fadlan soo geli sawir sax ah.';
+  if (err.message === 'Network error') return 'Shabakadda waa go’day. Fadlan mar kale isku day.';
+  if (err.message?.includes('Kaynta')) return 'Kaynta sawirrada lama heli karo.';
+  return 'Sawirka lama soo gelin karin. Fadlan mar kale isku day.';
+}
+
 export function PostFormModal({ open, onClose, categories, post }: PostFormModalProps): ReactNode {
   const isEdit = Boolean(post);
   const createMutation = useCreatePost();
   const updateMutation = useUpdatePost();
+  const { toast } = useToast();
+  const uploadAbort = useRef<AbortController | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageRemoved, setImageRemoved] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   const {
     register,
@@ -69,7 +91,6 @@ export function PostFormModal({ open, onClose, categories, post }: PostFormModal
       title: post?.title ?? '',
       excerpt: post?.excerpt ?? '',
       body: post?.body ?? '',
-      coverImage: post?.coverImage ?? undefined,
       authorName: post?.authorName ?? '',
       categoryId: post?.categoryId ?? undefined,
       isPublished: post?.isPublished ?? false,
@@ -77,14 +98,57 @@ export function PostFormModal({ open, onClose, categories, post }: PostFormModal
   });
 
   const close = (): void => {
+    uploadAbort.current?.abort();
     reset();
     setServerError(null);
+    setImageFile(null);
+    setImageRemoved(false);
+    setImageError(null);
+    setUploading(false);
+    setUploadProgress(null);
     onClose();
+  };
+
+  const onSelectImage = (file: File): void => {
+    const message = articleImageFileError({ name: file.name, type: file.type, size: file.size });
+    if (message) {
+      setImageFile(null);
+      setImageError(message);
+      return;
+    }
+    setImageError(null);
+    setImageRemoved(false);
+    setImageFile(file);
   };
 
   const onSubmit = handleSubmit(async (values) => {
     setServerError(null);
+    if (imageError) {
+      setServerError(imageError);
+      return;
+    }
+    const controller = new AbortController();
+    uploadAbort.current = controller;
+    let phase: 'upload' | 'save' = 'save';
     try {
+      let coverImage: string | null | undefined;
+      if (imageFile) {
+        phase = 'upload';
+        setUploading(true);
+        setUploadProgress(0);
+        const uploaded = await uploadArticleImage(
+          imageFile,
+          (percent) => setUploadProgress(percent),
+          controller.signal,
+        );
+        coverImage = uploaded.url;
+        phase = 'save';
+      } else if (imageRemoved) {
+        coverImage = null;
+      } else if (isEdit) {
+        coverImage = post?.coverImage ?? null;
+      }
+
       if (isEdit && post) {
         await updateMutation.mutateAsync({
           id: post.id,
@@ -93,7 +157,7 @@ export function PostFormModal({ open, onClose, categories, post }: PostFormModal
             title: values.title,
             excerpt: values.excerpt,
             body: values.body,
-            coverImage: orUndefined(values.coverImage) ?? null,
+            coverImage,
             authorName: orUndefined(values.authorName) ?? null,
             categoryId: orUndefined(values.categoryId) ?? null,
             isPublished: values.isPublished,
@@ -102,14 +166,26 @@ export function PostFormModal({ open, onClose, categories, post }: PostFormModal
       } else {
         await createMutation.mutateAsync({
           ...values,
-          coverImage: orUndefined(values.coverImage),
+          ...(coverImage ? { coverImage } : {}),
           authorName: orUndefined(values.authorName),
           categoryId: orUndefined(values.categoryId),
         });
       }
+      uploadAbort.current = null;
+      toast(
+        imageFile
+          ? 'Sawirka si guul leh ayaa loo soo geliyay.'
+          : isEdit
+            ? 'Maqaalka waa la kaydiyay.'
+            : 'Maqaalka waa la abuuray.',
+        'success',
+      );
       close();
     } catch (err) {
-      setServerError(articleErrorMessage(err));
+      if (err instanceof ApiError && err.message === 'Soo gelinta waa la joojiyay.') return;
+      setUploading(false);
+      setUploadProgress(null);
+      setServerError(phase === 'upload' ? uploadErrorMessage(err) : articleErrorMessage(err));
     }
   });
 
@@ -142,11 +218,19 @@ export function PostFormModal({ open, onClose, categories, post }: PostFormModal
           {errors.body ? <span className="text-sm text-error">{errors.body.message}</span> : null}
         </label>
 
-        <Input
-          label="Sawirka (link, ikhtiyaari)"
-          placeholder="https://"
-          error={errors.coverImage?.message}
-          {...register('coverImage')}
+        <ArticleImageField
+          existingUrl={post?.coverImage}
+          file={imageFile}
+          removed={imageRemoved}
+          error={imageError}
+          uploading={uploading}
+          progress={uploadProgress}
+          onSelect={onSelectImage}
+          onRemove={() => {
+            setImageFile(null);
+            setImageRemoved(true);
+            setImageError(null);
+          }}
         />
 
         <div className="flex items-end gap-4">

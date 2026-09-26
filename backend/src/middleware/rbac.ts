@@ -4,17 +4,26 @@ import type { NextFunction, Request, Response } from 'express';
 import type { PermissionKey } from '@somwave/shared';
 import { AppError } from '../lib/http';
 
-export function rbac(permission: PermissionKey) {
+function authorize(permissions: readonly PermissionKey[]) {
   return (req: Request, _res: Response, next: NextFunction): void => {
     const user = req.authUser;
     if (!user) {
       next(new AppError('UNAUTHORIZED', 401, 'Authentication required'));
       return;
     }
-    if (!user.permissions.includes(permission)) {
+    if (!permissions.some((permission) => user.permissions.includes(permission))) {
       next(new AppError('FORBIDDEN', 403, 'Insufficient permissions'));
       return;
     }
     next();
   };
+}
+
+export function rbac(permission: PermissionKey) {
+  return authorize([permission]);
+}
+
+/** Allows the request when the user holds any one of the permissions. */
+export function rbacAny(permissions: readonly PermissionKey[]) {
+  return authorize(permissions);
 }

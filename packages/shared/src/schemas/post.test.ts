@@ -63,16 +63,23 @@ describe('createPostSchema', () => {
     ).toBe(false);
   });
 
-  it('accepts a direct image URL and a blank image, and rejects a Google results link', () => {
+  it('accepts an uploaded article image and a blank image, and rejects a pasted link', () => {
     const base = { slug: 'my-post', title: 'T', excerpt: 'E', body: 'B' };
     expect(
-      createPostSchema.safeParse({ ...base, coverImage: 'https://cdn.example.com/a.jpg' }).success,
+      createPostSchema.safeParse({
+        ...base,
+        coverImage: 'https://api.example.com/api/v1/public/article-images/cmuiarticleimage01',
+      }).success,
     ).toBe(true);
     expect(createPostSchema.safeParse({ ...base, coverImage: '' }).success).toBe(true);
-    const google = createPostSchema.safeParse({
-      ...base,
-      coverImage: 'https://www.google.com/imgres?q=ai&imgurl=https://cdn.example.com/a.jpg',
-    });
-    expect(google.success).toBe(false);
+    expect(
+      createPostSchema.safeParse({ ...base, coverImage: 'https://cdn.example.com/a.jpg' }).success,
+    ).toBe(false);
+    expect(
+      createPostSchema.safeParse({
+        ...base,
+        coverImage: 'https://www.google.com/imgres?q=ai&imgurl=https://cdn.example.com/a.jpg',
+      }).success,
+    ).toBe(false);
   });
 });

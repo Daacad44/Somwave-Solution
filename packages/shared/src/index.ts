@@ -16,6 +16,7 @@ export * from './schemas/service';
 export * from './schemas/inquiry';
 export * from './schemas/portfolio';
 export * from './schemas/post';
+export * from './schemas/articleImage';
 export * from './schemas/job';
 export * from './schemas/user';
 export * from './schemas/project';

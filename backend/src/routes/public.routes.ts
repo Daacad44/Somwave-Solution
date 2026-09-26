@@ -22,6 +22,7 @@ publicRouter.get('/portfolio/:slug', publicController.getPortfolioItem);
 
 publicRouter.get('/posts', publicController.getPosts);
 publicRouter.get('/posts/:slug', publicController.getPost);
+publicRouter.get('/article-images/:id', publicController.getArticleImage);
 
 publicRouter.get('/testimonials', publicController.getTestimonials);
 publicRouter.get('/team', publicController.getTeam);

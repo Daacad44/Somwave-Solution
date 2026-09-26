@@ -59,6 +59,7 @@ export function createApp(): Express {
     paymentWebhooksRouter,
   );
   app.use('/api/v1/media', express.json({ limit: '35mb' }));
+  app.use('/api/v1/cms/article-images', express.json({ limit: '8mb' }));
   app.use('/api/v1/documents', express.json({ limit: '35mb' }));
   app.use(express.json({ limit: '1mb' }));
   app.use(pinoHttp({ logger }));
