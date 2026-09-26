@@ -1,6 +1,5 @@
 ---
 import { homeProjects } from '../../lib/homeContent';
-import ProductPreview from './ProductPreview.astro';
 ---
 
 <section id="shaqooyinkayaga" class="bg-surface" aria-labelledby="portfolio-heading">
@@ -14,6 +13,9 @@ import ProductPreview from './ProductPreview.astro';
         >
           Mashaariic Aan Ku Faanno
         </h2>
+        <p class="mt-3 max-w-xl text-sm leading-relaxed text-muted sm:text-base">
+          Xulasho nidaamyo iyo goobo digital ah oo aan naqshadeyno oo aan dhisno.
+        </p>
       </div>
       <a
         href="/shaqooyinka"
@@ -30,16 +32,22 @@ import ProductPreview from './ProductPreview.astro';
             href={`/shaqooyinka/tusaale/${item.slug}`}
             class="group flex h-full flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md"
           >
-            <div class="aspect-[16/10] overflow-hidden">
-              <div class="h-full transition-transform duration-300 group-hover:scale-[1.03]">
-                <ProductPreview scene={item.scene} label={item.title} />
-              </div>
+            <div class="aspect-[16/10] overflow-hidden bg-surface-alt">
+              <img
+                src={item.image}
+                alt={item.title}
+                width={item.imageWidth}
+                height={item.imageHeight}
+                loading="lazy"
+                decoding="async"
+                class="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.03]"
+              />
             </div>
             <div class="flex flex-1 flex-col p-5">
-              <h3 class="text-lg font-semibold text-ink">{item.title}</h3>
-              <p class="mt-1 text-sm font-medium text-brand">{item.category}</p>
+              <p class="text-sm font-medium text-brand">{item.category}</p>
+              <h3 class="mt-1 text-lg font-semibold text-ink">{item.title}</h3>
               <p class="mt-2 text-sm leading-relaxed text-muted">{item.description}</p>
-              <span class="mt-4 inline-flex items-center text-sm font-semibold text-ink group-hover:text-brand">
+              <span class="mt-4 inline-flex items-center text-sm font-semibold text-ink transition-colors group-hover:text-brand">
                 Faahfaahin →
               </span>
             </div>
@@ -53,7 +61,7 @@ import ProductPreview from './ProductPreview.astro';
 <style>
   @media (prefers-reduced-motion: reduce) {
     .group,
-    .group div {
+    .group img {
       transition: none;
     }
   }

@@ -152,7 +152,7 @@ export function AppShell(): ReactNode {
     );
 
   return (
-    <div className="flex min-h-screen overflow-x-hidden bg-canvas">
+    <div className="flex h-dvh max-h-dvh overflow-hidden bg-canvas print:block print:h-auto print:max-h-none print:overflow-visible">
       {open ? (
         <button
           type="button"
@@ -164,7 +164,7 @@ export function AppShell(): ReactNode {
       <aside
         id="app-nav"
         className={cn(
-          'fixed inset-y-0 start-0 z-50 flex w-[min(20rem,88vw)] max-w-full shrink-0 flex-col bg-sidebar text-surface shadow-lg transition-transform duration-200 print:hidden lg:sticky lg:top-0 lg:z-40 lg:h-screen lg:w-[272px] lg:max-w-none lg:shadow-none',
+          'fixed inset-y-0 start-0 z-50 flex h-full min-h-0 w-[min(20rem,88vw)] max-w-full shrink-0 flex-col overflow-hidden bg-sidebar text-surface shadow-lg transition-transform duration-200 print:hidden lg:static lg:z-40 lg:h-full lg:max-h-full lg:w-[272px] lg:max-w-none lg:translate-x-0 lg:shadow-none',
           open ? 'translate-x-0' : '-translate-x-full lg:hidden rtl:translate-x-full',
         )}
       >
@@ -221,8 +221,8 @@ export function AppShell(): ReactNode {
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-surface px-4 print:hidden md:px-6">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <header className="z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-surface px-4 print:hidden md:px-6">
           <button
             type="button"
             className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-ink hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
@@ -315,7 +315,7 @@ export function AppShell(): ReactNode {
             </div>
           </div>
         </header>
-        <main className="min-w-0 flex-1 overflow-x-hidden px-4 py-5 md:px-6 lg:px-8">
+        <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-5 md:px-6 lg:px-8 print:overflow-visible">
           <Outlet />
         </main>
       </div>

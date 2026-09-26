@@ -1,6 +1,5 @@
 ---
 import PageLayout from '../../../layouts/PageLayout.astro';
-import ProductPreview from '../../../components/home/ProductPreview.astro';
 import { homeProjects } from '../../../lib/homeContent';
 
 export function getStaticPaths() {
@@ -39,10 +38,14 @@ const related = homeProjects.filter((item) => item.slug !== project.slug);
           Nala soo xiriir
         </a>
       </div>
-      <div class="overflow-hidden rounded-lg border border-border shadow-md">
-        <div class="aspect-[16/10]">
-          <ProductPreview scene={project.scene} label={project.title} />
-        </div>
+      <div class="overflow-hidden rounded-lg border border-border bg-surface-alt shadow-md">
+        <img
+          src={project.image}
+          alt={project.title}
+          width={project.imageWidth}
+          height={project.imageHeight}
+          class="aspect-[16/10] w-full object-cover object-top"
+        />
       </div>
     </header>
 
@@ -68,10 +71,16 @@ const related = homeProjects.filter((item) => item.slug !== project.slug);
 
     <section class="mt-12">
       <h2 class="text-2xl font-bold text-ink">Muuqaalka nidaamka</h2>
-      <div class="mt-4 overflow-hidden rounded-lg border border-border">
-        <div class="aspect-[16/9]">
-          <ProductPreview scene={project.scene} label={`${project.title} preview`} />
-        </div>
+      <div class="mt-4 overflow-hidden rounded-lg border border-border bg-surface-alt">
+        <img
+          src={project.image}
+          alt={`${project.title} preview`}
+          width={project.imageWidth}
+          height={project.imageHeight}
+          loading="lazy"
+          decoding="async"
+          class="aspect-[16/9] w-full object-cover object-top"
+        />
       </div>
     </section>
 
