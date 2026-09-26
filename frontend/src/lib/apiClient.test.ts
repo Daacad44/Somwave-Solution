@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { apiFetch, ApiError } from './apiClient';
+import { apiFetch } from './apiClient';
 
 function mockFetch(status: number, payload: unknown) {
   return vi.fn().mockResolvedValue({
@@ -25,15 +25,66 @@ describe('apiFetch', () => {
     expect((init as RequestInit).credentials).toBe('include');
   });
 
-  it('throws ApiError carrying the server error code on failure', async () => {
-    vi.stubGlobal('fetch', mockFetch(401, { error: { code: 'UNAUTHORIZED', message: 'nope' } }));
+  it('refreshes the session once and retries the original request after a 401', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: () =>
+          Promise.resolve({
+            error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
+          }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ data: { user: { id: 'u1' } } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: () => Promise.resolve({ data: { id: 'post-1' } }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
 
-    await expect(apiFetch('/auth/me')).rejects.toMatchObject({
+    const result = await apiFetch<{ id: string }>('/cms/posts', { method: 'POST' });
+
+    expect(result).toEqual({ id: 'post-1' });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain('/auth/refresh');
+    expect((fetchMock.mock.calls[1]?.[1] as RequestInit).credentials).toBe('include');
+    expect((fetchMock.mock.calls[2]?.[1] as RequestInit).method).toBe('POST');
+  });
+
+  it('does not loop when the refresh cookie is also missing', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: () =>
+        Promise.resolve({ error: { code: 'UNAUTHORIZED', message: 'Authentication required' } }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(apiFetch('/cms/posts', { method: 'POST' })).rejects.toMatchObject({
       name: 'ApiError',
       code: 'UNAUTHORIZED',
-      message: 'nope',
+      message: 'Your session has expired. Please sign in again.',
     });
-    await expect(apiFetch('/auth/me')).rejects.toBeInstanceOf(ApiError);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('leaves a failed login message unchanged and does not refresh', async () => {
+    const fetchMock = mockFetch(401, {
+      error: { code: 'UNAUTHORIZED', message: 'Iimayl ama furaha waa khalad' },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(apiFetch('/auth/login', { method: 'POST' })).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+      message: 'Iimayl ama furaha waa khalad',
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('falls back to INTERNAL_ERROR when the body has no code', async () => {

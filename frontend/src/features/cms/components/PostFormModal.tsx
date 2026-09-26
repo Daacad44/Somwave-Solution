@@ -26,6 +26,31 @@ export interface PostFormModalProps {
 const orUndefined = (value: string | undefined): string | undefined =>
   value && value.trim() !== '' ? value.trim() : undefined;
 
+function fieldErrors(details: unknown): string | null {
+  if (!details || typeof details !== 'object' || !('fieldErrors' in details)) return null;
+  const fields = (details as { fieldErrors?: Record<string, string[]> }).fieldErrors;
+  if (!fields) return null;
+  const lines = Object.entries(fields).flatMap(([field, messages]) =>
+    (messages ?? []).map((message) => `${field}: ${message}`),
+  );
+  return lines.length > 0 ? lines.join(' ') : null;
+}
+
+function articleErrorMessage(err: unknown): string {
+  if (!(err instanceof ApiError)) return 'Wax baa qaldamay. Fadlan mar kale isku day.';
+  if (err.code === 'UNAUTHORIZED') return 'Your session has expired. Please sign in again.';
+  if (err.code === 'FORBIDDEN') return 'You do not have permission to create articles.';
+  if (err.code === 'NOT_FOUND') return 'The article could not be found.';
+  if (err.code === 'CONFLICT') return err.message || 'An article with this slug already exists.';
+  if (err.code === 'VALIDATION_ERROR') {
+    return fieldErrors(err.details) ?? err.message ?? 'The article data is not valid.';
+  }
+  if (err.code === 'INTERNAL_ERROR') {
+    return 'The server could not save the article. Please try again.';
+  }
+  return err.message;
+}
+
 export function PostFormModal({ open, onClose, categories, post }: PostFormModalProps): ReactNode {
   const isEdit = Boolean(post);
   const createMutation = useCreatePost();
@@ -84,9 +109,7 @@ export function PostFormModal({ open, onClose, categories, post }: PostFormModal
       }
       close();
     } catch (err) {
-      setServerError(
-        err instanceof ApiError ? err.message : 'Wax baa qaldamay. Fadlan mar kale isku day.',
-      );
+      setServerError(articleErrorMessage(err));
     }
   });
 
