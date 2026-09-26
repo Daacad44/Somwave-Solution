@@ -276,6 +276,8 @@ model Post {
   excerpt     String
   body        String
   coverImage  String?   @map("cover_image")
+  // Display name only. Draft vs public is `isPublished`, not a second status column.
+  authorName  String?   @map("author_name")
   isPublished Boolean   @default(false) @map("is_published")
   publishedAt DateTime? @map("published_at")
   categoryId  String?   @map("category_id")

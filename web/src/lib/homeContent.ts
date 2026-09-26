@@ -1,6 +1,5 @@
 // Homepage teaser copy — matches the supplied Somwave website UI exactly.
-// Listing pages remain API-driven; these cards only exist so the homepage
-// can stay prerendered and visually identical to the reference.
+// The articles section is not here: it reads published posts from the API.
 
 export const trustedClients = [
   'Hormuud Telecom',
@@ -140,26 +139,5 @@ export const homeTestimonials = [
     quote:
       'Waa koox xirfad leh. Waxay inaga caawiyeen inaan ka gudubno Excel una gudubno nidaam buuxa.',
     rating: 5,
-  },
-] as const;
-
-export const homeArticles = [
-  {
-    title: 'Sida loo doorto shirkad website oo ku habboon',
-    date: '2026-10-05',
-    href: '/blog/sida-loo-doorto-shirkad-website',
-    scene: 'logo' as const,
-  },
-  {
-    title: 'Muhiimadda nidaamyada gudaha ee ganacsiga',
-    date: '2026-09-12',
-    href: '/blog/muhiimadda-nidaamyada-gudaha',
-    scene: 'app' as const,
-  },
-  {
-    title: 'Sida loo dhiso nidaam software oo sii kora',
-    date: '2026-08-20',
-    href: '/blog',
-    scene: 'code' as const,
   },
 ] as const;

@@ -7,11 +7,22 @@ import Footer from '../components/Footer.astro';
 interface Props {
   title: string;
   description?: string;
+  image?: string | null;
+  ogType?: 'website' | 'article';
+  publishedAt?: string | null;
+  authorName?: string | null;
 }
-const { title, description } = Astro.props;
+const { title, description, image, ogType, publishedAt, authorName } = Astro.props;
 ---
 
-<BaseLayout title={title} description={description}>
+<BaseLayout
+  title={title}
+  description={description}
+  image={image}
+  ogType={ogType}
+  publishedAt={publishedAt}
+  authorName={authorName}
+>
   <a
     href="#main"
     class="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-brand focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-surface"

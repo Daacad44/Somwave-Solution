@@ -10,6 +10,7 @@ describe('publicPostSummarySchema', () => {
         title: 'Hello',
         excerpt: 'Intro',
         coverImage: null,
+        authorName: null,
         publishedAt: null,
         category: null,
       }).success,
@@ -26,6 +27,7 @@ describe('publicPostDetailSchema', () => {
         title: 'Hello',
         excerpt: 'Intro',
         coverImage: null,
+        authorName: 'Somwave',
         publishedAt: '2026-01-01T00:00:00.000Z',
         category: { slug: 'news', name: 'News' },
       }).success,
@@ -37,6 +39,25 @@ describe('createPostSchema', () => {
   it('defaults isPublished to false and requires a kebab-case slug', () => {
     const parsed = createPostSchema.parse({ slug: 'my-post', title: 'T', excerpt: 'E', body: 'B' });
     expect(parsed.isPublished).toBe(false);
+    expect(parsed.authorName).toBeUndefined();
+    expect(
+      createPostSchema.safeParse({
+        slug: 'my-post',
+        title: 'T',
+        excerpt: 'E',
+        body: 'B',
+        authorName: 'a'.repeat(121),
+      }).success,
+    ).toBe(false);
+    expect(
+      createPostSchema.safeParse({
+        slug: 'my-post',
+        title: 'T',
+        excerpt: 'E',
+        body: 'B',
+        authorName: '',
+      }).success,
+    ).toBe(true);
     expect(
       createPostSchema.safeParse({ slug: 'Bad', title: 'T', excerpt: 'E', body: 'B' }).success,
     ).toBe(false);

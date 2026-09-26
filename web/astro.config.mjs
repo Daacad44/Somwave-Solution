@@ -11,10 +11,19 @@ import tailwind from '@astrojs/tailwind';
 //
 // `server.host: true` binds 0.0.0.0 so Coolify/Traefik can reach the process.
 // PUBLIC_SITE_URL is a Coolify Buildtime var (sitemap, canonical, OG).
+const siteUrl = process.env.PUBLIC_SITE_URL ?? 'https://somwave.botandev.com';
+
 export default defineConfig({
-  site: process.env.PUBLIC_SITE_URL ?? 'https://somwave.botandev.com',
+  site: siteUrl,
   output: 'static',
   adapter: node({ mode: 'standalone' }),
   server: { host: true, port: 4321 },
-  integrations: [tailwind({ applyBaseStyles: false }), sitemap()],
+  integrations: [
+    tailwind({ applyBaseStyles: false }),
+    sitemap({
+      // The homepage is SSR so published articles stay fresh. Put it back in
+      // the sitemap; prerendered pages are still discovered automatically.
+      customPages: [new URL('/', siteUrl).href],
+    }),
+  ],
 });

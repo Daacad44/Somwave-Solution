@@ -35,6 +35,7 @@ const row = {
   title: 'Hello',
   excerpt: 'Intro',
   coverImage: null,
+  authorName: 'Aamina',
   publishedAt: published,
   category: { slug: 'news', name: 'News' },
 };
@@ -46,6 +47,7 @@ const adminRow = {
   excerpt: 'Intro',
   body: 'Full body',
   coverImage: null,
+  authorName: null,
   isPublished: false,
   publishedAt: null,
   categoryId: null,
@@ -70,7 +72,15 @@ describe('listPublishedPosts', () => {
     expect(result.pageSize).toBe(100); // clamped to MAX_PAGE_SIZE
     expect(result.total).toBe(1);
     expect(result.items[0]?.publishedAt).toBe('2026-01-02T00:00:00.000Z');
+    expect(result.items[0]?.authorName).toBe('Aamina');
     expect(result.items[0]?.category).toEqual({ slug: 'news', name: 'News' });
+    expect(prisma.post.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { isPublished: true },
+        orderBy: [{ publishedAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
+      }),
+    );
+    expect(prisma.post.count).toHaveBeenCalledWith({ where: { isPublished: true } });
   });
 
   it('serves a cached page without hitting the database', async () => {
@@ -94,7 +104,11 @@ describe('getPostBySlug', () => {
     vi.mocked(prisma.post.findFirst).mockResolvedValue({ ...row, body: 'Full body' } as never);
     const result = await getPostBySlug('hello');
     expect(result?.body).toBe('Full body');
+    expect(result?.authorName).toBe('Aamina');
     expect(result?.publishedAt).toBe('2026-01-02T00:00:00.000Z');
+    expect(prisma.post.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { slug: 'hello', isPublished: true } }),
+    );
   });
 });
 
@@ -115,6 +129,20 @@ describe('createPost', () => {
 
     expect(result.slug).toBe('hello');
     expect(redis.scan).toHaveBeenCalled();
+  });
+
+  it('keeps a draft unpublished with no publishedAt', async () => {
+    vi.mocked(prisma.post.findUnique).mockResolvedValue(null as never);
+    vi.mocked(prisma.post.create).mockResolvedValue(adminRow as never);
+
+    await createPost({ ...createInput, authorName: '  ' });
+
+    const arg = vi.mocked(prisma.post.create).mock.calls[0]?.[0] as {
+      data: { isPublished: boolean; publishedAt: Date | null; authorName: string | null };
+    };
+    expect(arg.data.isPublished).toBe(false);
+    expect(arg.data.publishedAt).toBeNull();
+    expect(arg.data.authorName).toBeNull();
   });
 
   it('sets publishedAt when created as published', async () => {
@@ -160,6 +188,24 @@ describe('updatePost', () => {
       data: { publishedAt?: Date };
     };
     expect(arg.data.publishedAt).toBeInstanceOf(Date);
+  });
+
+  it('unpublishing removes the post from the public cache', async () => {
+    vi.mocked(prisma.post.findUnique).mockResolvedValue({
+      id: 'p1',
+      slug: 'hello',
+      isPublished: true,
+      publishedAt: published,
+    } as never);
+    vi.mocked(prisma.post.update).mockResolvedValue({ ...adminRow, isPublished: false } as never);
+
+    await updatePost('p1', { isPublished: false });
+
+    const arg = vi.mocked(prisma.post.update).mock.calls[0]?.[0] as {
+      data: { isPublished?: boolean };
+    };
+    expect(arg.data.isPublished).toBe(false);
+    expect(redis.scan).toHaveBeenCalled();
   });
 });
 

@@ -1,28 +1,39 @@
 // The website's client for the public API (SYSTEM_PROMPT §6). Unwraps the
 // standard { data } envelope (§10). Reads run from SSR pages; submitInquiry runs
 // in the browser.
-import type {
-  CreateInquiryInput,
-  CreateJobApplicationInput,
-  PublicJobOpeningDetail,
-  PublicJobOpeningSummary,
-  PublicPortfolioDetail,
-  PublicPortfolioItem,
-  PublicPostDetail,
-  PublicPostSummary,
-  PublicService,
-  PublicServiceDetail,
-  PublicTestimonial,
-  PublicTeamMember,
-  PublicFaq,
+import {
+  DEFAULT_PAGE_SIZE,
+  type CreateInquiryInput,
+  type CreateJobApplicationInput,
+  type PublicJobOpeningDetail,
+  type PublicJobOpeningSummary,
+  type PublicPortfolioDetail,
+  type PublicPortfolioItem,
+  type PublicPostDetail,
+  type PublicPostSummary,
+  type PublicService,
+  type PublicServiceDetail,
+  type PublicTestimonial,
+  type PublicTeamMember,
+  type PublicFaq,
 } from '@somwave/shared';
 
 const API_URL = import.meta.env.PUBLIC_API_URL;
 
-async function getData<T>(path: string): Promise<T> {
+interface PageMeta {
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+async function getEnvelope<T>(path: string): Promise<{ data: T; meta?: PageMeta }> {
   const res = await fetch(`${API_URL}${path}`);
   if (!res.ok) throw new Error(`Public API request failed: ${res.status}`);
-  const body = (await res.json()) as { data: T };
+  return (await res.json()) as { data: T; meta?: PageMeta };
+}
+
+async function getData<T>(path: string): Promise<T> {
+  const body = await getEnvelope<T>(path);
   return body.data;
 }
 
@@ -50,8 +61,38 @@ export async function fetchPortfolioItem(slug: string): Promise<PublicPortfolioD
   }
 }
 
-export function fetchPosts(): Promise<PublicPostSummary[]> {
-  return getData<PublicPostSummary[]>('/public/posts');
+export interface PublicPostPage {
+  items: PublicPostSummary[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+/** Published posts only, newest first. Drafts are never returned by this route. */
+export async function fetchPosts(options?: {
+  page?: number;
+  pageSize?: number;
+}): Promise<PublicPostPage> {
+  const page = options?.page ?? 1;
+  const pageSize = options?.pageSize ?? DEFAULT_PAGE_SIZE;
+  const params = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+  });
+  const body = await getEnvelope<PublicPostSummary[]>(`/public/posts?${params.toString()}`);
+  return {
+    items: body.data,
+    page: body.meta?.page ?? page,
+    pageSize: body.meta?.pageSize ?? pageSize,
+    total: body.meta?.total ?? body.data.length,
+  };
+}
+
+const HOME_POST_LIMIT = 3;
+
+export async function fetchLatestPosts(): Promise<PublicPostSummary[]> {
+  const { items } = await fetchPosts({ page: 1, pageSize: HOME_POST_LIMIT });
+  return items.slice(0, HOME_POST_LIMIT);
 }
 
 export async function fetchPost(slug: string): Promise<PublicPostDetail | null> {
