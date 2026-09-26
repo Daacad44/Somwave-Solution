@@ -18,6 +18,7 @@ projectsRouter.post(
   validate(createProjectSchema),
   projectController.create,
 );
+projectsRouter.get('/:id/workspace', rbac(PERMISSIONS.PROJECTS_READ), projectController.workspace);
 projectsRouter.get('/:id', rbac(PERMISSIONS.PROJECTS_READ), projectController.get);
 projectsRouter.patch(
   '/:id',

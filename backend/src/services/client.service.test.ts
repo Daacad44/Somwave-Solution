@@ -3,11 +3,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../lib/prisma', () => ({
   prisma: {
     client: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
+    project: { findMany: vi.fn() },
+    invoice: { findMany: vi.fn() },
+    supportTicket: { findMany: vi.fn() },
+    clientDocument: { findMany: vi.fn() },
+    task: { groupBy: vi.fn() },
   },
 }));
 
 import { prisma } from '../lib/prisma';
-import { listClients, createClient, updateClient } from './client.service';
+import { listClients, createClient, updateClient, getClientProfile } from './client.service';
 
 const row = {
   id: 'cl_1',
@@ -46,5 +51,13 @@ describe('updateClient', () => {
     await expect(updateClient('missing', { companyName: 'X' })).rejects.toMatchObject({
       code: 'NOT_FOUND',
     });
+  });
+});
+
+describe('getClientProfile', () => {
+  it('throws NOT_FOUND when the client is missing', async () => {
+    vi.mocked(prisma.client.findFirst).mockResolvedValue(null as never);
+    await expect(getClientProfile('missing')).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    expect(prisma.project.findMany).not.toHaveBeenCalled();
   });
 });

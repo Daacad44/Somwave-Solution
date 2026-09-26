@@ -2,6 +2,7 @@ import { type ReactNode, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import {
   loginSchema,
   verifyTwoFactorSchema,
@@ -12,12 +13,14 @@ import { ApiError } from '../../lib/apiClient';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { useLogin, useVerifyTwoFactor } from './hooks';
+import { AuthLayout } from './AuthLayout';
 
 export function LoginPage(): ReactNode {
   const navigate = useNavigate();
   const loginMutation = useLogin();
   const verifyMutation = useVerifyTwoFactor();
   const [challengeToken, setChallengeToken] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const loginForm = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
   const codeForm = useForm<VerifyTwoFactorInput>({
@@ -62,10 +65,8 @@ export function LoginPage(): ReactNode {
 
   if (challengeToken) {
     return (
-      <main className="auth-shell">
-        <form className="auth-card" onSubmit={onVerify} noValidate>
-          <h1 className="text-2xl font-semibold text-ink">Somwave</h1>
-          <p className="text-sm text-muted">Geli koodhka 2FA ee app-kaaga.</p>
+      <AuthLayout title="Xaqiiji" subtitle="Geli koodhka 2FA ee app-kaaga.">
+        <form className="flex flex-col gap-4" onSubmit={onVerify} noValidate>
           <input type="hidden" {...codeForm.register('challengeToken')} />
           <Input
             label="Koodhka 2FA"
@@ -74,7 +75,7 @@ export function LoginPage(): ReactNode {
             error={codeForm.formState.errors.code?.message}
             {...codeForm.register('code')}
           />
-          {serverError ? <p className="form-error">{serverError}</p> : null}
+          {serverError ? <p className="text-sm text-error">{serverError}</p> : null}
           <Button
             type="submit"
             className="w-full"
@@ -83,15 +84,13 @@ export function LoginPage(): ReactNode {
             Xaqiiji
           </Button>
         </form>
-      </main>
+      </AuthLayout>
     );
   }
 
   return (
-    <main className="auth-shell">
-      <form className="auth-card" onSubmit={onLogin} noValidate>
-        <h1 className="text-2xl font-semibold text-ink">Somwave</h1>
-        <p className="text-sm text-muted">Soo gal akoonkaaga.</p>
+    <AuthLayout title="Soo gal" subtitle="Soo gal akoonkaaga si aad u sii wadato shaqada.">
+      <form className="flex flex-col gap-4" onSubmit={onLogin} noValidate>
         <Input
           label="Iimayl"
           type="email"
@@ -101,12 +100,26 @@ export function LoginPage(): ReactNode {
         />
         <Input
           label="Furaha"
-          type="password"
+          type={showPassword ? 'text' : 'password'}
           autoComplete="current-password"
           error={loginForm.formState.errors.password?.message}
+          trailing={
+            <button
+              type="button"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              aria-label={showPassword ? 'Qari furaha' : 'Muuji furaha'}
+              onClick={() => setShowPassword((current) => !current)}
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <Eye className="h-4 w-4" aria-hidden="true" />
+              )}
+            </button>
+          }
           {...loginForm.register('password')}
         />
-        {serverError ? <p className="form-error">{serverError}</p> : null}
+        {serverError ? <p className="text-sm text-error">{serverError}</p> : null}
         <Button
           type="submit"
           className="w-full"
@@ -120,6 +133,6 @@ export function LoginPage(): ReactNode {
           </Link>
         </p>
       </form>
-    </main>
+    </AuthLayout>
   );
 }

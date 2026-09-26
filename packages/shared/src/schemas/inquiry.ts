@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { adminClientSchema } from './client';
 
 // Website enquiry form (SYSTEM_PROMPT §11). The same schema drives the form on
 // the client and validate() on the server. User-facing messages are Somali (§15).
@@ -30,6 +31,7 @@ export const adminInquirySchema = z.object({
   phone: z.string().nullable(),
   message: z.string(),
   status: inquiryStatusSchema,
+  convertedClientId: z.string().nullable(),
   createdAt: z.string(),
 });
 
@@ -40,3 +42,11 @@ export const updateInquirySchema = z.object({
 });
 
 export type UpdateInquiryInput = z.infer<typeof updateInquirySchema>;
+
+export const convertLeadResultSchema = z.object({
+  inquiry: adminInquirySchema,
+  client: adminClientSchema,
+  created: z.boolean(),
+});
+
+export type ConvertLeadResult = z.infer<typeof convertLeadResultSchema>;

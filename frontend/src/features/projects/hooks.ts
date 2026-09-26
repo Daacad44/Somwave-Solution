@@ -4,6 +4,7 @@ import type { CreateProjectInput, UpdateProjectInput } from '@somwave/shared';
 import {
   listProjects,
   createProject,
+  getProjectWorkspace,
   updateProject,
   deleteProject,
   type ListProjectsParams,
@@ -16,6 +17,14 @@ export function useProjects(params: ListProjectsParams) {
     queryKey: [...PROJECTS_KEY, params],
     queryFn: () => listProjects(params),
     placeholderData: (prev) => prev,
+  });
+}
+
+export function useProjectWorkspace(id: string | undefined) {
+  return useQuery({
+    queryKey: [...PROJECTS_KEY, 'workspace', id],
+    queryFn: () => getProjectWorkspace(id ?? ''),
+    enabled: Boolean(id),
   });
 }
 

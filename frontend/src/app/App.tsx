@@ -19,6 +19,9 @@ const RolesPage = lazy(() =>
 const ProjectsPage = lazy(() =>
   import('../features/projects/ProjectsPage').then((m) => ({ default: m.ProjectsPage })),
 );
+const ProjectDetailPage = lazy(() =>
+  import('../features/projects/ProjectDetailPage').then((m) => ({ default: m.ProjectDetailPage })),
+);
 const TasksPage = lazy(() =>
   import('../features/tasks/TasksPage').then((m) => ({ default: m.TasksPage })),
 );
@@ -65,6 +68,9 @@ const ApplicationsPage = lazy(() =>
 const ClientsPage = lazy(() =>
   import('../features/ops/ClientsPage').then((m) => ({ default: m.ClientsPage })),
 );
+const ClientDetailPage = lazy(() =>
+  import('../features/ops/ClientDetailPage').then((m) => ({ default: m.ClientDetailPage })),
+);
 const TimesheetsPage = lazy(() =>
   import('../features/ops/TimesheetsPage').then((m) => ({ default: m.TimesheetsPage })),
 );
@@ -85,6 +91,9 @@ const TicketDetailPage = lazy(() =>
 );
 const PortalProjectsPage = lazy(() =>
   import('../features/ops/PortalProjectsPage').then((m) => ({ default: m.PortalProjectsPage })),
+);
+const PortalProjectPage = lazy(() =>
+  import('../features/ops/PortalProjectPage').then((m) => ({ default: m.PortalProjectPage })),
 );
 const PortalMilestonesPage = lazy(() =>
   import('../features/ops/PortalMilestonesPage').then((m) => ({
@@ -180,6 +189,14 @@ export function App(): ReactNode {
             element={
               <Guarded permission={PERMISSIONS.PROJECTS_READ}>
                 <ProjectsPage />
+              </Guarded>
+            }
+          />
+          <Route
+            path="/projects/:id"
+            element={
+              <Guarded permission={PERMISSIONS.PROJECTS_READ}>
+                <ProjectDetailPage />
               </Guarded>
             }
           />
@@ -288,6 +305,14 @@ export function App(): ReactNode {
             }
           />
           <Route
+            path="/clients/:id"
+            element={
+              <Guarded permission={PERMISSIONS.CLIENTS_READ}>
+                <ClientDetailPage />
+              </Guarded>
+            }
+          />
+          <Route
             path="/timesheets"
             element={
               <Guarded permission={PERMISSIONS.TIMESHEETS_READ}>
@@ -340,6 +365,14 @@ export function App(): ReactNode {
             element={
               <Guarded permission={PERMISSIONS.PORTAL_READ}>
                 <PortalProjectsPage />
+              </Guarded>
+            }
+          />
+          <Route
+            path="/portal/projects/:id"
+            element={
+              <Guarded permission={PERMISSIONS.PORTAL_READ}>
+                <PortalProjectPage />
               </Guarded>
             }
           />
