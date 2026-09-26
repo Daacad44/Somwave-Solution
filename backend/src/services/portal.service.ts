@@ -1,6 +1,7 @@
-import type { AdminProject, AdminMilestone } from '@somwave/shared';
+import type { AdminProject, AdminMilestone, ProjectWorkspace } from '@somwave/shared';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
+import { getProjectWorkspace } from './project.service';
 
 function toProject(row: {
   id: string;
@@ -36,6 +37,21 @@ export async function listPortalProjects(clientId: string | null): Promise<Admin
     include: { manager: { select: { id: true, name: true } } },
   });
   return rows.map(toProject);
+}
+
+export async function getPortalProject(
+  clientId: string | null,
+  id: string,
+): Promise<ProjectWorkspace> {
+  if (!clientId) throw new AppError('NOT_FOUND', 404, 'Mashruuc lama helin');
+  const owned = await prisma.project.findFirst({
+    where: { id, clientId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!owned) throw new AppError('NOT_FOUND', 404, 'Mashruuc lama helin');
+  const workspace = await getProjectWorkspace(id);
+  if (!workspace) throw new AppError('NOT_FOUND', 404, 'Mashruuc lama helin');
+  return workspace;
 }
 
 export async function listPortalMilestones(clientId: string | null): Promise<AdminMilestone[]> {

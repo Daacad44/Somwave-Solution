@@ -22,6 +22,11 @@ describe('hasPermission', () => {
     expect(hasPermission(user, PERMISSIONS.USERS_DELETE)).toBe(false);
     expect(hasPermission(null, PERMISSIONS.USERS_READ)).toBe(false);
   });
+  it('lets SUPER_ADMIN open every permission', () => {
+    const admin: AuthUser = { ...user, roles: [ROLES.SUPER_ADMIN], permissions: [] };
+    expect(hasPermission(admin, PERMISSIONS.USERS_DELETE)).toBe(true);
+    expect(hasPermission(admin, PERMISSIONS.INVOICES_CREATE)).toBe(true);
+  });
 });
 
 describe('hasRole', () => {

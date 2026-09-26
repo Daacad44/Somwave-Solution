@@ -309,15 +309,19 @@ model PortfolioItem {
 
 // Website enquiries. These become CRM leads in Internal (I5.1).
 model Inquiry {
-  id        String        @id @default(cuid())
-  name      String
-  email     String
-  phone     String?
-  message   String
-  status    InquiryStatus @default(NEW)
-  createdAt DateTime      @default(now()) @map("created_at")
+  id                String        @id @default(cuid())
+  name              String
+  email             String
+  phone             String?
+  message           String
+  status            InquiryStatus @default(NEW)
+  convertedClientId String?       @map("converted_client_id")
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  convertedClient Client? @relation(fields: [convertedClientId], references: [id], onDelete: SetNull)
 
   @@index([status, createdAt])
+  @@index([convertedClientId])
   @@map("inquiries")
 }
 
@@ -341,6 +345,7 @@ model Client {
   invoices  Invoice[]
   tickets   SupportTicket[]
   documents ClientDocument[]
+  inquiries Inquiry[]
 
   @@index([status])
   @@map("clients")

@@ -56,6 +56,7 @@ export interface DashboardRecentTask {
   status: TaskStatus;
   priority: TaskPriority;
   dueDate: string | null;
+  projectId: string;
   projectName: string;
   assigneeName: string | null;
 }

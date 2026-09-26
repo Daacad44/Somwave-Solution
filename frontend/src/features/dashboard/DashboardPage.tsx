@@ -302,6 +302,7 @@ function WidgetFrame({
   isError,
   onRetry,
   empty,
+  emptyDescription,
   children,
 }: {
   title: string;
@@ -310,6 +311,7 @@ function WidgetFrame({
   isError: boolean;
   onRetry: () => void;
   empty?: boolean;
+  emptyDescription?: string;
   children: ReactNode;
 }): ReactNode {
   return (
@@ -331,7 +333,10 @@ function WidgetFrame({
           onRetry={onRetry}
         />
       ) : empty ? (
-        <EmptyState title="Wax xog ah lama hayo." />
+        <EmptyState
+          title="No data available"
+          description={emptyDescription ?? 'Records will appear here once they exist.'}
+        />
       ) : (
         <div className="mt-4">{children}</div>
       )}
@@ -555,8 +560,8 @@ export function DashboardPage(): ReactNode {
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">{kpis}</ul>
       ) : (
         <EmptyState
-          title="No metrics yet"
-          description="Metrics appear here once your role can read projects, tasks, clients, or invoices."
+          title="No data available"
+          description="Metrics appear here when your role can see projects, tasks, leads, or invoices."
         />
       )}
 
@@ -709,7 +714,7 @@ function InternalAnalytics({
           ) : (
             <EmptyState
               title="No data yet"
-              description="Xog ku filan oo lagu sameeyo jaantuskan weli ma jirto."
+              description="Issued and paid amounts will appear after invoices are created."
             />
           )}
         </WidgetFrame>
@@ -740,6 +745,7 @@ function RecentProjects({
       isError={error}
       onRetry={onRetry}
       empty={rows.length === 0}
+      emptyDescription="Projects you can access will show up here."
     >
       <ul>
         {rows.map((project) => {
@@ -748,7 +754,16 @@ function RecentProjects({
             <li key={project.id} className="border-b border-border py-3 last:border-b-0">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate font-semibold text-ink">{project.name}</p>
+                  <Link
+                    to={
+                      data?.surface === 'portal'
+                        ? `/portal/projects/${project.id}`
+                        : `/projects/${project.id}`
+                    }
+                    className="truncate font-semibold text-ink hover:text-brand"
+                  >
+                    {project.name}
+                  </Link>
                   <p className="text-xs text-muted">
                     {project.clientName ? `Client: ${project.clientName}` : 'No client'}
                     {project.managerName ? ` · ${project.managerName}` : ''}
@@ -792,6 +807,7 @@ function RecentTasks({
       isError={error}
       onRetry={onRetry}
       empty={rows.length === 0}
+      emptyDescription="Tasks appear after work is added to a project."
     >
       <ul>
         {rows.map((task) => (
@@ -800,7 +816,12 @@ function RecentTasks({
             className="flex items-start justify-between gap-3 border-b border-border py-3 last:border-b-0"
           >
             <div className="min-w-0">
-              <p className="truncate font-semibold text-ink">{task.title}</p>
+              <Link
+                to={`/projects/${task.projectId}`}
+                className="truncate font-semibold text-ink hover:text-brand"
+              >
+                {task.title}
+              </Link>
               <p className="truncate text-xs text-muted">
                 {task.projectName}
                 {task.assigneeName ? ` · ${task.assigneeName}` : ''}
@@ -845,6 +866,7 @@ function RecentLeads({
       isError={error}
       onRetry={onRetry}
       empty={rows.length === 0}
+      emptyDescription="Website contact enquiries will show up here."
     >
       <ul>
         {rows.map((lead) => (
@@ -889,6 +911,7 @@ function RecentTickets({
       isError={error}
       onRetry={onRetry}
       empty={rows.length === 0 && summary.every(([, count]) => count === 0)}
+      emptyDescription="Support tickets will show up here."
     >
       <ul className="mb-3 grid grid-cols-2 gap-2 text-sm">
         {summary.map(([label, count]) => (
@@ -901,7 +924,12 @@ function RecentTickets({
       <ul>
         {rows.map((ticket) => (
           <li key={ticket.id} className="border-b border-border py-3 last:border-b-0">
-            <p className="truncate font-semibold text-ink">{ticket.subject}</p>
+            <Link
+              to={`/tickets/${ticket.id}`}
+              className="truncate font-semibold text-ink hover:text-brand"
+            >
+              {ticket.subject}
+            </Link>
             <p className="text-xs text-muted">
               {ticket.code} · {TICKET_STATUS_LABELS_EN[ticket.status]} · {ticket.clientName}
             </p>
@@ -931,6 +959,7 @@ function Upcoming({
       isError={error}
       onRetry={onRetry}
       empty={rows.length === 0}
+      emptyDescription="Deadlines in the next 45 days will show up here."
     >
       <ol className="border-s border-border ps-4">
         {rows.map((item) => (
@@ -967,6 +996,7 @@ function Activity({
       isError={error}
       onRetry={onRetry}
       empty={rows.length === 0}
+      emptyDescription="Audit events appear after changes are recorded."
     >
       <ul>
         {rows.map((item) => (

@@ -24,7 +24,6 @@ import {
   Menu,
   MessageSquare,
   Receipt,
-  Search,
   Settings,
   Shield,
   UserRound,
@@ -37,7 +36,9 @@ import { useCurrentUser, useLogout } from '../../features/auth/hooks';
 import { hasPermission } from '../../lib/rbac';
 import { cn } from '../../lib/cn';
 import { BrandLogo } from '../../components/brand/BrandLogo';
+import { useNotifications } from '../../features/ops/hooks';
 import { visibleNavGroups } from './nav';
+import { GlobalSearch } from './GlobalSearch';
 
 const ICONS: Record<string, LucideIcon> = {
   '/cms/services': LayoutGrid,
@@ -95,6 +96,9 @@ function headerRole(roles: readonly string[]): string {
 export function AppShell(): ReactNode {
   const { data: user } = useCurrentUser();
   const logout = useLogout();
+  const canNotify = hasPermission(user, PERMISSIONS.NOTIFICATIONS_READ);
+  const notifications = useNotifications({ enabled: canNotify });
+  const unread = canNotify ? (notifications.data?.filter((item) => !item.readAt).length ?? 0) : 0;
   const navigate = useNavigate();
   const [open, setOpen] = useState(() => window.matchMedia('(min-width: 1024px)').matches);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -229,29 +233,20 @@ export function AppShell(): ReactNode {
           >
             <Menu className="h-5 w-5" aria-hidden="true" />
           </button>
-          <label className="relative hidden min-w-0 flex-1 sm:block sm:max-w-md">
-            <span className="sr-only">Search</span>
-            <Search
-              className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
-              aria-hidden="true"
-            />
-            <input
-              type="search"
-              placeholder="Search anything..."
-              className="h-11 w-full rounded-lg border border-border bg-canvas ps-10 pe-16 text-sm text-ink placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            />
-            <kbd className="pointer-events-none absolute end-2 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded-md border border-border bg-surface px-1.5 py-0.5 text-[11px] font-medium text-muted md:inline-flex">
-              ⌘ K
-            </kbd>
-          </label>
+          <GlobalSearch />
           <div className="ms-auto flex items-center gap-2">
             {hasPermission(user, PERMISSIONS.NOTIFICATIONS_READ) ? (
               <NavLink
                 to="/notifications"
                 className="relative inline-flex h-11 w-11 items-center justify-center rounded-lg text-ink hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                aria-label="Notifications"
+                aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
               >
                 <Bell className="h-5 w-5" aria-hidden="true" />
+                {unread > 0 ? (
+                  <span className="absolute end-1 top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-semibold text-surface">
+                    {unread > 9 ? '9+' : unread}
+                  </span>
+                ) : null}
               </NavLink>
             ) : null}
             <div className="relative" ref={menuRef}>

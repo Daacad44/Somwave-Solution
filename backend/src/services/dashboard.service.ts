@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import {
   PERMISSIONS,
   ROLES,
+  holdsPermission,
   type AuthUser,
   type DashboardActivityItem,
   type DashboardKpi,
@@ -45,11 +46,11 @@ const INTERNAL_SURFACE: PermissionKey[] = [
 ];
 
 export function hasInternalSurface(user: AuthUser): boolean {
-  return INTERNAL_SURFACE.some((permission) => user.permissions.includes(permission));
+  return INTERNAL_SURFACE.some((permission) => holdsPermission(user, permission));
 }
 
 function can(user: AuthUser, permission: PermissionKey): boolean {
-  return user.permissions.includes(permission);
+  return holdsPermission(user, permission);
 }
 
 function isClientSurface(user: AuthUser): boolean {
@@ -273,7 +274,7 @@ async function getInternalOverview(
               status: true,
               priority: true,
               dueDate: true,
-              project: { select: { name: true } },
+              project: { select: { id: true, name: true } },
               assignee: { select: { name: true } },
             },
           }),
@@ -288,6 +289,7 @@ async function getInternalOverview(
           status: row.status,
           priority: row.priority,
           dueDate: row.dueDate?.toISOString() ?? null,
+          projectId: row.project.id,
           projectName: row.project.name,
           assigneeName: row.assignee?.name ?? null,
         }));
@@ -713,7 +715,7 @@ async function listUpcoming(
         kind: 'project',
         title: row.name,
         dueDate: row.dueDate.toISOString(),
-        href: clientId ? '/portal/projects' : '/projects',
+        href: clientId ? `/portal/projects/${row.id}` : `/projects/${row.id}`,
         meta: 'Project deadline',
       });
     }
@@ -751,7 +753,12 @@ async function listUpcoming(
         status: { in: OPEN_TASK },
         dueDate: { gte: new Date(), lte: horizon },
       },
-      select: { id: true, title: true, dueDate: true, project: { select: { name: true } } },
+      select: {
+        id: true,
+        title: true,
+        dueDate: true,
+        project: { select: { id: true, name: true } },
+      },
       orderBy: { dueDate: 'asc' },
       take: 8,
     });
@@ -762,7 +769,7 @@ async function listUpcoming(
         kind: 'task',
         title: row.title,
         dueDate: row.dueDate.toISOString(),
-        href: '/tasks',
+        href: `/projects/${row.project.id}`,
         meta: row.project.name,
       });
     }

@@ -15,10 +15,12 @@ import type {
 import {
   listLeads,
   updateLead,
+  convertLead,
   listApplications,
   updateApplication,
   listClients,
   createClient,
+  getClientProfile,
   listTimesheets,
   createTimesheet,
   updateTimesheet,
@@ -36,6 +38,7 @@ import {
   listTicketAssignees,
   createTicketReply,
   listPortalProjects,
+  getPortalProject,
   listPortalMilestones,
   listEmployees,
   listEmployeeCandidates,
@@ -69,6 +72,16 @@ export function useUpdateLead() {
     onSuccess: () => client.invalidateQueries({ queryKey: ['leads'] }),
   });
 }
+export function useConvertLead() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => convertLead(id),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['leads'] });
+      client.invalidateQueries({ queryKey: ['clients'] });
+    },
+  });
+}
 
 export function useApplications() {
   return useQuery({ queryKey: ['applications'], queryFn: listApplications });
@@ -87,6 +100,13 @@ export function useClients(options?: { enabled?: boolean }) {
     queryKey: ['clients'],
     queryFn: listClients,
     enabled: options?.enabled ?? true,
+  });
+}
+export function useClientProfile(id: string | undefined) {
+  return useQuery({
+    queryKey: ['clients', id],
+    queryFn: () => getClientProfile(id ?? ''),
+    enabled: Boolean(id),
   });
 }
 export function useCreateClient() {
@@ -237,6 +257,13 @@ export function useCreateTicketReply() {
 export function usePortalProjects() {
   return useQuery({ queryKey: ['portal-projects'], queryFn: listPortalProjects });
 }
+export function usePortalProject(id: string | undefined) {
+  return useQuery({
+    queryKey: ['portal-projects', id],
+    queryFn: () => getPortalProject(id ?? ''),
+    enabled: Boolean(id),
+  });
+}
 export function usePortalMilestones() {
   return useQuery({ queryKey: ['portal-milestones'], queryFn: listPortalMilestones });
 }
@@ -349,8 +376,12 @@ export function useDownloadMedia() {
 export function useAuditLogs() {
   return useQuery({ queryKey: ['audit'], queryFn: listAuditLogs });
 }
-export function useNotifications() {
-  return useQuery({ queryKey: ['notifications'], queryFn: listNotifications });
+export function useNotifications(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ['notifications'],
+    queryFn: listNotifications,
+    enabled: options?.enabled ?? true,
+  });
 }
 export function useMarkNotificationRead() {
   const client = useQueryClient();

@@ -49,6 +49,17 @@ export async function get(req: Request, res: Response, next: NextFunction): Prom
   }
 }
 
+export async function workspace(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { id } = req.params;
+    const project = id ? await projectService.getProjectWorkspace(id) : null;
+    if (!project) throw new AppError('NOT_FOUND', 404, 'Mashruucan lama helin');
+    sendData(res, project);
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function create(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const project = await projectService.createProject(req.body as CreateProjectInput);

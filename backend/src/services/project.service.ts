@@ -1,10 +1,16 @@
 // Projects service (I2.1). Only layer that touches Prisma (§5). Money is stored
 // Decimal(12,2) and surfaced as a decimal string; dates as ISO 8601 (§7, §11).
 import type {
+  AdminMilestone,
   AdminProject,
+  AdminTask,
   CreateProjectInput,
-  UpdateProjectInput,
+  ProjectHealth,
   ProjectStatus,
+  ProjectWorkspace,
+  TaskPriority,
+  TaskStatus,
+  UpdateProjectInput,
 } from '@somwave/shared';
 import { MAX_PAGE_SIZE } from '@somwave/shared';
 import { Prisma } from '@prisma/client';
@@ -95,6 +101,30 @@ export async function listProjects({
   return { items: rows.map(toAdminProject), page: Math.max(page, 1), pageSize: take, total };
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Progress is null when the project has no tasks, so the UI does not invent 0%. */
+export function deriveProgress(total: number, done: number): number | null {
+  if (total <= 0) return null;
+  return Math.round((done / total) * 100);
+}
+
+export function deriveProjectHealth(input: {
+  status: ProjectStatus;
+  dueDate: string | null;
+  now?: Date;
+}): ProjectHealth {
+  if (input.status === 'COMPLETED') return 'COMPLETE';
+  if (input.status === 'CANCELLED') return 'CANCELLED';
+  if (!input.dueDate) return 'NO_DATE';
+  const due = Date.parse(input.dueDate);
+  if (Number.isNaN(due)) return 'NO_DATE';
+  const now = (input.now ?? new Date()).getTime();
+  if (due < now) return 'OVERDUE';
+  if (due - now <= 7 * DAY_MS) return 'AT_RISK';
+  return 'ON_TRACK';
+}
+
 export async function getProject(id: string): Promise<AdminProject | null> {
   const row = await prisma.project.findFirst({
     where: { id, deletedAt: null },
@@ -159,6 +189,90 @@ export async function updateProject(id: string, input: UpdateProjectInput): Prom
     select: adminProjectSelect,
   });
   return toAdminProject(row);
+}
+
+export async function getProjectWorkspace(id: string): Promise<ProjectWorkspace | null> {
+  const row = await prisma.project.findFirst({
+    where: { id, deletedAt: null },
+    select: {
+      ...adminProjectSelect,
+      client: { select: { companyName: true } },
+    },
+  });
+  if (!row) return null;
+
+  const [tasks, milestones, total, done] = await Promise.all([
+    prisma.task.findMany({
+      where: { projectId: id, deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        status: true,
+        priority: true,
+        dueDate: true,
+        createdAt: true,
+        project: { select: { id: true, name: true } },
+        assignee: { select: { id: true, name: true } },
+      },
+    }),
+    prisma.milestone.findMany({
+      where: { projectId: id, deletedAt: null },
+      orderBy: [{ order: 'asc' }, { createdAt: 'desc' }],
+      take: 50,
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        status: true,
+        dueDate: true,
+        completedAt: true,
+        order: true,
+        createdAt: true,
+        project: { select: { id: true, name: true } },
+      },
+    }),
+    prisma.task.count({ where: { projectId: id, deletedAt: null } }),
+    prisma.task.count({ where: { projectId: id, deletedAt: null, status: 'DONE' } }),
+  ]);
+
+  const project = {
+    ...toAdminProject(row),
+    clientName: row.client?.companyName ?? null,
+  };
+  const mappedTasks: AdminTask[] = tasks.map((task) => ({
+    id: task.id,
+    title: task.title,
+    description: task.description,
+    status: task.status as TaskStatus,
+    priority: task.priority as TaskPriority,
+    dueDate: task.dueDate?.toISOString() ?? null,
+    project: task.project,
+    assignee: task.assignee,
+    createdAt: task.createdAt.toISOString(),
+  }));
+  const mappedMilestones: AdminMilestone[] = milestones.map((milestone) => ({
+    id: milestone.id,
+    title: milestone.title,
+    description: milestone.description,
+    status: milestone.status,
+    dueDate: milestone.dueDate?.toISOString() ?? null,
+    completedAt: milestone.completedAt?.toISOString() ?? null,
+    order: milestone.order,
+    project: milestone.project,
+    createdAt: milestone.createdAt.toISOString(),
+  }));
+
+  return {
+    project,
+    progress: deriveProgress(total, done),
+    health: deriveProjectHealth({ status: project.status, dueDate: project.dueDate }),
+    taskCounts: { total, done, open: total - done },
+    tasks: mappedTasks,
+    milestones: mappedMilestones,
+  };
 }
 
 // Soft delete — project history is preserved (§7).

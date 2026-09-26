@@ -19,6 +19,16 @@ export async function create(req: Request, res: Response, next: NextFunction): P
   }
 }
 
+export async function get(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { id } = req.params;
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Macmiilkan lama helin');
+    sendData(res, await clientService.getClientProfile(id));
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function update(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;

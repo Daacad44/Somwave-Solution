@@ -102,6 +102,31 @@ describe('visibleNavGroups', () => {
     expect(paths('Portal', groups)).toEqual([]);
   });
 
+  it('shows every internal module to SUPER_ADMIN even with an empty permission list', () => {
+    const admin = user({
+      roles: [ROLES.SUPER_ADMIN],
+      permissions: [],
+    });
+    const groups = visibleNavGroups(admin);
+    expect(groups.map((group) => group.heading)).toEqual([
+      'Website',
+      'Operations',
+      'Project management',
+      'People',
+      'Finance',
+      'Documents',
+      'Administration',
+    ]);
+    expect(paths('Operations', groups)).toEqual([
+      '/projects',
+      '/tasks',
+      '/clients',
+      '/leads',
+      '/tickets',
+    ]);
+    expect(paths('Administration', groups)).toEqual(['/users', '/roles', '/audit']);
+  });
+
   it('never exposes a standalone Security item', () => {
     const admin = user({
       roles: [ROLES.SUPER_ADMIN],
