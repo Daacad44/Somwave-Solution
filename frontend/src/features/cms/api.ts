@@ -1,5 +1,6 @@
 // CMS feature API (W4, §6: features/<feature>/api.ts → apiClient).
 import type {
+  UploadedArticleImage,
   AdminService,
   CreateServiceInput,
   UpdateServiceInput,
@@ -24,7 +25,7 @@ import type {
   UpdateFaqInput,
   AdminSubscriber,
 } from '@somwave/shared';
-import { apiFetch } from '../../lib/apiClient';
+import { apiFetch, apiUpload } from '../../lib/apiClient';
 
 export function listServices(): Promise<AdminService[]> {
   return apiFetch<AdminService[]>('/cms/services');
@@ -56,6 +57,38 @@ export function listPosts(): Promise<AdminPost[]> {
 
 export function listCategories(): Promise<AdminCategory[]> {
   return apiFetch<AdminCategory[]>('/cms/categories');
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      const comma = result.indexOf(',');
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(new Error('read failed'));
+    reader.readAsDataURL(file);
+  });
+}
+
+export function uploadArticleImage(
+  file: File,
+  onProgress?: (percent: number) => void,
+  signal?: AbortSignal,
+): Promise<UploadedArticleImage> {
+  return fileToBase64(file).then((contentBase64) =>
+    apiUpload<UploadedArticleImage>(
+      '/cms/article-images',
+      {
+        fileName: file.name,
+        mimeType: file.type === 'image/jpg' ? 'image/jpeg' : file.type,
+        contentBase64,
+      },
+      onProgress,
+      signal,
+    ),
+  );
 }
 
 export function createPost(input: CreatePostInput): Promise<AdminPost> {
