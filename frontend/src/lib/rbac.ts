@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import type { AuthUser, PermissionKey, RoleName } from '@somwave/shared';
+import { holdsPermission, type AuthUser, type PermissionKey, type RoleName } from '@somwave/shared';
 import { useCurrentUser } from '../features/auth/hooks';
 
 // Client-side RBAC is for UX only — hiding a control is not authorisation; the
@@ -9,7 +9,7 @@ export function hasPermission(
   user: AuthUser | null | undefined,
   permission: PermissionKey,
 ): boolean {
-  return Boolean(user?.permissions.includes(permission));
+  return holdsPermission(user, permission);
 }
 
 export function hasRole(user: AuthUser | null | undefined, role: RoleName): boolean {

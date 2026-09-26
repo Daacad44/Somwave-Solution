@@ -1,7 +1,7 @@
 // Authorisation (SYSTEM_PROMPT §13: the backend re-checks every permission —
 // hiding a button is not authorisation). Runs after requireAuth.
 import type { NextFunction, Request, Response } from 'express';
-import type { PermissionKey } from '@somwave/shared';
+import { holdsPermission, type PermissionKey } from '@somwave/shared';
 import { AppError } from '../lib/http';
 
 export function rbac(permission: PermissionKey) {
@@ -11,7 +11,7 @@ export function rbac(permission: PermissionKey) {
       next(new AppError('UNAUTHORIZED', 401, 'Authentication required'));
       return;
     }
-    if (!user.permissions.includes(permission)) {
+    if (!holdsPermission(user, permission)) {
       next(new AppError('FORBIDDEN', 403, 'Insufficient permissions'));
       return;
     }

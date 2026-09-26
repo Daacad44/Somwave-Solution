@@ -86,28 +86,68 @@ export const processSteps = [
 
 export const homeProjects = [
   {
+    slug: 'e-commerce-platform',
     title: 'E-Commerce Platform',
     category: 'Web Development',
-    href: '/shaqooyinka',
+    description:
+      'Madal e-commerce casri ah oo loogu talagalay ganacsiyada doonaya inay si fudud online uga iibiyaan alaabtooda.',
     scene: 'shop' as const,
+    highlights: ['Dukaanka', 'Bogga alaabta', 'Shanta', 'Bixinta', 'Dashboard maamul'],
+    features: [
+      'Liiska alaabta iyo shaandhaynta',
+      'Bog faahfaahin oo leh noocyo iyo kayd',
+      'Shanta iyo bixinta dalabka',
+      'Dashboard maamul oo dalabyada laga socdo',
+    ],
+    technologies: ['Web', 'Dashboard', 'Mobile'],
   },
   {
+    slug: 'school-management',
     title: 'School Management',
     category: 'Custom Software',
-    href: '/shaqooyinka/nidaamka-maamulka-iskuulka',
+    description:
+      'Nidaam maamul iskuul oo isku keena ardayda, macallimiinta, xaadirinta, imtixaanaadka, iyo lacag-bixinta.',
     scene: 'school' as const,
+    highlights: ['Dashboard', 'Arday', 'Macallimiin', 'Xaadirin', 'Jadwal', 'Warbixin'],
+    features: [
+      'Diiwaanka ardayda iyo macallimiinta',
+      'Xaadirinta fasalka',
+      'Imtixaanaadka iyo lacag-bixinta',
+      'Jadwalka toddobaadka iyo warbixinada',
+    ],
+    technologies: ['Custom Software', 'Dashboard', 'Reports'],
   },
   {
+    slug: 'travel-agency',
     title: 'Travel Agency',
     category: 'Web & Mobile',
-    href: '/shaqooyinka',
+    description:
+      'Website iyo app safar oo diiwaangelinta duulimaadyada, huteelada, iyo xirmooyinka hal meel ka socda.',
     scene: 'travel' as const,
+    highlights: ['Bogga hore', 'Duulimaad', 'Huteel', 'Xirmooyin', 'Diiwaangelin'],
+    features: [
+      'Raadinta duulimaad iyo huteel',
+      'Meelaha caan ah iyo xirmooyinka safarka',
+      'Diiwaangelinta macaamiisha',
+      'Dashboard ballamaha',
+    ],
+    technologies: ['Web', 'Mobile', 'Booking'],
   },
   {
+    slug: 'real-estate-platform',
     title: 'Real Estate Platform',
     category: 'Web Development',
-    href: '/shaqooyinka',
+    description:
+      'Suuq guryo oo leh raadinta hantida, khariidadda, wakiilada, iyo dashboard-ka milkiilaha.',
     scene: 'estate' as const,
+    highlights: ['Raadin', 'Guryo', 'Faahfaahin', 'Khariidad', 'Wakiilo', 'Dashboard'],
+    features: [
+      'Raadinta guryaha iyo nooca hantida',
+      'Bog faahfaahin iyo wakiilka',
+      'Khariidad meelaha',
+      'Dashboard milkiilaha iyo su’aalaha',
+    ],
+    technologies: ['Web', 'Map', 'Dashboard'],
   },
 ] as const;
 

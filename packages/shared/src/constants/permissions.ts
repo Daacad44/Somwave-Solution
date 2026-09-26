@@ -1,5 +1,7 @@
 // Permission keys as `resource.action` (SYSTEM_PROMPT §5, §11 — the RBAC
 // vocabulary the backend re-checks on every route). This set grows per feature.
+import { ROLES } from './roles';
+
 export const PERMISSIONS = {
   USERS_READ: 'users.read',
   USERS_CREATE: 'users.create',
@@ -62,3 +64,20 @@ export const PERMISSIONS = {
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
+
+/** SUPER_ADMIN always holds every permission, even if the role row is stale. */
+export function holdsPermission(
+  user: { roles: readonly string[]; permissions: readonly string[] } | null | undefined,
+  permission: string,
+): boolean {
+  if (!user) return false;
+  if (user.roles.includes(ROLES.SUPER_ADMIN)) return true;
+  return user.permissions.includes(permission);
+}
+
+export function permissionKeysFor(roles: readonly string[], permissions: readonly string[]): string[] {
+  if (roles.includes(ROLES.SUPER_ADMIN)) {
+    return [...new Set([...Object.values(PERMISSIONS), ...permissions])];
+  }
+  return [...new Set(permissions)];
+}

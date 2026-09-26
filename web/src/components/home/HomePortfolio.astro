@@ -1,6 +1,6 @@
 ---
 import { homeProjects } from '../../lib/homeContent';
-import SceneCover from './SceneCover.astro';
+import ProductPreview from './ProductPreview.astro';
 ---
 
 <section id="shaqooyinkayaga" class="bg-surface" aria-labelledby="portfolio-heading">
@@ -23,21 +23,25 @@ import SceneCover from './SceneCover.astro';
       </a>
     </div>
 
-    <div class="mt-10 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="mt-10 grid gap-5 sm:grid-cols-2">
       {
         homeProjects.map((item) => (
           <a
-            href={item.href}
-            class="group overflow-hidden rounded-lg border border-border bg-surface shadow-sm transition-shadow hover:shadow-md"
+            href={`/shaqooyinka/tusaale/${item.slug}`}
+            class="group flex h-full flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md"
           >
             <div class="aspect-[16/10] overflow-hidden">
               <div class="h-full transition-transform duration-300 group-hover:scale-[1.03]">
-                <SceneCover scene={item.scene} label={item.title} />
+                <ProductPreview scene={item.scene} label={item.title} />
               </div>
             </div>
-            <div class="p-5">
-              <h3 class="text-base font-semibold text-ink">{item.title}</h3>
-              <p class="mt-1 text-sm text-muted">{item.category}</p>
+            <div class="flex flex-1 flex-col p-5">
+              <h3 class="text-lg font-semibold text-ink">{item.title}</h3>
+              <p class="mt-1 text-sm font-medium text-brand">{item.category}</p>
+              <p class="mt-2 text-sm leading-relaxed text-muted">{item.description}</p>
+              <span class="mt-4 inline-flex items-center text-sm font-semibold text-ink group-hover:text-brand">
+                Faahfaahin →
+              </span>
             </div>
           </a>
         ))
@@ -45,3 +49,12 @@ import SceneCover from './SceneCover.astro';
     </div>
   </div>
 </section>
+
+<style>
+  @media (prefers-reduced-motion: reduce) {
+    .group,
+    .group div {
+      transition: none;
+    }
+  }
+</style>

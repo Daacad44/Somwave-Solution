@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { PERMISSIONS, type UpdateInquiryInput } from '@somwave/shared';
+import { holdsPermission, PERMISSIONS, type UpdateInquiryInput } from '@somwave/shared';
 import { AppError, sendData } from '../lib/http';
 import {
   convertInquiryToClient,
@@ -29,7 +29,7 @@ export async function update(req: Request, res: Response, next: NextFunction): P
 export async function convert(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const user = req.authUser;
-    if (!user?.permissions.includes(PERMISSIONS.CLIENTS_CREATE)) {
+    if (!holdsPermission(user, PERMISSIONS.CLIENTS_CREATE)) {
       throw new AppError('FORBIDDEN', 403, 'Insufficient permissions');
     }
     const { id } = req.params;

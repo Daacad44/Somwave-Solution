@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { Request, Response } from 'express';
-import { PERMISSIONS } from '@somwave/shared';
+import { PERMISSIONS, ROLES } from '@somwave/shared';
 import { rbac } from './rbac';
 import { AppError } from '../lib/http';
 
@@ -22,6 +22,20 @@ describe('rbac', () => {
       clientId: null,
       twoFactorEnabled: false,
       twoFactorRequired: false,
+    });
+    expect(next).toHaveBeenCalledWith();
+  });
+
+  it('allows SUPER_ADMIN even when the permission list is empty', () => {
+    const next = runRbac({
+      id: 'u',
+      email: 'a@b.com',
+      name: 'Cali',
+      roles: [ROLES.SUPER_ADMIN],
+      permissions: [],
+      clientId: null,
+      twoFactorEnabled: false,
+      twoFactorRequired: true,
     });
     expect(next).toHaveBeenCalledWith();
   });

@@ -3,7 +3,7 @@
 // with reuse detection that kills every session for the user (§13).
 // 2FA secrets are stored and verified here and are never logged.
 import type { AuthUser } from '@somwave/shared';
-import { isTwoFactorRequired } from '@somwave/shared';
+import { isTwoFactorRequired, permissionKeysFor } from '@somwave/shared';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
 import { hashPassword, verifyPassword } from '../lib/password';
@@ -48,9 +48,10 @@ const userWithRolesInclude = {
 
 function toAuthUser(user: UserWithRoles): AuthUser {
   const roles = user.roles.map((ur) => ur.role.name);
-  const permissions = [
-    ...new Set(user.roles.flatMap((ur) => ur.role.permissions.map((p) => p.key))),
-  ];
+  const permissions = permissionKeysFor(
+    roles,
+    user.roles.flatMap((ur) => ur.role.permissions.map((p) => p.key)),
+  );
   return {
     id: user.id,
     email: user.email,

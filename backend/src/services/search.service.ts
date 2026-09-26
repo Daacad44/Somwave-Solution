@@ -1,4 +1,4 @@
-import { PERMISSIONS, ROLES, type SearchHit } from '@somwave/shared';
+import { holdsPermission, PERMISSIONS, ROLES, type SearchHit } from '@somwave/shared';
 import { prisma } from '../lib/prisma';
 
 export interface SearchActor {
@@ -8,7 +8,7 @@ export interface SearchActor {
 }
 
 function allowed(actor: SearchActor, key: string): boolean {
-  return actor.permissions.includes(key);
+  return holdsPermission(actor, key);
 }
 
 function isClient(actor: SearchActor): boolean {

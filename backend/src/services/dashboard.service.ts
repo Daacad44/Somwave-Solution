@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import {
   PERMISSIONS,
   ROLES,
+  holdsPermission,
   type AuthUser,
   type DashboardActivityItem,
   type DashboardKpi,
@@ -45,11 +46,11 @@ const INTERNAL_SURFACE: PermissionKey[] = [
 ];
 
 export function hasInternalSurface(user: AuthUser): boolean {
-  return INTERNAL_SURFACE.some((permission) => user.permissions.includes(permission));
+  return INTERNAL_SURFACE.some((permission) => holdsPermission(user, permission));
 }
 
 function can(user: AuthUser, permission: PermissionKey): boolean {
-  return user.permissions.includes(permission);
+  return holdsPermission(user, permission);
 }
 
 function isClientSurface(user: AuthUser): boolean {

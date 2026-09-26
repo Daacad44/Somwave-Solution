@@ -27,17 +27,32 @@ const WEBSITE_ITEMS: NavItem[] = [
 const OPERATIONS_ITEMS: NavItem[] = [
   { to: '/projects', label: 'Projects', permission: PERMISSIONS.PROJECTS_READ },
   { to: '/tasks', label: 'Tasks', permission: PERMISSIONS.TASKS_READ },
-  { to: '/milestones', label: 'Milestones', permission: PERMISSIONS.MILESTONES_READ },
-  { to: '/timesheets', label: 'Timesheets', permission: PERMISSIONS.TIMESHEETS_READ },
   { to: '/clients', label: 'Clients', permission: PERMISSIONS.CLIENTS_READ },
   { to: '/leads', label: 'Leads', permission: PERMISSIONS.LEADS_READ },
   { to: '/tickets', label: 'Tickets', permission: PERMISSIONS.TICKETS_READ },
-  { to: '/invoices', label: 'Invoices', permission: PERMISSIONS.INVOICES_READ },
+];
+
+const PROJECT_ITEMS: NavItem[] = [
+  { to: '/milestones', label: 'Milestones', permission: PERMISSIONS.MILESTONES_READ },
+  { to: '/timesheets', label: 'Timesheets', permission: PERMISSIONS.TIMESHEETS_READ },
+];
+
+const PEOPLE_ITEMS: NavItem[] = [
   { to: '/employees', label: 'Employees', permission: PERMISSIONS.EMPLOYEES_READ },
   { to: '/attendance', label: 'Attendance', permission: PERMISSIONS.ATTENDANCE_READ },
   { to: '/leave', label: 'Leave', permission: PERMISSIONS.LEAVE_READ },
   { to: '/applications', label: 'Applications', permission: PERMISSIONS.APPLICATIONS_READ },
+];
+
+const FINANCE_ITEMS: NavItem[] = [
+  { to: '/invoices', label: 'Invoices', permission: PERMISSIONS.INVOICES_READ },
+];
+
+const DOCUMENT_ITEMS: NavItem[] = [
   { to: '/documents', label: 'Documents', permission: PERMISSIONS.DOCUMENTS_READ },
+];
+
+const ADMIN_ITEMS: NavItem[] = [
   { to: '/users', label: 'Users', permission: PERMISSIONS.USERS_READ },
   { to: '/roles', label: 'Roles', permission: PERMISSIONS.ROLES_READ },
   { to: '/audit', label: 'Audit', permission: PERMISSIONS.AUDIT_READ },
@@ -89,6 +104,11 @@ export function visibleNavGroups(user: AuthUser | null | undefined): NavGroup[] 
   const isInternal = hasInternalSurface(user);
   if (isInternal) {
     pushGroup(groups, 'Operations', permitted(user, OPERATIONS_ITEMS));
+    pushGroup(groups, 'Project management', permitted(user, PROJECT_ITEMS));
+    pushGroup(groups, 'People', permitted(user, PEOPLE_ITEMS));
+    pushGroup(groups, 'Finance', permitted(user, FINANCE_ITEMS));
+    pushGroup(groups, 'Documents', permitted(user, DOCUMENT_ITEMS));
+    pushGroup(groups, 'Administration', permitted(user, ADMIN_ITEMS));
   }
 
   if (hasPermission(user, PERMISSIONS.PORTAL_READ)) {
@@ -108,5 +128,10 @@ export function visibleNavGroups(user: AuthUser | null | undefined): NavGroup[] 
 export const NAV_GROUPS: NavGroup[] = [
   { heading: 'Website', items: WEBSITE_ITEMS },
   { heading: 'Operations', items: OPERATIONS_ITEMS },
+  { heading: 'Project management', items: PROJECT_ITEMS },
+  { heading: 'People', items: PEOPLE_ITEMS },
+  { heading: 'Finance', items: FINANCE_ITEMS },
+  { heading: 'Documents', items: DOCUMENT_ITEMS },
+  { heading: 'Administration', items: ADMIN_ITEMS },
   { heading: 'Portal', items: PORTAL_ITEMS },
 ];
