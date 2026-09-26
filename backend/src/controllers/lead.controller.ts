@@ -29,6 +29,9 @@ export async function update(req: Request, res: Response, next: NextFunction): P
 export async function convert(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const user = req.authUser;
+    if (!user) {
+      throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+    }
     if (!holdsPermission(user, PERMISSIONS.CLIENTS_CREATE)) {
       throw new AppError('FORBIDDEN', 403, 'Insufficient permissions');
     }
