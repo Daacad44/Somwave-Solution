@@ -17,6 +17,18 @@ vi.mock('../lib/prisma', () => ({
 
 import { prisma } from '../lib/prisma';
 import { createTask, updateTask, deleteTask, listTasks } from './task.service';
+import type { AuthUser } from '@somwave/shared';
+
+const engineer: AuthUser = {
+  id: 'engineer_1',
+  name: 'Engineer',
+  email: 'engineer@example.test',
+  roles: ['ENGINEER'],
+  permissions: [],
+  clientId: null,
+  twoFactorEnabled: false,
+  twoFactorRequired: false,
+};
 
 const row = {
   id: 'tsk_1',
@@ -42,6 +54,13 @@ beforeEach(() => {
 });
 
 describe('createTask', () => {
+  it('keeps engineers in the reviewed proposal workflow', async () => {
+    vi.mocked(prisma.project.findFirst)
+      .mockResolvedValueOnce({ id: 'prj_1' } as never)
+      .mockResolvedValueOnce(null as never);
+    await expect(createTask(input, engineer)).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    expect(prisma.task.create).not.toHaveBeenCalled();
+  });
   it('creates a task after validating the project', async () => {
     vi.mocked(prisma.project.findFirst).mockResolvedValue({ id: 'prj_1' } as never);
     vi.mocked(prisma.task.create).mockResolvedValue(row as never);
@@ -50,6 +69,11 @@ describe('createTask', () => {
 
     expect(result).toMatchObject({ id: 'tsk_1', project: { id: 'prj_1', name: 'Website' } });
     expect(prisma.task.create).toHaveBeenCalledOnce();
+    expect(prisma.task.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ approvalStatus: 'APPROVED', reviewRequired: false }),
+      }),
+    );
   });
 
   it('rejects an unknown project', async () => {
@@ -71,6 +95,33 @@ describe('createTask', () => {
 });
 
 describe('updateTask', () => {
+  it('prevents engineers from changing another member’s task', async () => {
+    vi.mocked(prisma.task.findFirst).mockResolvedValue({
+      id: 'tsk_1',
+      projectId: 'prj_1',
+      assigneeId: 'someone_else',
+      approvalStatus: 'APPROVED',
+    } as never);
+    vi.mocked(prisma.project.findFirst).mockResolvedValue(null as never);
+    await expect(updateTask('tsk_1', { status: 'DONE' }, engineer)).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    expect(prisma.task.update).not.toHaveBeenCalled();
+  });
+
+  it('lets an engineer update progress on an approved assigned task', async () => {
+    vi.mocked(prisma.task.findFirst).mockResolvedValue({
+      id: 'tsk_1',
+      projectId: 'prj_1',
+      assigneeId: engineer.id,
+      approvalStatus: 'APPROVED',
+    } as never);
+    vi.mocked(prisma.project.findFirst).mockResolvedValue(null as never);
+    vi.mocked(prisma.task.update).mockResolvedValue({ ...row, status: 'IN_PROGRESS' } as never);
+    await expect(updateTask('tsk_1', { status: 'IN_PROGRESS' }, engineer)).resolves.toMatchObject({
+      status: 'IN_PROGRESS',
+    });
+  });
   it('throws NOT_FOUND when the task is missing', async () => {
     vi.mocked(prisma.task.findFirst).mockResolvedValue(null as never);
     await expect(updateTask('missing', { status: 'DONE' })).rejects.toMatchObject({

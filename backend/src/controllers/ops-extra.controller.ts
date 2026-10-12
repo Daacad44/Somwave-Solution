@@ -22,14 +22,14 @@ function actorId(req: Request): string {
 
 function paramId(req: Request): string {
   const id = req.params.id;
-  if (!id) throw new AppError('NOT_FOUND', 404, 'Lama helin');
+  if (!id) throw new AppError('NOT_FOUND', 404, 'Not found');
   return id;
 }
 
 function scopedClient(req: Request): string | null {
   const roles = req.authUser?.roles ?? [];
   if (roles.includes(ROLES.CLIENT)) {
-    if (!req.authUser?.clientId) throw new AppError('NOT_FOUND', 404, 'Dukumeentiga lama helin');
+    if (!req.authUser?.clientId) throw new AppError('NOT_FOUND', 404, 'Document not found');
     return req.authUser.clientId;
   }
   return null;

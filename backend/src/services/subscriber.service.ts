@@ -42,6 +42,6 @@ export async function listSubscribers(): Promise<AdminSubscriber[]> {
 
 export async function deleteSubscriber(id: string): Promise<void> {
   const subscriber = await prisma.subscriber.findUnique({ where: { id } });
-  if (!subscriber) throw new AppError('NOT_FOUND', 404, 'Diiwaangalahan lama helin');
+  if (!subscriber) throw new AppError('NOT_FOUND', 404, 'Subscriber not found');
   await prisma.subscriber.delete({ where: { id } });
 }

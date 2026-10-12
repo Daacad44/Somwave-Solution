@@ -23,8 +23,8 @@ export const adminEmployeeSchema = z.object({
 export type AdminEmployee = z.infer<typeof adminEmployeeSchema>;
 
 export const createEmployeeSchema = z.object({
-  userId: z.string().min(1, 'Isticmaalaha waa waajib'),
-  employeeNo: z.string().trim().min(1, 'Lambarka shaqaalaha waa waajib').max(40),
+  userId: z.string().min(1, 'User is required'),
+  employeeNo: z.string().trim().min(1, 'Employee number is required').max(40),
   position: z.string().trim().max(120).optional(),
   department: z.string().trim().max(120).optional(),
   hiredAt: z.string().optional(),
@@ -39,7 +39,7 @@ export const updateEmployeeSchema = z
     status: employeeStatusSchema.optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
-    message: 'Ugu yaraan hal beddel ayaa loo baahan yahay',
+    message: 'At least one change is required',
   });
 
 export type UpdateEmployeeInput = z.infer<typeof updateEmployeeSchema>;

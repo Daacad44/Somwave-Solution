@@ -30,7 +30,7 @@ export async function create(req: Request, res: Response, next: NextFunction): P
 export async function update(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Diiwaankan lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Record not found');
     const body = req.body as UpdateTimesheetInput;
     sendData(res, await timesheetService.updateTimesheetStatus(id, body.status));
   } catch (err) {

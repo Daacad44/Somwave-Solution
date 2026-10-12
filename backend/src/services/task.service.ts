@@ -6,11 +6,13 @@ import type {
   UpdateTaskInput,
   TaskStatus,
   TaskPriority,
+  AuthUser,
 } from '@somwave/shared';
 import { MAX_PAGE_SIZE } from '@somwave/shared';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
+import { projectScope } from './project.service';
 
 const adminTaskSelect = {
   id: true,
@@ -55,6 +57,7 @@ export interface ListTasksParams {
   pageSize: number;
   projectId?: string;
   status?: TaskStatus;
+  actor?: AuthUser;
 }
 
 export interface PagedTasks {
@@ -69,12 +72,14 @@ export async function listTasks({
   pageSize,
   projectId,
   status,
+  actor,
 }: ListTasksParams): Promise<PagedTasks> {
   const take = Math.min(Math.max(pageSize, 1), MAX_PAGE_SIZE);
   const skip = (Math.max(page, 1) - 1) * take;
 
   const where: Prisma.TaskWhereInput = {
     deletedAt: null,
+    ...(actor ? { project: projectScope(actor) } : {}),
     ...(projectId ? { projectId } : {}),
     ...(status ? { status } : {}),
   };
@@ -93,34 +98,62 @@ export async function listTasks({
   return { items: rows.map(toAdminTask), page: Math.max(page, 1), pageSize: take, total };
 }
 
-export async function getTask(id: string): Promise<AdminTask | null> {
+export async function getTask(id: string, actor?: AuthUser): Promise<AdminTask | null> {
   const row = await prisma.task.findFirst({
-    where: { id, deletedAt: null },
+    where: { id, deletedAt: null, ...(actor ? { project: projectScope(actor) } : {}) },
     select: adminTaskSelect,
   });
   return row ? toAdminTask(row) : null;
 }
 
-async function assertProjectExists(projectId: string): Promise<void> {
+async function assertProjectExists(projectId: string, actor?: AuthUser): Promise<void> {
   const project = await prisma.project.findFirst({
-    where: { id: projectId, deletedAt: null },
+    where: { id: projectId, deletedAt: null, ...projectScope(actor) },
     select: { id: true },
   });
-  if (!project) throw new AppError('VALIDATION_ERROR', 400, 'Mashruuca lama helin');
+  if (!project) throw new AppError('VALIDATION_ERROR', 400, 'Project not found');
 }
 
-async function assertAssigneeExists(assigneeId: string | null | undefined): Promise<void> {
+async function assertAssigneeExists(
+  assigneeId: string | null | undefined,
+  projectId?: string,
+): Promise<void> {
   if (!assigneeId) return;
   const user = await prisma.user.findFirst({
     where: { id: assigneeId, deletedAt: null },
     select: { id: true },
   });
-  if (!user) throw new AppError('VALIDATION_ERROR', 400, 'Qofka loo xilsaaray lama helin');
+  if (!user) throw new AppError('VALIDATION_ERROR', 400, 'Assignee not found');
+  if (projectId) {
+    const membership = await prisma.projectMember.findFirst({
+      where: { projectId, userId: assigneeId, removedAt: null },
+      select: { id: true },
+    });
+    if (!membership)
+      throw new AppError('VALIDATION_ERROR', 400, 'Assignee must be an active project member');
+  }
 }
 
-export async function createTask(input: CreateTaskInput): Promise<AdminTask> {
-  await assertProjectExists(input.projectId);
-  await assertAssigneeExists(input.assigneeId);
+export async function createTask(input: CreateTaskInput, actor?: AuthUser): Promise<AdminTask> {
+  await assertProjectExists(input.projectId, actor);
+  if (
+    actor &&
+    actor.roles.some((role) => ['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER'].includes(role))
+  ) {
+    const manager = await prisma.project.findFirst({
+      where: {
+        id: input.projectId,
+        OR: [
+          { managerId: actor.id },
+          { members: { some: { userId: actor.id, role: 'MANAGER', removedAt: null } } },
+        ],
+      },
+      select: { id: true },
+    });
+    if (!manager)
+      throw new AppError('FORBIDDEN', 403, 'Use the engineering task proposal workflow');
+  }
+  await assertAssigneeExists(input.assigneeId, actor ? input.projectId : undefined);
 
   const row = await prisma.task.create({
     data: {
@@ -131,17 +164,112 @@ export async function createTask(input: CreateTaskInput): Promise<AdminTask> {
       priority: input.priority,
       assigneeId: input.assigneeId ?? null,
       dueDate: input.dueDate ? new Date(input.dueDate) : null,
+      approvalStatus: 'APPROVED',
+      reviewRequired: false,
     },
     select: adminTaskSelect,
   });
   return toAdminTask(row);
 }
 
-export async function updateTask(id: string, input: UpdateTaskInput): Promise<AdminTask> {
-  const task = await prisma.task.findFirst({ where: { id, deletedAt: null } });
-  if (!task) throw new AppError('NOT_FOUND', 404, 'Hawshan lama helin');
+export async function updateTask(
+  id: string,
+  input: UpdateTaskInput,
+  actor?: AuthUser,
+): Promise<AdminTask> {
+  const task = await prisma.task.findFirst({
+    where: { id, deletedAt: null, ...(actor ? { project: projectScope(actor) } : {}) },
+  });
+  if (!task) throw new AppError('NOT_FOUND', 404, 'Task not found');
 
-  if (input.assigneeId) await assertAssigneeExists(input.assigneeId);
+  if (actor && !actor.roles.some((role) => role === 'SUPER_ADMIN' || role === 'ADMIN')) {
+    const manager = await prisma.project.findFirst({
+      where: {
+        id: task.projectId,
+        OR: [
+          { managerId: actor.id },
+          { members: { some: { userId: actor.id, role: 'MANAGER', removedAt: null } } },
+        ],
+      },
+      select: { id: true },
+    });
+    if (
+      !manager &&
+      (task.assigneeId !== actor.id ||
+        task.approvalStatus !== 'APPROVED' ||
+        Object.keys(input).some((key) => key !== 'status'))
+    ) {
+      throw new AppError('FORBIDDEN', 403, 'Only an approved task assigned to you can be updated');
+    }
+  }
+
+  if (input.assigneeId)
+    await assertAssigneeExists(input.assigneeId, actor ? task.projectId : undefined);
+
+  if (input.status && input.status !== task.status && task.reviewRequired) {
+    if (task.approvalStatus !== 'APPROVED') {
+      throw new AppError('CONFLICT', 409, 'The task proposal must be approved before work begins');
+    }
+    const transitions: Record<string, readonly string[]> = {
+      BACKLOG: ['TODO', 'CANCELLED'],
+      TODO: ['IN_PROGRESS', 'BLOCKED', 'CANCELLED'],
+      IN_PROGRESS: ['BLOCKED', 'IN_REVIEW', 'CANCELLED'],
+      BLOCKED: ['IN_PROGRESS', 'CANCELLED'],
+      IN_REVIEW: ['TESTING', 'IN_PROGRESS'],
+      TESTING: ['DONE', 'IN_PROGRESS'],
+      DONE: ['IN_PROGRESS'],
+      CANCELLED: [],
+    };
+    if (!transitions[task.status]?.includes(input.status)) {
+      throw new AppError(
+        'CONFLICT',
+        409,
+        `Cannot move task from ${task.status} to ${input.status}`,
+      );
+    }
+    if (input.status === 'IN_PROGRESS') {
+      const pending = await prisma.taskDependency.count({
+        where: { taskId: id, dependsOn: { status: { not: 'DONE' }, deletedAt: null } },
+      });
+      if (pending) throw new AppError('CONFLICT', 409, 'Complete prerequisite tasks first');
+    }
+    if (input.status === 'IN_REVIEW') {
+      const incomplete = await prisma.taskChecklistItem.count({
+        where: { taskId: id, completedAt: null },
+      });
+      if (incomplete) throw new AppError('CONFLICT', 409, 'Complete the checklist before review');
+    }
+    if (input.status === 'DONE' && !task.qaVerifiedAt) {
+      throw new AppError('CONFLICT', 409, 'QA verification is required before completion');
+    }
+    if (!actor) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+    return prisma.$transaction(async (tx) => {
+      const changed = await tx.task.updateMany({
+        where: { id, status: task.status, approvalStatus: 'APPROVED' },
+        data: {
+          ...(input.title !== undefined ? { title: input.title } : {}),
+          ...(input.description !== undefined ? { description: input.description } : {}),
+          status: input.status,
+          ...(input.priority !== undefined ? { priority: input.priority } : {}),
+          ...(input.assigneeId !== undefined ? { assigneeId: input.assigneeId } : {}),
+          ...(input.dueDate !== undefined
+            ? { dueDate: input.dueDate ? new Date(input.dueDate) : null }
+            : {}),
+          completedAt: input.status === 'DONE' ? new Date() : null,
+          ...(input.status === 'IN_PROGRESS' && task.qaVerifiedAt
+            ? { qaVerifiedAt: null, qaVerifiedById: null }
+            : {}),
+        },
+      });
+      if (!changed.count)
+        throw new AppError('CONFLICT', 409, 'Task changed; reload before updating');
+      await tx.taskTransition.create({
+        data: { taskId: id, actorId: actor.id, fromStatus: task.status, toStatus: input.status! },
+      });
+      const row = await tx.task.findUniqueOrThrow({ where: { id }, select: adminTaskSelect });
+      return toAdminTask(row);
+    });
+  }
 
   const row = await prisma.task.update({
     where: { id },
@@ -161,8 +289,10 @@ export async function updateTask(id: string, input: UpdateTaskInput): Promise<Ad
 }
 
 // Soft delete — task history is preserved (§7).
-export async function deleteTask(id: string): Promise<void> {
-  const task = await prisma.task.findFirst({ where: { id, deletedAt: null } });
-  if (!task) throw new AppError('NOT_FOUND', 404, 'Hawshan lama helin');
+export async function deleteTask(id: string, actor?: AuthUser): Promise<void> {
+  const task = await prisma.task.findFirst({
+    where: { id, deletedAt: null, ...(actor ? { project: projectScope(actor) } : {}) },
+  });
+  if (!task) throw new AppError('NOT_FOUND', 404, 'Task not found');
   await prisma.task.update({ where: { id }, data: { deletedAt: new Date() } });
 }

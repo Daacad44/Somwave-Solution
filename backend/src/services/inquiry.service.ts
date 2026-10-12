@@ -39,7 +39,7 @@ export async function createInquiry(
   await notifyUsersWithPermission(
     PERMISSIONS.LEADS_READ,
     'Lead cusub',
-    `${input.name} wuxuu soo diray foomka xiriirka.`,
+    `${input.name} submitted the contact form.`,
   );
   const notifyTo = notifyAddress();
   if (notifyTo) {
@@ -73,7 +73,7 @@ export async function updateInquiryStatus(
   status: InquiryStatus,
 ): Promise<AdminInquiry> {
   const existing = await prisma.inquiry.findUnique({ where: { id } });
-  if (!existing) throw new AppError('NOT_FOUND', 404, 'Codsigan lama helin');
+  if (!existing) throw new AppError('NOT_FOUND', 404, 'Request not found');
   const row = await prisma.inquiry.update({ where: { id }, data: { status } });
   return {
     id: row.id,

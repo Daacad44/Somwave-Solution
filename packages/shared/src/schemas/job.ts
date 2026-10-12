@@ -33,11 +33,11 @@ export type PublicJobOpeningDetail = z.infer<typeof publicJobOpeningDetailSchema
 
 // Application submitted from the website (§11). Somali validation messages (§15).
 export const createJobApplicationSchema = z.object({
-  name: z.string().trim().min(1, 'Magaca waa waajib').max(120),
-  email: z.string().trim().email('Fadlan geli iimayl sax ah'),
+  name: z.string().trim().min(1, 'Name is required').max(120),
+  email: z.string().trim().email('Enter a valid email address'),
   phone: z.string().trim().max(40).optional(),
   coverLetter: z.string().trim().max(5000).optional(),
-  resumeUrl: z.string().url('Fadlan geli link sax ah').optional(),
+  resumeUrl: z.string().url('Enter a valid URL').optional(),
 });
 
 export type CreateJobApplicationInput = z.infer<typeof createJobApplicationSchema>;
@@ -64,13 +64,13 @@ export const createJobOpeningSchema = z.object({
   slug: z
     .string()
     .trim()
-    .min(1, 'Slug waa waajib')
-    .regex(/^[a-z0-9-]+$/, 'Slug waa inuu noqdaa kebab-case (a-z, 0-9, -)'),
-  title: z.string().trim().min(1, 'Cinwaanka waa waajib').max(200),
-  location: z.string().trim().min(1, 'Goobta waa waajib').max(200),
+    .min(1, 'Slug is required')
+    .regex(/^[a-z0-9-]+$/, 'Slug must use kebab-case (a-z, 0-9, -)'),
+  title: z.string().trim().min(1, 'Title is required').max(200),
+  location: z.string().trim().min(1, 'Location is required').max(200),
   employmentType: employmentTypeSchema,
-  summary: z.string().trim().min(1, 'Kooban waa waajib').max(500),
-  description: z.string().trim().min(1, 'Faahfaahin waa waajib'),
+  summary: z.string().trim().min(1, 'Summary is required').max(500),
+  description: z.string().trim().min(1, 'Description is required'),
   isPublished: z.boolean().default(true),
 });
 
@@ -82,7 +82,7 @@ export const updateJobOpeningSchema = z
       .string()
       .trim()
       .min(1)
-      .regex(/^[a-z0-9-]+$/, 'Slug waa inuu noqdaa kebab-case (a-z, 0-9, -)')
+      .regex(/^[a-z0-9-]+$/, 'Slug must use kebab-case (a-z, 0-9, -)')
       .optional(),
     title: z.string().trim().min(1).max(200).optional(),
     location: z.string().trim().min(1).max(200).optional(),
@@ -92,7 +92,7 @@ export const updateJobOpeningSchema = z
     isPublished: z.boolean().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
-    message: 'Ugu yaraan hal beddel ayaa loo baahan yahay',
+    message: 'At least one change is required',
   });
 
 export type UpdateJobOpeningInput = z.infer<typeof updateJobOpeningSchema>;

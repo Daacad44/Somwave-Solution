@@ -32,7 +32,7 @@ export async function uploadArticleImage(
   const decoded = decodeArticleImage(input.contentBase64, input.mimeType);
   const extension = articleImageExtension(input.fileName);
   if (!EXTENSIONS[decoded.mimeType]?.includes(extension)) {
-    throw new AppError('VALIDATION_ERROR', 400, 'Fadlan soo geli sawir JPG, PNG ama WEBP ah.');
+    throw new AppError('VALIDATION_ERROR', 400, 'Please upload a JPG, PNG, or WebP image.');
   }
   const storageKey = await putArticleImage(decoded.bytes, decoded.mimeType, decoded.extension);
   try {
@@ -66,13 +66,13 @@ export async function uploadArticleImage(
 export async function readPublicArticleImage(
   id: string,
 ): Promise<{ bytes: Buffer; mimeType: string }> {
-  if (!/^[a-z0-9]+$/i.test(id)) throw new AppError('NOT_FOUND', 404, 'Sawirka lama helin');
+  if (!/^[a-z0-9]+$/i.test(id)) throw new AppError('NOT_FOUND', 404, 'Image not found');
   const row = await prisma.mediaAsset.findFirst({
     where: { id, collection: ARTICLE_COVER_COLLECTION },
   });
-  if (!row) throw new AppError('NOT_FOUND', 404, 'Sawirka lama helin');
+  if (!row) throw new AppError('NOT_FOUND', 404, 'Image not found');
   const bytes = await readObject(row.storageKey);
-  if (!bytes) throw new AppError('NOT_FOUND', 404, 'Sawirka lama helin');
+  if (!bytes) throw new AppError('NOT_FOUND', 404, 'Image not found');
   return { bytes, mimeType: row.mimeType };
 }
 
@@ -86,14 +86,14 @@ export async function resolveArticleCover(
   if (trimmed === '') return null;
   if (previous && trimmed === previous) return previous;
   if (!isStoredArticleImageUrl(trimmed)) {
-    throw new AppError('VALIDATION_ERROR', 400, 'Fadlan soo geli sawir JPG, PNG ama WEBP ah.');
+    throw new AppError('VALIDATION_ERROR', 400, 'Please upload a JPG, PNG, or WebP image.');
   }
   const id = articleImageIdFromUrl(trimmed);
   const asset = id
     ? await prisma.mediaAsset.findFirst({ where: { id, collection: ARTICLE_COVER_COLLECTION } })
     : null;
   if (!asset) {
-    throw new AppError('VALIDATION_ERROR', 400, 'Sawirka lama helin. Fadlan mar kale soo geli.');
+    throw new AppError('VALIDATION_ERROR', 400, 'Image not found. Please upload it again.');
   }
   return trimmed;
 }

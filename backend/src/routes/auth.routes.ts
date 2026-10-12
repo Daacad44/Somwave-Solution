@@ -35,12 +35,7 @@ authRouter.post('/reset-password', validate(resetPasswordSchema), authController
 authRouter.post('/refresh', authController.refresh);
 authRouter.post('/logout', authController.logout);
 authRouter.get('/me', requireAuth, authController.me);
-authRouter.patch(
-  '/me',
-  requireAuth,
-  validate(updateProfileSchema),
-  authController.updateProfile,
-);
+authRouter.patch('/me', requireAuth, validate(updateProfileSchema), authController.updateProfile);
 authRouter.post('/2fa/setup', requireAuth, authController.startTwoFactor);
 authRouter.post(
   '/2fa/confirm',

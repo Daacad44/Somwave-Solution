@@ -38,6 +38,14 @@ const STATUS_TONE: Record<InvoiceStatus, 'neutral' | 'info' | 'success' | 'warni
   OVERDUE: 'error',
   VOID: 'neutral',
 };
+const STAFF_STATUS_LABELS: Record<InvoiceStatus, string> = {
+  DRAFT: 'Draft',
+  SENT: 'Sent',
+  PARTIAL: 'Partially paid',
+  PAID: 'Paid',
+  OVERDUE: 'Overdue',
+  VOID: 'Void',
+};
 
 export function InvoiceDetailPage(): ReactNode {
   const { id } = useParams<{ id: string }>();
@@ -49,6 +57,7 @@ export function InvoiceDetailPage(): ReactNode {
   const evcPay = useChargeEvcPayment();
   const { data: currentUser } = useCurrentUser();
   const isPortalClient = hasRole(currentUser, ROLES.CLIENT);
+  const t = (english: string, somali: string): string => (isPortalClient ? somali : english);
   const canUpdate = useHasPermission(PERMISSIONS.INVOICES_UPDATE);
   const canPay = useHasPermission(PERMISSIONS.PAYMENTS_CREATE);
   const [confirmVoid, setConfirmVoid] = useState(false);
@@ -76,7 +85,9 @@ export function InvoiceDetailPage(): ReactNode {
       await send.mutateAsync({ id: invoice.id, idempotencyKey: sendKey.current });
     } catch (err) {
       sendKey.current = crypto.randomUUID();
-      setActionError(err instanceof ApiError ? err.message : 'Wax baa qaldamay.');
+      setActionError(
+        err instanceof ApiError ? err.message : t('Something went wrong.', 'Wax baa qaldamay.'),
+      );
     }
   };
 
@@ -87,26 +98,31 @@ export function InvoiceDetailPage(): ReactNode {
       await voidInv.mutateAsync(invoice.id);
       setConfirmVoid(false);
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : 'Wax baa qaldamay.');
+      setActionError(
+        err instanceof ApiError ? err.message : t('Something went wrong.', 'Wax baa qaldamay.'),
+      );
     }
   };
 
   if (query.isLoading) {
     return (
       <section>
-        <LoadingState rows={8} label="Waa la soo rarayaa" />
+        <LoadingState rows={8} label={t('Loading', 'Waa la soo rarayaa')} />
       </section>
     );
   }
   if (query.isError || !invoice) {
     return (
       <section>
-        <ErrorState description="Biilkan lama soo rari karin." onRetry={() => query.refetch()} />
+        <ErrorState
+          description={t('This invoice could not be loaded.', 'Biilkan lama soo rari karin.')}
+          onRetry={() => query.refetch()}
+        />
         <Link
           to="/invoices"
           className="mt-4 inline-block text-sm text-primary underline-offset-2 hover:underline"
         >
-          Ku noqo liiska
+          {t('Back to list', 'Ku noqo liiska')}
         </Link>
       </section>
     );
@@ -118,7 +134,7 @@ export function InvoiceDetailPage(): ReactNode {
         <div>
           <p className="text-sm text-muted">
             <Link to="/invoices" className="underline-offset-2 hover:underline">
-              Biilasha
+              {t('Invoices', 'Biilasha')}
             </Link>
             <span className="mx-1">/</span>
             {invoice.number}
@@ -132,16 +148,16 @@ export function InvoiceDetailPage(): ReactNode {
             variant="secondary"
             onClick={() => navigate(`/invoices/${invoice.id}/print`)}
           >
-            Daabac / PDF
+            {t('Print / PDF', 'Daabac / PDF')}
           </Button>
           {canSend ? (
             <Button onClick={onSend} isLoading={send.isPending}>
-              Dir biilka
+              {t('Send invoice', 'Dir biilka')}
             </Button>
           ) : null}
           {canVoid ? (
             <Button variant="danger" onClick={() => setConfirmVoid(true)}>
-              Bur biilka
+              {t('Void invoice', 'Bur biilka')}
             </Button>
           ) : null}
         </div>
@@ -149,23 +165,25 @@ export function InvoiceDetailPage(): ReactNode {
 
       <dl className="mt-6 grid gap-4 rounded-lg border border-border bg-surface p-5 sm:grid-cols-2">
         <div>
-          <dt className="text-sm text-muted">Xaalad</dt>
+          <dt className="text-sm text-muted">{t('Status', 'Xaalad')}</dt>
           <dd className="mt-1">
             <Badge tone={STATUS_TONE[invoice.status]}>
-              {INVOICE_STATUS_LABELS[invoice.status]}
+              {isPortalClient
+                ? INVOICE_STATUS_LABELS[invoice.status]
+                : STAFF_STATUS_LABELS[invoice.status]}
             </Badge>
           </dd>
         </div>
         <div>
-          <dt className="text-sm text-muted">Mashruuc</dt>
+          <dt className="text-sm text-muted">{t('Project', 'Mashruuc')}</dt>
           <dd className="mt-1 text-base text-ink">{invoice.project?.name ?? '—'}</dd>
         </div>
         <div>
-          <dt className="text-sm text-muted">La soo saaray</dt>
+          <dt className="text-sm text-muted">{t('Issue date', 'La soo saaray')}</dt>
           <dd className="mt-1 text-base text-ink">{formatDate(invoice.issueDate)}</dd>
         </div>
         <div>
-          <dt className="text-sm text-muted">Dhicitaanka</dt>
+          <dt className="text-sm text-muted">{t('Due date', 'Dhicitaanka')}</dt>
           <dd className="mt-1 text-base text-ink">{formatDate(invoice.dueDate)}</dd>
         </div>
       </dl>
@@ -174,10 +192,10 @@ export function InvoiceDetailPage(): ReactNode {
         <Table>
           <THead>
             <Tr>
-              <Th>Sharaxaad</Th>
-              <Th>Tirada</Th>
-              <Th>Qiimaha</Th>
-              <Th>Wadarta</Th>
+              <Th>{t('Description', 'Sharaxaad')}</Th>
+              <Th>{t('Quantity', 'Tirada')}</Th>
+              <Th>{t('Unit price', 'Qiimaha')}</Th>
+              <Th>{t('Total', 'Wadarta')}</Th>
             </Tr>
           </THead>
           <TBody>
@@ -192,11 +210,21 @@ export function InvoiceDetailPage(): ReactNode {
           </TBody>
         </Table>
         <div className="flex flex-col gap-1 border-t border-border p-4 text-end text-base">
-          <p className="text-muted">Hoosaad: ${invoice.subtotal}</p>
-          <p className="text-muted">Canshuur: ${invoice.tax}</p>
-          <p className="text-muted">Qiimo-dhimis: ${invoice.discount}</p>
-          <p className="font-semibold text-ink">Wadarta: ${invoice.total}</p>
-          <p className="text-muted">La bixiyay: ${invoice.paidAmount}</p>
+          <p className="text-muted">
+            {t('Subtotal', 'Hoosaad')}: ${invoice.subtotal}
+          </p>
+          <p className="text-muted">
+            {t('Tax', 'Canshuur')}: ${invoice.tax}
+          </p>
+          <p className="text-muted">
+            {t('Discount', 'Qiimo-dhimis')}: ${invoice.discount}
+          </p>
+          <p className="font-semibold text-ink">
+            {t('Total', 'Wadarta')}: ${invoice.total}
+          </p>
+          <p className="text-muted">
+            {t('Paid', 'La bixiyay')}: ${invoice.paidAmount}
+          </p>
         </div>
       </div>
 
@@ -220,29 +248,35 @@ export function InvoiceDetailPage(): ReactNode {
                 }
               } catch (err) {
                 payKey.current = crypto.randomUUID();
-                setActionError(err instanceof ApiError ? err.message : 'Wax baa qaldamay.');
+                setActionError(
+                  err instanceof ApiError
+                    ? err.message
+                    : t('Something went wrong.', 'Wax baa qaldamay.'),
+                );
               }
             })}
             noValidate
           >
-            <h2 className="text-lg font-semibold text-ink">Bixi EVC Plus</h2>
+            <h2 className="text-lg font-semibold text-ink">
+              {t('Pay with EVC Plus', 'Bixi EVC Plus')}
+            </h2>
             <p className="text-sm text-muted">
-              Hadhaaga: $
+              {t('Balance', 'Hadhaaga')}: $
               {(Number(invoice.total) - Number(invoice.paidAmount)).toFixed(2)}
             </p>
             <Input
-              label="Qiimaha (USD)"
+              label={t('Amount (USD)', 'Qiimaha (USD)')}
               error={evcForm.formState.errors.amount?.message}
               {...evcForm.register('amount')}
             />
             <Input
-              label="Lambarka EVC Plus"
+              label={t('EVC Plus number', 'Lambarka EVC Plus')}
               error={evcForm.formState.errors.phone?.message}
               {...evcForm.register('phone')}
             />
             <div className="flex justify-end">
               <Button type="submit" isLoading={evcPay.isPending}>
-                Bixi hadda
+                {t('Pay now', 'Bixi hadda')}
               </Button>
             </div>
           </form>
@@ -265,21 +299,27 @@ export function InvoiceDetailPage(): ReactNode {
                 });
               } catch (err) {
                 payKey.current = crypto.randomUUID();
-                setActionError(err instanceof ApiError ? err.message : 'Wax baa qaldamay.');
+                setActionError(
+                  err instanceof ApiError
+                    ? err.message
+                    : t('Something went wrong.', 'Wax baa qaldamay.'),
+                );
               }
             })}
             noValidate
           >
-            <h2 className="text-lg font-semibold text-ink">Diiwaangeli wareejin bangiga</h2>
+            <h2 className="text-lg font-semibold text-ink">
+              {t('Record bank transfer', 'Diiwaangeli wareejin bangiga')}
+            </h2>
             <Input
-              label="Qiimaha (USD)"
+              label={t('Amount (USD)', 'Qiimaha (USD)')}
               error={payForm.formState.errors.amount?.message}
               {...payForm.register('amount')}
             />
-            <Input label="Tixraac" {...payForm.register('reference')} />
+            <Input label={t('Reference', 'Tixraac')} {...payForm.register('reference')} />
             <div className="flex justify-end">
               <Button type="submit" isLoading={pay.isPending}>
-                Diiwaangeli lacagta
+                {t('Record payment', 'Diiwaangeli lacagta')}
               </Button>
             </div>
           </form>
@@ -288,16 +328,22 @@ export function InvoiceDetailPage(): ReactNode {
 
       {actionError ? <p className="mt-4 text-sm text-error">{actionError}</p> : null}
 
-      <Modal open={confirmVoid} onClose={() => setConfirmVoid(false)} title="Bur biilka">
+      <Modal
+        open={confirmVoid}
+        onClose={() => setConfirmVoid(false)}
+        title={t('Void invoice', 'Bur biilka')}
+      >
         <p className="text-base text-ink">
-          Ma hubtaa inaad burayso <strong>{invoice.number}</strong>? Tallaabadan lama celin karo.
+          {t('Are you sure you want to void', 'Ma hubtaa inaad burayso')}{' '}
+          <strong>{invoice.number}</strong>?{' '}
+          {t('This action cannot be undone.', 'Tallaabadan lama celin karo.')}
         </p>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setConfirmVoid(false)}>
-            Maya
+            {t('No', 'Maya')}
           </Button>
           <Button variant="danger" isLoading={voidInv.isPending} onClick={onVoid}>
-            Haa, bur
+            {t('Yes, void', 'Haa, bur')}
           </Button>
         </div>
       </Modal>

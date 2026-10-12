@@ -1,9 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import {
-  ROLES,
-  type ChargeEvcPaymentInput,
-  type RecordPaymentInput,
-} from '@somwave/shared';
+import { ROLES, type ChargeEvcPaymentInput, type RecordPaymentInput } from '@somwave/shared';
 import { AppError, sendData } from '../lib/http';
 import { readIdempotencyKey } from '../lib/idempotency';
 import * as paymentService from '../services/payment.service';
@@ -19,7 +15,7 @@ function scopedClientId(req: Request): string | null {
 function requireScopedClient(req: Request): string | null {
   const roles = req.authUser?.roles ?? [];
   if (roles.includes(ROLES.CLIENT) && !req.authUser?.clientId) {
-    throw new AppError('NOT_FOUND', 404, 'Biilkan lama helin');
+    throw new AppError('NOT_FOUND', 404, 'Invoice not found');
   }
   return scopedClientId(req);
 }
@@ -77,7 +73,7 @@ export async function listForInvoice(
 ): Promise<void> {
   try {
     const invoiceId = typeof req.query.invoiceId === 'string' ? req.query.invoiceId : '';
-    if (!invoiceId) throw new AppError('VALIDATION_ERROR', 400, 'invoiceId waa waajib');
+    if (!invoiceId) throw new AppError('VALIDATION_ERROR', 400, 'invoiceId is required');
     sendData(res, await paymentService.listPayments(invoiceId, requireScopedClient(req)));
   } catch (err) {
     next(err);

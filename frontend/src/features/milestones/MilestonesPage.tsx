@@ -2,7 +2,8 @@
 // pagination, the four states (§12), and permission-gated actions (§13).
 import { type ReactNode, useState } from 'react';
 import type { AdminMilestone, MilestoneStatus } from '@somwave/shared';
-import { PERMISSIONS, MILESTONE_STATUSES, MILESTONE_STATUS_LABELS } from '@somwave/shared';
+import { PERMISSIONS, MILESTONE_STATUSES } from '@somwave/shared';
+import { INTERNAL_MILESTONE_STATUS } from '../../lib/internalLabels';
 import { Table, THead, TBody, Tr, Th, Td } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Select';
@@ -67,17 +68,17 @@ export function MilestonesPage(): ReactNode {
     <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-ink">Marxaladaha</h1>
-          <p className="mt-1 text-base text-muted">Maamul marxaladaha mashruucyada.</p>
+          <h1 className="text-2xl font-semibold text-ink">Milestones</h1>
+          <p className="mt-1 text-base text-muted">Manage project milestones.</p>
         </div>
-        {canCreate ? <Button onClick={openCreate}>Marxalad cusub</Button> : null}
+        {canCreate ? <Button onClick={openCreate}>New milestone</Button> : null}
       </div>
 
       <div className="mt-6 flex flex-wrap items-end gap-2">
         <Select
-          aria-label="Kala sooc mashruuca"
+          aria-label="Filter by project"
           options={[
-            { value: '', label: 'Dhammaan mashruucyada' },
+            { value: '', label: 'All projects' },
             ...projects.map((p) => ({ value: p.id, label: p.name })),
           ]}
           value={projectId}
@@ -87,10 +88,10 @@ export function MilestonesPage(): ReactNode {
           }}
         />
         <Select
-          aria-label="Kala sooc xaalada"
+          aria-label="Filter by status"
           options={[
-            { value: '', label: 'Dhammaan xaaladaha' },
-            ...MILESTONE_STATUSES.map((s) => ({ value: s, label: MILESTONE_STATUS_LABELS[s] })),
+            { value: '', label: 'All statuses' },
+            ...MILESTONE_STATUSES.map((s) => ({ value: s, label: INTERNAL_MILESTONE_STATUS[s] })),
           ]}
           value={status}
           onChange={(e) => {
@@ -102,27 +103,24 @@ export function MilestonesPage(): ReactNode {
 
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {query.isLoading ? (
-          <LoadingState rows={6} label="Waa la soo rarayaa" />
+          <LoadingState rows={6} label="Loading" />
         ) : query.isError ? (
-          <ErrorState
-            description="Marxaladaha lama soo rari karin."
-            onRetry={() => query.refetch()}
-          />
+          <ErrorState description="Could not load milestones." onRetry={() => query.refetch()} />
         ) : milestones.length === 0 ? (
           <EmptyState
-            title="Weli marxalad ma jirto"
-            description={projectId || status ? 'Kala-soocdu waxba ma soo celin.' : undefined}
-            action={canCreate ? <Button onClick={openCreate}>Marxalad cusub</Button> : undefined}
+            title="No milestones yet"
+            description={projectId || status ? 'No results match your filters.' : undefined}
+            action={canCreate ? <Button onClick={openCreate}>New milestone</Button> : undefined}
           />
         ) : (
           <Table>
             <THead>
               <Tr>
-                <Th>Cinwaan</Th>
-                <Th>Mashruuc</Th>
-                <Th>Xaalad</Th>
-                <Th>Dhammaad</Th>
-                <Th className="text-end">Ficil</Th>
+                <Th>Title</Th>
+                <Th>Project</Th>
+                <Th>Status</Th>
+                <Th>Due date</Th>
+                <Th className="text-end">Actions</Th>
               </Tr>
             </THead>
             <TBody>
@@ -132,7 +130,7 @@ export function MilestonesPage(): ReactNode {
                   <Td className="text-muted">{milestone.project.name}</Td>
                   <Td>
                     <Badge tone={STATUS_TONE[milestone.status]}>
-                      {MILESTONE_STATUS_LABELS[milestone.status]}
+                      {INTERNAL_MILESTONE_STATUS[milestone.status]}
                     </Badge>
                   </Td>
                   <Td className="text-muted">{formatDate(milestone.dueDate)}</Td>
@@ -140,12 +138,12 @@ export function MilestonesPage(): ReactNode {
                     <div className="flex justify-end gap-2">
                       {canUpdate ? (
                         <Button size="sm" variant="secondary" onClick={() => openEdit(milestone)}>
-                          Wax ka beddel
+                          Edit
                         </Button>
                       ) : null}
                       {canDelete ? (
                         <Button size="sm" variant="danger" onClick={() => setConfirming(milestone)}>
-                          Tirtir
+                          Delete
                         </Button>
                       ) : null}
                     </div>
@@ -160,7 +158,7 @@ export function MilestonesPage(): ReactNode {
       {total > PAGE_SIZE ? (
         <div className="mt-4 flex items-center justify-between text-sm text-muted">
           <span>
-            Bogga {page} / {totalPages} · {total} marxalad
+            Page {page} / {totalPages} · {total} milestone
           </span>
           <div className="flex gap-2">
             <Button
@@ -169,7 +167,7 @@ export function MilestonesPage(): ReactNode {
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
-              Hore
+              Previous
             </Button>
             <Button
               size="sm"
@@ -177,7 +175,7 @@ export function MilestonesPage(): ReactNode {
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             >
-              Xiga
+              Next
             </Button>
           </div>
         </div>
@@ -196,14 +194,14 @@ export function MilestonesPage(): ReactNode {
       <Modal
         open={Boolean(confirming)}
         onClose={() => setConfirming(null)}
-        title="Tirtir marxaladda"
+        title="Delete milestone"
       >
         <p className="text-base text-ink">
-          Ma hubtaa inaad tirtirayso <strong>{confirming?.title}</strong>?
+          Are you sure you want to delete <strong>{confirming?.title}</strong>?
         </p>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setConfirming(null)}>
-            Maya
+            Cancel
           </Button>
           <Button
             variant="danger"
@@ -214,7 +212,7 @@ export function MilestonesPage(): ReactNode {
               setConfirming(null);
             }}
           >
-            Haa, tirtir
+            Yes, delete
           </Button>
         </div>
       </Modal>

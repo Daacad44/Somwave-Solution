@@ -25,7 +25,7 @@ import {
 
 function mutationError(error: unknown): string | null {
   if (error instanceof ApiError) return error.message;
-  if (error) return 'Wax baa qaldamay';
+  if (error) return 'Something went wrong';
   return null;
 }
 
@@ -73,7 +73,7 @@ export function TwoFactorPanel(): ReactNode {
     await disable.mutateAsync(values);
     setDisableOpen(false);
     disableForm.reset();
-    toast('2FA waa la damiyay', 'success');
+    toast('2FA disabled', 'success');
   });
 
   const onRegenerate = manageForm.handleSubmit(async (values) => {
@@ -87,7 +87,7 @@ export function TwoFactorPanel(): ReactNode {
   const copyCodes = async (): Promise<void> => {
     if (!backupCodes) return;
     await navigator.clipboard.writeText(backupCodes.join('\n'));
-    toast('Koodhyada waa la koobiyey', 'success');
+    toast('Backup codes copied', 'success');
   };
 
   const downloadCodes = (): void => {
@@ -104,10 +104,10 @@ export function TwoFactorPanel(): ReactNode {
   if (backupCodes) {
     return (
       <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-        <h3 className="text-lg font-semibold text-ink">Koodhyada kaydka</h3>
+        <h3 className="text-lg font-semibold text-ink">Backup codes</h3>
         <p className="mt-2 text-sm text-muted">
-          Kaydi koodhyadan meel ammaan ah. Mid kasta hal mar ayaa la isticmaali karaa. Sirta
-          authenticator-ka lama soo bandhigo mar dambe.
+          Store these codes securely. Each code can be used only once. Your authenticator secret
+          will not be displayed again.
         </p>
         <ul className="mt-4 grid grid-cols-2 gap-2 font-mono text-sm text-ink">
           {backupCodes.map((code) => (
@@ -150,8 +150,7 @@ export function TwoFactorPanel(): ReactNode {
             Two-Factor Authentication
           </h3>
           <p className="mt-2 max-w-xl text-sm text-muted">
-            Ku xooji akoonkaaga xaqiijin laba-tallaabo ah si aad uga ilaaliso gelitaanka aan la
-            oggolayn.
+            Protect your account from unauthorized access with two-factor authentication.
           </p>
         </div>
         <Badge tone={user?.twoFactorEnabled ? 'success' : 'warning'}>
@@ -171,7 +170,7 @@ export function TwoFactorPanel(): ReactNode {
             </Button>
             {user.twoFactorRequired ? (
               <p className="self-center text-sm text-muted">
-                Doorkaagan wuxuu u baahan yahay 2FA, lama dami karo.
+                Your role requires 2FA, so it cannot be disabled.
               </p>
             ) : (
               <Button variant="danger" onClick={() => setDisableOpen(true)}>
@@ -202,13 +201,10 @@ export function TwoFactorPanel(): ReactNode {
               </p>
               <p className="mt-1 text-sm font-medium text-ink">Scan the QR code</p>
               {qr ? (
-                <div
-                  className="mt-3 w-48 text-primary"
-                  dangerouslySetInnerHTML={{ __html: qr }}
-                />
+                <div className="mt-3 w-48 text-primary" dangerouslySetInnerHTML={{ __html: qr }} />
               ) : null}
               <p className="mt-3 text-xs text-muted">
-                Ama geli sirta gacanta haddii aadan scan-garayn karin.
+                Or enter the secret manually if you cannot scan the code.
               </p>
               <p className="mt-1 break-all font-mono text-sm text-ink">{setup.secret}</p>
             </li>
@@ -219,7 +215,7 @@ export function TwoFactorPanel(): ReactNode {
               <p className="mt-1 text-sm font-medium text-ink">Enter the 6-digit code</p>
               <Input
                 className="mt-3"
-                label="Koodhka 6-lambar"
+                label="6-digit code"
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 error={confirmForm.formState.errors.code?.message}
@@ -243,11 +239,11 @@ export function TwoFactorPanel(): ReactNode {
       <Modal open={disableOpen} onClose={() => setDisableOpen(false)} title="Disable 2FA">
         <form onSubmit={onDisable} className="flex flex-col gap-4">
           <p className="text-sm text-muted">
-            Tani waxay ka saaraysaa xaqiijinta laba-tallaabo. Geli koodhka authenticator-ka ama
-            koodh kayd.
+            This removes two-factor authentication. Enter a code from your authenticator or a backup
+            code.
           </p>
           <Input
-            label="Koodhka xaqiijinta"
+            label="Verification code"
             autoComplete="one-time-code"
             error={disableForm.formState.errors.code?.message}
             {...disableForm.register('code')}
@@ -269,10 +265,10 @@ export function TwoFactorPanel(): ReactNode {
       <Modal open={manageOpen} onClose={() => setManageOpen(false)} title="Manage authenticator">
         <form onSubmit={onRegenerate} className="flex flex-col gap-4">
           <p className="text-sm text-muted">
-            Soo saar koodhyo kayd cusub. Koodhyadii hore waa la burinayaa.
+            Generate new backup codes. Your previous codes will be invalidated.
           </p>
           <Input
-            label="Koodhka 6-lambar"
+            label="6-digit code"
             inputMode="numeric"
             autoComplete="one-time-code"
             error={manageForm.formState.errors.code?.message}

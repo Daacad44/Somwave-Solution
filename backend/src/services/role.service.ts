@@ -48,11 +48,15 @@ export async function setRolePermissions(
   permissionKeys: string[],
 ): Promise<RoleDetail> {
   const role = await prisma.role.findUnique({ where: { id } });
-  if (!role) throw new AppError('NOT_FOUND', 404, 'Doorkan lama helin');
+  if (!role) throw new AppError('NOT_FOUND', 404, 'Role not found');
 
   // SUPER_ADMIN must always hold every permission — it is not editable (§13).
   if (role.name === ROLES.SUPER_ADMIN) {
-    throw new AppError('FORBIDDEN', 403, 'SUPER_ADMIN lama beddeli karo — wuxuu haystaa dhammaan');
+    throw new AppError(
+      'FORBIDDEN',
+      403,
+      'SUPER_ADMIN cannot be changed because it has all permissions',
+    );
   }
 
   const unique = [...new Set(permissionKeys)];
@@ -61,7 +65,7 @@ export async function setRolePermissions(
     select: { id: true, key: true },
   });
   if (found.length !== unique.length) {
-    throw new AppError('VALIDATION_ERROR', 400, 'Hal ama in ka badan rukhsad lama helin');
+    throw new AppError('VALIDATION_ERROR', 400, 'One or more permissions were not found');
   }
 
   const updated = await prisma.role.update({

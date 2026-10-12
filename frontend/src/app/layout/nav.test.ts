@@ -111,7 +111,9 @@ describe('visibleNavGroups', () => {
       roles: [ROLES.SUPER_ADMIN],
       permissions: [PERMISSIONS.PROJECTS_READ, PERMISSIONS.CONTENT_READ],
     });
-    const labels = visibleNavGroups(admin).flatMap((group) => group.items.map((item) => item.label));
+    const labels = visibleNavGroups(admin).flatMap((group) =>
+      group.items.map((item) => item.label),
+    );
     expect(labels).not.toContain('Security');
   });
 });

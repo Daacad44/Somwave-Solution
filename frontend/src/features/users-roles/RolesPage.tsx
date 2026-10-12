@@ -21,29 +21,24 @@ export function RolesPage(): ReactNode {
   return (
     <section>
       <div>
-        <h1 className="text-2xl font-semibold text-ink">Doorar &amp; rukhsado</h1>
-        <p className="mt-1 text-base text-muted">
-          Maamul rukhsadaha door kasta. Doorarku waa kuwo nidaamka (system) ah.
-        </p>
+        <h1 className="text-2xl font-semibold text-ink">Roles &amp; permissions</h1>
+        <p className="mt-1 text-base text-muted">Manage permissions for each system role.</p>
       </div>
 
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {rolesQuery.isLoading ? (
-          <LoadingState rows={5} label="Waa la soo rarayaa" />
+          <LoadingState rows={5} label="Loading" />
         ) : rolesQuery.isError ? (
-          <ErrorState
-            description="Doorarka lama soo rari karin."
-            onRetry={() => rolesQuery.refetch()}
-          />
+          <ErrorState description="Could not load roles." onRetry={() => rolesQuery.refetch()} />
         ) : roles.length === 0 ? (
-          <EmptyState title="Weli door ma jiro" />
+          <EmptyState title="No roles yet" />
         ) : (
           <Table>
             <THead>
               <Tr>
-                <Th>Doorka</Th>
-                <Th>Nooc</Th>
-                <Th className="text-end">Ficil</Th>
+                <Th>Role</Th>
+                <Th>Type</Th>
+                <Th className="text-end">Actions</Th>
               </Tr>
             </THead>
             <TBody>
@@ -58,7 +53,7 @@ export function RolesPage(): ReactNode {
                   <Td>
                     <div className="flex justify-end">
                       <Button size="sm" variant="secondary" onClick={() => setEditing(role)}>
-                        {canManage ? 'Maamul rukhsadaha' : 'Fiiri rukhsadaha'}
+                        {canManage ? 'Manage permissions' : 'View permissions'}
                       </Button>
                     </div>
                   </Td>

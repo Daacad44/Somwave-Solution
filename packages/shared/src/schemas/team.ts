@@ -23,11 +23,11 @@ export const adminTeamMemberSchema = publicTeamMemberSchema.extend({
 export type AdminTeamMember = z.infer<typeof adminTeamMemberSchema>;
 
 export const createTeamMemberSchema = z.object({
-  name: z.string().trim().min(1, 'Magaca waa waajib').max(200),
-  role: z.string().trim().min(1, 'Jagada waa waajib').max(200),
+  name: z.string().trim().min(1, 'Name is required').max(200),
+  role: z.string().trim().min(1, 'Role is required').max(200),
   bio: z.string().trim().max(2000).optional(),
-  photoUrl: z.string().url('Fadlan geli link sax ah').optional(),
-  linkedinUrl: z.string().url('Fadlan geli link sax ah').optional(),
+  photoUrl: z.string().url('Enter a valid URL').optional(),
+  linkedinUrl: z.string().url('Enter a valid URL').optional(),
   order: z.number().int().nonnegative().default(0),
   isPublished: z.boolean().default(true),
 });
@@ -39,13 +39,13 @@ export const updateTeamMemberSchema = z
     name: z.string().trim().min(1).max(200).optional(),
     role: z.string().trim().min(1).max(200).optional(),
     bio: z.string().trim().max(2000).nullable().optional(),
-    photoUrl: z.string().url('Fadlan geli link sax ah').nullable().optional(),
-    linkedinUrl: z.string().url('Fadlan geli link sax ah').nullable().optional(),
+    photoUrl: z.string().url('Enter a valid URL').nullable().optional(),
+    linkedinUrl: z.string().url('Enter a valid URL').nullable().optional(),
     order: z.number().int().nonnegative().optional(),
     isPublished: z.boolean().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
-    message: 'Ugu yaraan hal beddel ayaa loo baahan yahay',
+    message: 'At least one change is required',
   });
 
 export type UpdateTeamMemberInput = z.infer<typeof updateTeamMemberSchema>;

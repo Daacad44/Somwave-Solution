@@ -87,7 +87,7 @@ export async function updateTeamMember(
   input: UpdateTeamMemberInput,
 ): Promise<AdminTeamMember> {
   const member = await prisma.teamMember.findUnique({ where: { id } });
-  if (!member) throw new AppError('NOT_FOUND', 404, 'Xubintan lama helin');
+  if (!member) throw new AppError('NOT_FOUND', 404, 'Team member not found');
 
   const row = await prisma.teamMember.update({
     where: { id },
@@ -108,7 +108,7 @@ export async function updateTeamMember(
 
 export async function deleteTeamMember(id: string): Promise<void> {
   const member = await prisma.teamMember.findUnique({ where: { id } });
-  if (!member) throw new AppError('NOT_FOUND', 404, 'Xubintan lama helin');
+  if (!member) throw new AppError('NOT_FOUND', 404, 'Team member not found');
   await prisma.teamMember.delete({ where: { id } });
   await invalidateCache();
 }

@@ -35,7 +35,7 @@ export function nextInvoiceStatus(
 export function parseChargeAmount(amount: string): Prisma.Decimal {
   const value = new Prisma.Decimal(amount);
   if (value.lte(0)) {
-    throw new AppError('VALIDATION_ERROR', 400, 'Qiimaha waa inuu ka weynaadaa eber');
+    throw new AppError('VALIDATION_ERROR', 400, 'Amount must be greater than zero');
   }
   return value;
 }
@@ -62,9 +62,9 @@ export async function loadPayableInvoice(
     deletedAt: null,
     ...(clientId ? { clientId } : {}),
   });
-  if (!invoice) throw new AppError('NOT_FOUND', 404, 'Biilkan lama helin');
+  if (!invoice) throw new AppError('NOT_FOUND', 404, 'Invoice not found');
   if (invoice.status === 'VOID' || invoice.status === 'DRAFT') {
-    throw new AppError('CONFLICT', 409, 'Biilkan lacag lagama dhigi karo');
+    throw new AppError('CONFLICT', 409, 'This invoice cannot accept payments');
   }
   return invoice;
 }
@@ -75,6 +75,6 @@ export function assertAmountWithinBalance(
 ): void {
   const nextPaid = invoice.paidAmount.add(amount);
   if (nextPaid.gt(invoice.total)) {
-    throw new AppError('VALIDATION_ERROR', 400, 'Lacagtu way ka badan tahay hadhaaga');
+    throw new AppError('VALIDATION_ERROR', 400, 'Payment exceeds the outstanding balance');
   }
 }

@@ -197,7 +197,7 @@ export function listCategories(): Promise<AdminCategory[]> {
 async function assertCategoryExists(categoryId: string | null | undefined): Promise<void> {
   if (!categoryId) return;
   const category = await prisma.category.findUnique({ where: { id: categoryId } });
-  if (!category) throw new AppError('VALIDATION_ERROR', 400, 'Qaybta lama helin');
+  if (!category) throw new AppError('VALIDATION_ERROR', 400, 'Category not found');
 }
 
 export async function createPost(
@@ -229,7 +229,7 @@ export async function createPost(
 
 export async function updatePost(id: string, input: UpdatePostInput): Promise<AdminPost> {
   const post = await prisma.post.findUnique({ where: { id } });
-  if (!post) throw new AppError('NOT_FOUND', 404, 'Maqaalkan lama helin');
+  if (!post) throw new AppError('NOT_FOUND', 404, 'Article not found');
 
   if (input.slug && input.slug !== post.slug) {
     const clash = await prisma.post.findUnique({ where: { slug: input.slug } });
@@ -268,7 +268,7 @@ export async function updatePost(id: string, input: UpdatePostInput): Promise<Ad
 
 export async function deletePost(id: string): Promise<void> {
   const post = await prisma.post.findUnique({ where: { id } });
-  if (!post) throw new AppError('NOT_FOUND', 404, 'Maqaalkan lama helin');
+  if (!post) throw new AppError('NOT_FOUND', 404, 'Article not found');
   await prisma.post.delete({ where: { id } });
   await invalidateCache();
   await releaseArticleImageUrl(post.coverImage);

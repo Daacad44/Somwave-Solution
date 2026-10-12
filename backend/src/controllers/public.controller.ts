@@ -31,7 +31,7 @@ export async function getService(req: Request, res: Response, next: NextFunction
   try {
     const { slug } = req.params;
     const service = slug ? await getPublishedServiceBySlug(slug) : null;
-    if (!service) throw new AppError('NOT_FOUND', 404, 'Adeegan lama helin');
+    if (!service) throw new AppError('NOT_FOUND', 404, 'Service not found');
     sendData(res, service);
   } catch (err) {
     next(err);
@@ -58,7 +58,7 @@ export async function getPortfolioItem(
   try {
     const { slug } = req.params;
     const item = slug ? await getPortfolioBySlug(slug) : null;
-    if (!item) throw new AppError('NOT_FOUND', 404, 'Shaqadan lama helin');
+    if (!item) throw new AppError('NOT_FOUND', 404, 'Portfolio item not found');
     sendData(res, item);
   } catch (err) {
     next(err);
@@ -84,7 +84,7 @@ export async function getPost(req: Request, res: Response, next: NextFunction): 
   try {
     const { slug } = req.params;
     const post = slug ? await getPostBySlug(slug) : null;
-    if (!post) throw new AppError('NOT_FOUND', 404, 'Maqaalkan lama helin');
+    if (!post) throw new AppError('NOT_FOUND', 404, 'Article not found');
     sendData(res, post);
   } catch (err) {
     next(err);
@@ -98,7 +98,7 @@ export async function getArticleImage(
 ): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Sawirka lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Image not found');
     const file = await readPublicArticleImage(id);
     res.setHeader('Content-Type', file.mimeType);
     res.setHeader('Cache-Control', 'public, max-age=86400');
@@ -175,7 +175,7 @@ export async function getCareer(req: Request, res: Response, next: NextFunction)
   try {
     const { slug } = req.params;
     const opening = slug ? await getOpeningBySlug(slug) : null;
-    if (!opening) throw new AppError('NOT_FOUND', 404, 'Fursaddan shaqo lama helin');
+    if (!opening) throw new AppError('NOT_FOUND', 404, 'Job opening not found');
     sendData(res, opening);
   } catch (err) {
     next(err);
@@ -190,7 +190,7 @@ export async function applyToCareer(
   try {
     const { slug } = req.params;
     const idempotencyKey = req.header('Idempotency-Key');
-    if (!slug) throw new AppError('NOT_FOUND', 404, 'Fursaddan shaqo lama helin');
+    if (!slug) throw new AppError('NOT_FOUND', 404, 'Job opening not found');
     if (!idempotencyKey) {
       throw new AppError('VALIDATION_ERROR', 400, 'Idempotency-Key header ayaa loo baahan yahay');
     }

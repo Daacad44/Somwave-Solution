@@ -61,7 +61,7 @@ export async function updateService(
 ): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Adeegan lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Service not found');
     const service = await serviceService.updateService(id, req.body as UpdateServiceInput);
     sendData(res, service);
   } catch (err) {
@@ -76,7 +76,7 @@ export async function deleteService(
 ): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Adeegan lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Service not found');
     await serviceService.deleteService(id);
     sendData(res, { success: true });
   } catch (err) {
@@ -145,7 +145,7 @@ export async function createPost(req: Request, res: Response, next: NextFunction
 export async function updatePost(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Maqaalkan lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Article not found');
     const post = await postService.updatePost(id, req.body as UpdatePostInput);
     sendData(res, post);
   } catch (err) {
@@ -156,7 +156,7 @@ export async function updatePost(req: Request, res: Response, next: NextFunction
 export async function deletePost(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Maqaalkan lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Article not found');
     await postService.deletePost(id);
     sendData(res, { success: true });
   } catch (err) {
@@ -198,7 +198,7 @@ export async function updatePortfolio(
 ): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Shaqadan lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Portfolio item not found');
     const item = await portfolioService.updatePortfolioItem(
       id,
       req.body as UpdatePortfolioItemInput,
@@ -216,7 +216,7 @@ export async function deletePortfolio(
 ): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Shaqadan lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Portfolio item not found');
     await portfolioService.deletePortfolioItem(id);
     sendData(res, { success: true });
   } catch (err) {
@@ -258,7 +258,7 @@ export async function updateOpening(
 ): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Fursaddan shaqo lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Job opening not found');
     const opening = await jobService.updateOpening(id, req.body as UpdateJobOpeningInput);
     sendData(res, opening);
   } catch (err) {
@@ -273,7 +273,7 @@ export async function deleteOpening(
 ): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Fursaddan shaqo lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Job opening not found');
     await jobService.deleteOpening(id);
     sendData(res, { success: true });
   } catch (err) {
@@ -315,7 +315,7 @@ export async function updateTestimonial(
 ): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Marag-furkan lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Testimonial not found');
     const item = await testimonialService.updateTestimonial(id, req.body as UpdateTestimonialInput);
     sendData(res, item);
   } catch (err) {
@@ -330,7 +330,7 @@ export async function deleteTestimonial(
 ): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Marag-furkan lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Testimonial not found');
     await testimonialService.deleteTestimonial(id);
     sendData(res, { success: true });
   } catch (err) {
@@ -368,7 +368,7 @@ export async function updateTeamMember(
 ): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Xubintan lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Team member not found');
     const member = await teamService.updateTeamMember(id, req.body as UpdateTeamMemberInput);
     sendData(res, member);
   } catch (err) {
@@ -383,7 +383,7 @@ export async function deleteTeamMember(
 ): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Xubintan lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Team member not found');
     await teamService.deleteTeamMember(id);
     sendData(res, { success: true });
   } catch (err) {
@@ -413,7 +413,7 @@ export async function createFaq(req: Request, res: Response, next: NextFunction)
 export async function updateFaq(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Su’aashan lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'FAQ not found');
     const faq = await faqService.updateFaq(id, req.body as UpdateFaqInput);
     sendData(res, faq);
   } catch (err) {
@@ -424,7 +424,7 @@ export async function updateFaq(req: Request, res: Response, next: NextFunction)
 export async function deleteFaq(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Su’aashan lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'FAQ not found');
     await faqService.deleteFaq(id);
     sendData(res, { success: true });
   } catch (err) {
@@ -453,7 +453,7 @@ export async function deleteSubscriber(
 ): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Diiwaangalahan lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Subscriber not found');
     await subscriberService.deleteSubscriber(id);
     sendData(res, { success: true });
   } catch (err) {

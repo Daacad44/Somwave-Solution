@@ -36,7 +36,7 @@ export function ClientsPage(): ReactNode {
       form.reset();
       setOpen(false);
     } catch (err) {
-      setServerError(err instanceof ApiError ? err.message : 'Wax baa qaldamay.');
+      setServerError(err instanceof ApiError ? err.message : 'Something went wrong.');
     }
   });
 
@@ -45,30 +45,27 @@ export function ClientsPage(): ReactNode {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-ink">Macaamiisha</h1>
-          <p className="mt-1 text-base text-muted">Diiwaanka shirkadaha portal-ka.</p>
+          <p className="mt-1 text-base text-muted">Client companies with portal access.</p>
         </div>
-        {canCreate ? <Button onClick={() => setOpen(true)}>Macmiil cusub</Button> : null}
+        {canCreate ? <Button onClick={() => setOpen(true)}>New client</Button> : null}
       </div>
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {query.isLoading ? (
-          <LoadingState rows={6} label="Waa la soo rarayaa" />
+          <LoadingState rows={6} label="Loading" />
         ) : query.isError ? (
-          <ErrorState
-            description="Macaamiisha lama soo rari karin."
-            onRetry={() => query.refetch()}
-          />
+          <ErrorState description="Could not load clients." onRetry={() => query.refetch()} />
         ) : rows.length === 0 ? (
           <EmptyState
-            title="Macmiil majiro"
-            action={canCreate ? <Button onClick={() => setOpen(true)}>Macmiil cusub</Button> : null}
+            title="No clients"
+            action={canCreate ? <Button onClick={() => setOpen(true)}>New client</Button> : null}
           />
         ) : (
           <Table>
             <THead>
               <Tr>
                 <Th>Shirkadda</Th>
-                <Th>Iimayl</Th>
-                <Th>Xaalad</Th>
+                <Th>Email</Th>
+                <Th>Status</Th>
               </Tr>
             </THead>
             <TBody>
@@ -87,22 +84,22 @@ export function ClientsPage(): ReactNode {
           </Table>
         )}
       </div>
-      <Modal open={open} onClose={() => setOpen(false)} title="Macmiil cusub">
+      <Modal open={open} onClose={() => setOpen(false)} title="New client">
         <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
           <Input
-            label="Magaca shirkadda"
+            label="Company name"
             error={form.formState.errors.companyName?.message}
             {...form.register('companyName')}
           />
-          <Input label="Iimayl" type="email" {...form.register('email')} />
+          <Input label="Email" type="email" {...form.register('email')} />
           <Input label="Telefoon" {...form.register('phone')} />
           {serverError ? <p className="text-sm text-error">{serverError}</p> : null}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-              Jooji
+              Cancel
             </Button>
             <Button type="submit" isLoading={form.formState.isSubmitting || create.isPending}>
-              Abuur
+              Create
             </Button>
           </div>
         </form>

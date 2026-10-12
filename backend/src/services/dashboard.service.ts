@@ -21,10 +21,18 @@ import {
   type TicketStatus,
 } from '@somwave/shared';
 import { prisma } from '../lib/prisma';
+import { projectScope } from './project.service';
 
 const TZ_OFFSET_MS = 3 * 60 * 60 * 1000; // Africa/Mogadishu is UTC+3 year-round
 const OPEN_INVOICE = ['DRAFT', 'SENT', 'PARTIAL', 'OVERDUE'] as const;
-const OPEN_TASK: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'IN_REVIEW'];
+const OPEN_TASK: TaskStatus[] = [
+  'BACKLOG',
+  'TODO',
+  'IN_PROGRESS',
+  'BLOCKED',
+  'IN_REVIEW',
+  'TESTING',
+];
 const OPEN_TICKET: TicketStatus[] = ['OPEN', 'IN_PROGRESS', 'WAITING'];
 const INTERNAL_SURFACE: PermissionKey[] = [
   PERMISSIONS.CONTENT_READ,
@@ -158,7 +166,12 @@ function fillMoneySeries(
   return points;
 }
 
-function emptyOverview(surface: DashboardOverview['surface'], range: DashboardRange, from: Date, to: Date): DashboardOverview {
+function emptyOverview(
+  surface: DashboardOverview['surface'],
+  range: DashboardRange,
+  from: Date,
+  to: Date,
+): DashboardOverview {
   return {
     surface,
     range: { key: range, from: from.toISOString(), to: to.toISOString() },
@@ -192,37 +205,38 @@ async function getInternalOverview(
   const { from, to } = window;
   const overview = emptyOverview('internal', range, from, to);
   const notDeleted = { deletedAt: null } as const;
+  const projectWhere = { ...notDeleted, ...projectScope(user) };
+  const taskWhere = { ...notDeleted, project: projectScope(user) };
 
   const jobs: Array<Promise<void>> = [];
 
   if (can(user, PERMISSIONS.PROJECTS_READ)) {
     jobs.push(
       (async () => {
-        const [total, active, previousTotal, recent, createdDates] =
-          await Promise.all([
-            prisma.project.count({ where: notDeleted }),
-            prisma.project.count({ where: { ...notDeleted, status: 'ACTIVE' } }),
-            prisma.project.count({ where: { ...notDeleted, createdAt: { lt: from } } }),
-            prisma.project.findMany({
-              where: notDeleted,
-              orderBy: { updatedAt: 'desc' },
-              take: 6,
-              select: {
-                id: true,
-                name: true,
-                status: true,
-                dueDate: true,
-                updatedAt: true,
-                manager: { select: { name: true } },
-                client: { select: { companyName: true } },
-                tasks: { where: notDeleted, select: { status: true } },
-              },
-            }),
-            prisma.project.findMany({
-              where: { ...notDeleted, createdAt: { gte: from, lte: to } },
-              select: { createdAt: true },
-            }),
-          ]);
+        const [total, active, previousTotal, recent, createdDates] = await Promise.all([
+          prisma.project.count({ where: projectWhere }),
+          prisma.project.count({ where: { ...projectWhere, status: 'ACTIVE' } }),
+          prisma.project.count({ where: { ...projectWhere, createdAt: { lt: from } } }),
+          prisma.project.findMany({
+            where: projectWhere,
+            orderBy: { updatedAt: 'desc' },
+            take: 6,
+            select: {
+              id: true,
+              name: true,
+              status: true,
+              dueDate: true,
+              updatedAt: true,
+              manager: { select: { name: true } },
+              client: { select: { companyName: true } },
+              tasks: { where: notDeleted, select: { status: true } },
+            },
+          }),
+          prisma.project.findMany({
+            where: { ...projectWhere, createdAt: { gte: from, lte: to } },
+            select: { createdAt: true },
+          }),
+        ]);
         overview.kpis.projects = kpi(total, previousTotal);
         overview.kpis.activeProjects = { value: active, previous: null };
         overview.recent.projects = recent.map(toRecentProject);
@@ -239,16 +253,16 @@ async function getInternalOverview(
   if (can(user, PERMISSIONS.TASKS_READ)) {
     jobs.push(
       (async () => {
-        const privileged = user.roles.some(
-          (role) => role === ROLES.SUPER_ADMIN || role === ROLES.ADMIN || role === ROLES.MANAGER,
-        );
-        const staffOnly = user.roles.includes(ROLES.STAFF) && !privileged;
-        const assigned = staffOnly ? { assigneeId: user.id } : {};
+        const assigned = user.roles.some(
+          (role) => role === ROLES.SUPER_ADMIN || role === ROLES.ADMIN,
+        )
+          ? {}
+          : { project: projectScope(user) };
         const [open, previousOpen, grouped, recent] = await Promise.all([
-          prisma.task.count({ where: { ...notDeleted, ...assigned, status: { in: OPEN_TASK } } }),
+          prisma.task.count({ where: { ...taskWhere, ...assigned, status: { in: OPEN_TASK } } }),
           prisma.task.count({
             where: {
-              ...notDeleted,
+              ...taskWhere,
               ...assigned,
               status: { in: OPEN_TASK },
               createdAt: { lt: from },
@@ -256,11 +270,11 @@ async function getInternalOverview(
           }),
           prisma.task.groupBy({
             by: ['status'],
-            where: { ...notDeleted, ...assigned },
+            where: { ...taskWhere, ...assigned },
             _count: { _all: true },
           }),
           prisma.task.findMany({
-            where: { ...notDeleted, ...assigned },
+            where: { ...taskWhere, ...assigned },
             orderBy: { updatedAt: 'desc' },
             take: 6,
             select: {
@@ -278,17 +292,15 @@ async function getInternalOverview(
         overview.taskStatus = Object.fromEntries(
           grouped.map((row) => [row.status, row._count._all]),
         ) as DashboardOverview['taskStatus'];
-        overview.recent.tasks = recent.map(
-          (row): DashboardRecentTask => ({
-            id: row.id,
-            title: row.title,
-            status: row.status,
-            priority: row.priority,
-            dueDate: row.dueDate?.toISOString() ?? null,
-            projectName: row.project.name,
-            assigneeName: row.assignee?.name ?? null,
-          }),
-        );
+        overview.recent.tasks = recent.map((row): DashboardRecentTask => ({
+          id: row.id,
+          title: row.title,
+          status: row.status,
+          priority: row.priority,
+          dueDate: row.dueDate?.toISOString() ?? null,
+          projectName: row.project.name,
+          assigneeName: row.assignee?.name ?? null,
+        }));
         overview.modules.push({ key: 'tasks', count: open });
       })(),
     );
@@ -311,15 +323,13 @@ async function getInternalOverview(
           }),
         ]);
         overview.kpis.openLeads = { value: fresh, previous: null };
-        overview.recent.leads = recent.map(
-          (row): DashboardRecentLead => ({
-            id: row.id,
-            name: row.name,
-            email: row.email,
-            status: row.status,
-            createdAt: row.createdAt.toISOString(),
-          }),
-        );
+        overview.recent.leads = recent.map((row): DashboardRecentLead => ({
+          id: row.id,
+          name: row.name,
+          email: row.email,
+          status: row.status,
+          createdAt: row.createdAt.toISOString(),
+        }));
         overview.series.leads = fillSeries(
           from,
           to,
@@ -422,16 +432,14 @@ async function getInternalOverview(
           revenue._sum.paidAmount ?? new Prisma.Decimal(0),
           previousRevenue._sum.paidAmount ?? new Prisma.Decimal(0),
         );
-        overview.recent.invoices = recent.map(
-          (row): DashboardRecentInvoice => ({
-            id: row.id,
-            number: row.number,
-            status: row.status,
-            total: row.total.toFixed(2),
-            dueDate: row.dueDate.toISOString(),
-            clientName: row.client.companyName,
-          }),
-        );
+        overview.recent.invoices = recent.map((row): DashboardRecentInvoice => ({
+          id: row.id,
+          number: row.number,
+          status: row.status,
+          total: row.total.toFixed(2),
+          dueDate: row.dueDate.toISOString(),
+          clientName: row.client.companyName,
+        }));
         const issued = new Map<string, number>();
         const paid = new Map<string, number>();
         for (const row of seriesRows) {
@@ -470,7 +478,7 @@ async function getInternalOverview(
     jobs.push(
       (async () => {
         const open = await prisma.milestone.count({
-          where: { ...notDeleted, status: { not: 'COMPLETED' } },
+          where: { ...notDeleted, project: projectScope(user), status: { not: 'COMPLETED' } },
         });
         overview.kpis.milestones = { value: open, previous: null };
         overview.modules.push({ key: 'milestones', count: open });
@@ -536,7 +544,11 @@ async function getPortalOverview(
         },
       }),
       prisma.milestone.count({
-        where: { deletedAt: null, status: { not: 'COMPLETED' }, project: { clientId, deletedAt: null } },
+        where: {
+          deletedAt: null,
+          status: { not: 'COMPLETED' },
+          project: { clientId, deletedAt: null },
+        },
       }),
     ]);
     overview.kpis.projects = { value: projects, previous: null };
@@ -685,7 +697,10 @@ function toRecentTicket(row: {
   };
 }
 
-async function listUpcoming(user: AuthUser, clientId: string | null): Promise<DashboardUpcomingItem[]> {
+async function listUpcoming(
+  user: AuthUser,
+  clientId: string | null,
+): Promise<DashboardUpcomingItem[]> {
   const horizon = addDays(new Date(), 45);
   const items: DashboardUpcomingItem[] = [];
 
@@ -695,7 +710,7 @@ async function listUpcoming(user: AuthUser, clientId: string | null): Promise<Da
         deletedAt: null,
         dueDate: { gte: new Date(), lte: horizon },
         status: { in: ['PLANNING', 'ACTIVE', 'ON_HOLD'] },
-        ...(clientId ? { clientId } : {}),
+        ...(clientId ? { clientId } : projectScope(user)),
       },
       select: { id: true, name: true, dueDate: true },
       orderBy: { dueDate: 'asc' },
@@ -720,7 +735,7 @@ async function listUpcoming(user: AuthUser, clientId: string | null): Promise<Da
         deletedAt: null,
         status: { not: 'COMPLETED' },
         dueDate: { gte: new Date(), lte: horizon },
-        ...(clientId ? { project: { clientId, deletedAt: null } } : {}),
+        project: clientId ? { clientId, deletedAt: null } : projectScope(user),
       },
       select: { id: true, title: true, dueDate: true, project: { select: { name: true } } },
       orderBy: { dueDate: 'asc' },
@@ -745,6 +760,7 @@ async function listUpcoming(user: AuthUser, clientId: string | null): Promise<Da
         deletedAt: null,
         status: { in: OPEN_TASK },
         dueDate: { gte: new Date(), lte: horizon },
+        project: projectScope(user),
       },
       select: { id: true, title: true, dueDate: true, project: { select: { name: true } } },
       orderBy: { dueDate: 'asc' },
@@ -790,12 +806,13 @@ async function listUpcoming(user: AuthUser, clientId: string | null): Promise<Da
     }
   }
 
-  return items
-    .sort((a, b) => Date.parse(a.dueDate) - Date.parse(b.dueDate))
-    .slice(0, 10);
+  return items.sort((a, b) => Date.parse(a.dueDate) - Date.parse(b.dueDate)).slice(0, 10);
 }
 
-async function listActivity(user: AuthUser, clientId: string | null): Promise<DashboardActivityItem[]> {
+async function listActivity(
+  user: AuthUser,
+  clientId: string | null,
+): Promise<DashboardActivityItem[]> {
   if (clientId) return [];
   if (!can(user, PERMISSIONS.AUDIT_READ)) return [];
   const rows = await prisma.auditLog.findMany({

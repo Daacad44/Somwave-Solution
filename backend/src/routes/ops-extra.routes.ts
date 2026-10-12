@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import {
   PERMISSIONS,
   checkInSchema,
@@ -13,6 +14,7 @@ import { requireAuth } from '../middleware/auth';
 import { rbac } from '../middleware/rbac';
 import { validate } from '../middleware/validate';
 import * as ctrl from '../controllers/ops-extra.controller';
+import * as notificationCtrl from '../controllers/notification-delivery.controller';
 
 export const employeesRouter = Router();
 employeesRouter.use(requireAuth);
@@ -94,4 +96,20 @@ auditRouter.get('/', rbac(PERMISSIONS.AUDIT_READ), ctrl.listAudit);
 export const notificationsRouter = Router();
 notificationsRouter.use(requireAuth);
 notificationsRouter.get('/', rbac(PERMISSIONS.NOTIFICATIONS_READ), ctrl.listNotifications);
+notificationsRouter.get(
+  '/preferences',
+  rbac(PERMISSIONS.NOTIFICATIONS_READ),
+  notificationCtrl.preferences,
+);
+notificationsRouter.put(
+  '/preferences/:eventKey',
+  rbac(PERMISSIONS.NOTIFICATIONS_READ),
+  validate(z.object({ inApp: z.boolean(), email: z.boolean() })),
+  notificationCtrl.updatePreference,
+);
+notificationsRouter.get(
+  '/deliveries',
+  rbac(PERMISSIONS.NOTIFICATIONS_READ),
+  notificationCtrl.deliveries,
+);
 notificationsRouter.post('/:id/read', rbac(PERMISSIONS.NOTIFICATIONS_READ), ctrl.readNotification);

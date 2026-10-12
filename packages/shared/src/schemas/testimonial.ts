@@ -26,11 +26,11 @@ export const adminTestimonialSchema = publicTestimonialSchema.extend({
 export type AdminTestimonial = z.infer<typeof adminTestimonialSchema>;
 
 export const createTestimonialSchema = z.object({
-  author: z.string().trim().min(1, 'Qoraaga waa waajib').max(200),
+  author: z.string().trim().min(1, 'Author is required').max(200),
   role: z.string().trim().max(200).optional(),
   company: z.string().trim().max(200).optional(),
-  quote: z.string().trim().min(1, 'Marag-furka waa waajib').max(2000),
-  avatarUrl: z.string().url('Fadlan geli link sax ah').optional(),
+  quote: z.string().trim().min(1, 'Testimonial is required').max(2000),
+  avatarUrl: z.string().url('Enter a valid URL').optional(),
   rating: z.number().int().min(1).max(5).optional(),
   order: z.number().int().nonnegative().default(0),
   isPublished: z.boolean().default(true),
@@ -44,13 +44,13 @@ export const updateTestimonialSchema = z
     role: z.string().trim().max(200).nullable().optional(),
     company: z.string().trim().max(200).nullable().optional(),
     quote: z.string().trim().min(1).max(2000).optional(),
-    avatarUrl: z.string().url('Fadlan geli link sax ah').nullable().optional(),
+    avatarUrl: z.string().url('Enter a valid URL').nullable().optional(),
     rating: z.number().int().min(1).max(5).nullable().optional(),
     order: z.number().int().nonnegative().optional(),
     isPublished: z.boolean().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
-    message: 'Ugu yaraan hal beddel ayaa loo baahan yahay',
+    message: 'At least one change is required',
   });
 
 export type UpdateTestimonialInput = z.infer<typeof updateTestimonialSchema>;

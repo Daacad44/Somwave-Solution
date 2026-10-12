@@ -40,20 +40,20 @@ export function TeamAdminPage(): ReactNode {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-ink">Kooxda (CMS)</h1>
-          <p className="mt-1 text-base text-muted">Maamul xubnaha kooxda ee websaydka.</p>
+          <p className="mt-1 text-base text-muted">Manage team members shown on the website.</p>
         </div>
-        {canCreate ? <Button onClick={openCreate}>Xubin cusub</Button> : null}
+        {canCreate ? <Button onClick={openCreate}>New team member</Button> : null}
       </div>
 
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {query.isLoading ? (
-          <LoadingState rows={5} label="Waa la soo rarayaa" />
+          <LoadingState rows={5} label="Loading" />
         ) : query.isError ? (
-          <ErrorState description="Kooxda lama soo rari karin." onRetry={() => query.refetch()} />
+          <ErrorState description="Could not load team members." onRetry={() => query.refetch()} />
         ) : members.length === 0 ? (
           <EmptyState
-            title="Weli xubin ma jirto"
-            action={canCreate ? <Button onClick={openCreate}>Xubin cusub</Button> : undefined}
+            title="No team members yet"
+            action={canCreate ? <Button onClick={openCreate}>New team member</Button> : undefined}
           />
         ) : (
           <Table>
@@ -61,9 +61,9 @@ export function TeamAdminPage(): ReactNode {
               <Tr>
                 <Th>Magaca</Th>
                 <Th>Jagada</Th>
-                <Th>Kala horreyn</Th>
-                <Th>Xaalad</Th>
-                <Th className="text-end">Ficil</Th>
+                <Th>Order</Th>
+                <Th>Status</Th>
+                <Th className="text-end">Actions</Th>
               </Tr>
             </THead>
             <TBody>
@@ -81,12 +81,12 @@ export function TeamAdminPage(): ReactNode {
                     <div className="flex justify-end gap-2">
                       {canUpdate ? (
                         <Button size="sm" variant="secondary" onClick={() => openEdit(member)}>
-                          Wax ka beddel
+                          Edit
                         </Button>
                       ) : null}
                       {canDelete ? (
                         <Button size="sm" variant="danger" onClick={() => setConfirming(member)}>
-                          Tirtir
+                          Delete
                         </Button>
                       ) : null}
                     </div>
@@ -107,14 +107,18 @@ export function TeamAdminPage(): ReactNode {
         />
       ) : null}
 
-      <Modal open={Boolean(confirming)} onClose={() => setConfirming(null)} title="Tirtir xubinta">
+      <Modal
+        open={Boolean(confirming)}
+        onClose={() => setConfirming(null)}
+        title="Delete team member"
+      >
         <p className="text-base text-ink">
-          Ma hubtaa inaad tirtirayso <strong>{confirming?.name}</strong>? Tallaabadan lama soo celin
-          karo.
+          Are you sure you want to delete <strong>{confirming?.name}</strong>? This action cannot be
+          undone.
         </p>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setConfirming(null)}>
-            Maya
+            Cancel
           </Button>
           <Button
             variant="danger"
@@ -125,7 +129,7 @@ export function TeamAdminPage(): ReactNode {
               setConfirming(null);
             }}
           >
-            Haa, tirtir
+            Yes, delete
           </Button>
         </div>
       </Modal>

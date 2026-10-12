@@ -12,7 +12,7 @@ const TTL_SECONDS = 24 * 60 * 60;
 export function readIdempotencyKey(header: string | string[] | undefined): string {
   const value = Array.isArray(header) ? header[0] : header;
   if (!value || !KEY_PATTERN.test(value)) {
-    throw new AppError('VALIDATION_ERROR', 400, 'Idempotency-Key waa waajib');
+    throw new AppError('VALIDATION_ERROR', 400, 'Idempotency-Key is required');
   }
   return value;
 }

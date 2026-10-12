@@ -31,7 +31,7 @@ export async function get(req: Request, res: Response, next: NextFunction): Prom
   try {
     const { id } = req.params;
     const user = id ? await userService.getUser(id) : null;
-    if (!user) throw new AppError('NOT_FOUND', 404, 'Isticmaalahan lama helin');
+    if (!user) throw new AppError('NOT_FOUND', 404, 'User not found');
     sendData(res, user);
   } catch (err) {
     next(err);
@@ -50,7 +50,7 @@ export async function create(req: Request, res: Response, next: NextFunction): P
 export async function update(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Isticmaalahan lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'User not found');
     const user = await userService.updateUser(id, req.body as UpdateUserInput);
     sendData(res, user);
   } catch (err) {
@@ -61,7 +61,7 @@ export async function update(req: Request, res: Response, next: NextFunction): P
 export async function remove(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Isticmaalahan lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'User not found');
     await userService.deactivateUser(id, req.authUser!.id);
     sendData(res, { success: true });
   } catch (err) {

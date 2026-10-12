@@ -42,7 +42,7 @@ export function DocumentsPage(): ReactNode {
   const onSubmit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
     if (!file) {
-      setServerError('Faylka waa waajib.');
+      setServerError('A file is required.');
       return;
     }
     setServerError(null);
@@ -59,7 +59,7 @@ export function DocumentsPage(): ReactNode {
       setFile(null);
       setOpen(false);
     } catch (err) {
-      setServerError(err instanceof ApiError ? err.message : 'Wax baa qaldamay.');
+      setServerError(err instanceof ApiError ? err.message : 'Something went wrong.');
     }
   };
 
@@ -67,10 +67,10 @@ export function DocumentsPage(): ReactNode {
     <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-ink">Dukumeentiyada</h1>
-          <p className="mt-1 text-base text-muted">Faylasha la oggol yahay, kayd ammaan ah.</p>
+          <h1 className="text-2xl font-semibold text-ink">Documents</h1>
+          <p className="mt-1 text-base text-muted">Approved files in secure storage.</p>
         </div>
-        {canCreate ? <Button onClick={() => setOpen(true)}>Soo rar</Button> : null}
+        {canCreate ? <Button onClick={() => setOpen(true)}>Upload</Button> : null}
       </div>
       <form
         onSubmit={(e) => {
@@ -80,38 +80,35 @@ export function DocumentsPage(): ReactNode {
         className="mt-6 flex max-w-md gap-2"
       >
         <Input
-          placeholder="Raadi cinwaan…"
+          placeholder="Search title…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          aria-label="Raadi dukumeentiyada"
+          aria-label="Search documents"
           className="flex-1"
         />
         <Button type="submit" variant="secondary">
-          Raadi
+          Search
         </Button>
       </form>
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {query.isLoading ? (
-          <LoadingState rows={6} label="Waa la soo rarayaa" />
+          <LoadingState rows={6} label="Loading" />
         ) : query.isError ? (
-          <ErrorState
-            description="Dukumeentiyada lama soo rari karin."
-            onRetry={() => query.refetch()}
-          />
+          <ErrorState description="Could not load documents." onRetry={() => query.refetch()} />
         ) : rows.length === 0 ? (
           <EmptyState
-            title="Dukumeenti majiro"
-            action={canCreate ? <Button onClick={() => setOpen(true)}>Soo rar</Button> : null}
+            title="No documents"
+            action={canCreate ? <Button onClick={() => setOpen(true)}>Upload</Button> : null}
           />
         ) : (
           <Table>
             <THead>
               <Tr>
-                <Th>Cinwaan</Th>
-                <Th>Nooca</Th>
+                <Th>Title</Th>
+                <Th>Type</Th>
                 <Th>Cabbir</Th>
-                <Th>Taariikh</Th>
-                <Th className="text-end">Ficil</Th>
+                <Th>Date</Th>
+                <Th className="text-end">Actions</Th>
               </Tr>
             </THead>
             <TBody>
@@ -128,7 +125,7 @@ export function DocumentsPage(): ReactNode {
                         variant="secondary"
                         onClick={() => download.mutate({ id: row.id, fileName: row.title })}
                       >
-                        Soo deji
+                        Download
                       </Button>
                       {canDelete ? (
                         <Button
@@ -136,7 +133,7 @@ export function DocumentsPage(): ReactNode {
                           variant="danger"
                           onClick={() => setConfirming({ id: row.id, title: row.title })}
                         >
-                          Tirtir
+                          Delete
                         </Button>
                       ) : null}
                     </div>
@@ -150,7 +147,7 @@ export function DocumentsPage(): ReactNode {
       {rows.length > PAGE_SIZE ? (
         <div className="mt-4 flex items-center justify-between text-sm text-muted">
           <span>
-            Bogga {page} / {totalPages} · {rows.length} dukumeenti
+            Page {page} / {totalPages} · {rows.length} documents
           </span>
           <div className="flex gap-2">
             <Button
@@ -172,14 +169,14 @@ export function DocumentsPage(): ReactNode {
           </div>
         </div>
       ) : null}
-      <Modal open={open} onClose={() => setOpen(false)} title="Soo rar dukumeenti">
+      <Modal open={open} onClose={() => setOpen(false)} title="Upload document">
         <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-4" noValidate>
-          <Input label="Cinwaan" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <Input label="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
           {canPickClient ? (
             <Select
-              label="Macmiil"
+              label="Client"
               options={[
-                { value: '', label: 'Gudaha / dhammaan' },
+                { value: '', label: 'Internal / all' },
                 ...(clients.data ?? []).map((row) => ({ value: row.id, label: row.companyName })),
               ]}
               value={clientId}
@@ -187,7 +184,7 @@ export function DocumentsPage(): ReactNode {
             />
           ) : null}
           <Input
-            label="Fayl (PDF, JPG, PNG · 25MB)"
+            label="File (PDF, JPG, PNG · 25 MB)"
             type="file"
             accept="application/pdf,image/jpeg,image/png"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
@@ -195,25 +192,21 @@ export function DocumentsPage(): ReactNode {
           {serverError ? <p className="text-sm text-error">{serverError}</p> : null}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-              Jooji
+              Cancel
             </Button>
             <Button type="submit" isLoading={create.isPending}>
-              Kaydi
+              Save
             </Button>
           </div>
         </form>
       </Modal>
-      <Modal
-        open={Boolean(confirming)}
-        onClose={() => setConfirming(null)}
-        title="Tirtir dukumeentiga"
-      >
+      <Modal open={Boolean(confirming)} onClose={() => setConfirming(null)} title="Delete document">
         <p className="text-base text-ink">
-          Ma tirtiraysaa <strong>{confirming?.title}</strong>? Lama soo celin karo.
+          Delete <strong>{confirming?.title}</strong>? This action cannot be undone.
         </p>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setConfirming(null)}>
-            Maya
+            Cancel
           </Button>
           <Button
             variant="danger"
@@ -224,7 +217,7 @@ export function DocumentsPage(): ReactNode {
               setConfirming(null);
             }}
           >
-            Haa, tirtir
+            Yes, delete
           </Button>
         </div>
       </Modal>

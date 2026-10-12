@@ -27,27 +27,24 @@ export function LeadsPage(): ReactNode {
 
   return (
     <section>
-      <h1 className="text-2xl font-semibold text-ink">Lead-yada</h1>
-      <p className="mt-1 text-base text-muted">Codsiyada websaydka (`/nala-soo-xiriir`).</p>
+      <h1 className="text-2xl font-semibold text-ink">Leads</h1>
+      <p className="mt-1 text-base text-muted">Website enquiries (`/nala-soo-xiriir`).</p>
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {query.isLoading ? (
-          <LoadingState rows={6} label="Waa la soo rarayaa" />
+          <LoadingState rows={6} label="Loading" />
         ) : query.isError ? (
-          <ErrorState
-            description="Lead-yada lama soo rari karin."
-            onRetry={() => query.refetch()}
-          />
+          <ErrorState description="Could not load leads." onRetry={() => query.refetch()} />
         ) : rows.length === 0 ? (
-          <EmptyState title="Lead cusub majiro" />
+          <EmptyState title="No new leads" />
         ) : (
           <Table>
             <THead>
               <Tr>
-                <Th>Magaca</Th>
-                <Th>Iimayl</Th>
+                <Th>Name</Th>
+                <Th>Email</Th>
                 <Th>Fariin</Th>
-                <Th>Taariikh</Th>
-                <Th>Xaalad</Th>
+                <Th>Date</Th>
+                <Th>Status</Th>
               </Tr>
             </THead>
             <TBody>

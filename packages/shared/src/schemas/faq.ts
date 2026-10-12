@@ -20,8 +20,8 @@ export const adminFaqSchema = publicFaqSchema.extend({
 export type AdminFaq = z.infer<typeof adminFaqSchema>;
 
 export const createFaqSchema = z.object({
-  question: z.string().trim().min(1, 'Su’aasha waa waajib').max(300),
-  answer: z.string().trim().min(1, 'Jawaabta waa waajib').max(3000),
+  question: z.string().trim().min(1, 'Question is required').max(300),
+  answer: z.string().trim().min(1, 'Reply is required').max(3000),
   order: z.number().int().nonnegative().default(0),
   isPublished: z.boolean().default(true),
 });
@@ -36,7 +36,7 @@ export const updateFaqSchema = z
     isPublished: z.boolean().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
-    message: 'Ugu yaraan hal beddel ayaa loo baahan yahay',
+    message: 'At least one change is required',
   });
 
 export type UpdateFaqInput = z.infer<typeof updateFaqSchema>;

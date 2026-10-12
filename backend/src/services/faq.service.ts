@@ -67,7 +67,7 @@ export async function createFaq(input: CreateFaqInput): Promise<AdminFaq> {
 
 export async function updateFaq(id: string, input: UpdateFaqInput): Promise<AdminFaq> {
   const faq = await prisma.faq.findUnique({ where: { id } });
-  if (!faq) throw new AppError('NOT_FOUND', 404, 'Su’aashan lama helin');
+  if (!faq) throw new AppError('NOT_FOUND', 404, 'FAQ not found');
 
   const row = await prisma.faq.update({
     where: { id },
@@ -85,7 +85,7 @@ export async function updateFaq(id: string, input: UpdateFaqInput): Promise<Admi
 
 export async function deleteFaq(id: string): Promise<void> {
   const faq = await prisma.faq.findUnique({ where: { id } });
-  if (!faq) throw new AppError('NOT_FOUND', 404, 'Su’aashan lama helin');
+  if (!faq) throw new AppError('NOT_FOUND', 404, 'FAQ not found');
   await prisma.faq.delete({ where: { id } });
   await invalidateCache();
 }

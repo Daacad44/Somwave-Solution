@@ -27,6 +27,7 @@ export async function list(req: Request, res: Response, next: NextFunction): Pro
       pageSize,
       projectId: projectId || undefined,
       status: parseStatus(req.query.status),
+      actor: req.authUser,
     });
     sendData(res, result.items, 200, {
       page: result.page,
@@ -41,8 +42,8 @@ export async function list(req: Request, res: Response, next: NextFunction): Pro
 export async function get(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    const task = id ? await taskService.getTask(id) : null;
-    if (!task) throw new AppError('NOT_FOUND', 404, 'Hawshan lama helin');
+    const task = id ? await taskService.getTask(id, req.authUser) : null;
+    if (!task) throw new AppError('NOT_FOUND', 404, 'Task not found');
     sendData(res, task);
   } catch (err) {
     next(err);
@@ -51,7 +52,7 @@ export async function get(req: Request, res: Response, next: NextFunction): Prom
 
 export async function create(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const task = await taskService.createTask(req.body as CreateTaskInput);
+    const task = await taskService.createTask(req.body as CreateTaskInput, req.authUser);
     sendData(res, task, 201);
   } catch (err) {
     next(err);
@@ -61,8 +62,8 @@ export async function create(req: Request, res: Response, next: NextFunction): P
 export async function update(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Hawshan lama helin');
-    const task = await taskService.updateTask(id, req.body as UpdateTaskInput);
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Task not found');
+    const task = await taskService.updateTask(id, req.body as UpdateTaskInput, req.authUser);
     sendData(res, task);
   } catch (err) {
     next(err);
@@ -72,8 +73,8 @@ export async function update(req: Request, res: Response, next: NextFunction): P
 export async function remove(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Hawshan lama helin');
-    await taskService.deleteTask(id);
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Task not found');
+    await taskService.deleteTask(id, req.authUser);
     sendData(res, { success: true });
   } catch (err) {
     next(err);

@@ -38,7 +38,7 @@ export function MediaPage(): ReactNode {
   const onSubmit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
     if (!file) {
-      setServerError('Faylka waa waajib.');
+      setServerError('A file is required.');
       return;
     }
     setServerError(null);
@@ -56,7 +56,7 @@ export function MediaPage(): ReactNode {
       setFile(null);
       setOpen(false);
     } catch (err) {
-      setServerError(err instanceof ApiError ? err.message : 'Wax baa qaldamay.');
+      setServerError(err instanceof ApiError ? err.message : 'Something went wrong.');
     }
   };
 
@@ -65,36 +65,33 @@ export function MediaPage(): ReactNode {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-ink">Maktabadda warbaahinta</h1>
-          <p className="mt-1 text-base text-muted">Sawirro iyo faylal CMS-ka loo isticmaalo.</p>
+          <p className="mt-1 text-base text-muted">Images and files used by the CMS.</p>
         </div>
-        {canCreate ? <Button onClick={() => setOpen(true)}>Soo rar</Button> : null}
+        {canCreate ? <Button onClick={() => setOpen(true)}>Upload</Button> : null}
       </div>
       <form onSubmit={(e) => e.preventDefault()} className="mt-6 flex max-w-md gap-2">
         <Input
-          placeholder="Raadi magac, alt, ama urur…"
+          placeholder="Search name, alt text, or collection…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          aria-label="Raadi warbaahinta"
+          aria-label="Search media"
           className="flex-1"
         />
       </form>
       <div className="mt-6">
         {query.isLoading ? (
           <div className="rounded-lg border border-border bg-surface">
-            <LoadingState rows={6} label="Waa la soo rarayaa" />
+            <LoadingState rows={6} label="Loading" />
           </div>
         ) : query.isError ? (
           <div className="rounded-lg border border-border bg-surface">
-            <ErrorState
-              description="Warbaahinta lama soo rari karin."
-              onRetry={() => query.refetch()}
-            />
+            <ErrorState description="Could not load media." onRetry={() => query.refetch()} />
           </div>
         ) : rows.length === 0 ? (
           <div className="rounded-lg border border-border bg-surface">
             <EmptyState
               title="Warbaahin majirto"
-              action={canCreate ? <Button onClick={() => setOpen(true)}>Soo rar</Button> : null}
+              action={canCreate ? <Button onClick={() => setOpen(true)}>Upload</Button> : null}
             />
           </div>
         ) : (
@@ -102,7 +99,7 @@ export function MediaPage(): ReactNode {
             {rows.map((row) => (
               <li key={row.id} className="rounded-lg border border-border bg-surface p-4">
                 <p className="font-medium text-ink">{row.fileName}</p>
-                <p className="mt-1 text-sm text-muted">{row.alt ?? 'Alt majiro'}</p>
+                <p className="mt-1 text-sm text-muted">{row.alt ?? 'No alt text'}</p>
                 <p className="mt-1 text-sm text-muted">
                   {row.collection ?? 'Urur la’aan'} · {formatDate(row.createdAt)}
                 </p>
@@ -112,7 +109,7 @@ export function MediaPage(): ReactNode {
                     variant="secondary"
                     onClick={() => download.mutate({ id: row.id, fileName: row.fileName })}
                   >
-                    Soo deji
+                    Download
                   </Button>
                   {canDelete ? (
                     <Button
@@ -120,7 +117,7 @@ export function MediaPage(): ReactNode {
                       variant="danger"
                       onClick={() => setConfirming({ id: row.id, fileName: row.fileName })}
                     >
-                      Tirtir
+                      Delete
                     </Button>
                   ) : null}
                 </div>
@@ -129,21 +126,17 @@ export function MediaPage(): ReactNode {
           </ul>
         )}
       </div>
-      <Modal open={open} onClose={() => setOpen(false)} title="Soo rar warbaahin">
+      <Modal open={open} onClose={() => setOpen(false)} title="Upload media">
         <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-4" noValidate>
-          <Input
-            label="Magaca faylka"
-            value={fileName}
-            onChange={(e) => setFileName(e.target.value)}
-          />
-          <Input label="Qoraalka alt" value={alt} onChange={(e) => setAlt(e.target.value)} />
+          <Input label="File name" value={fileName} onChange={(e) => setFileName(e.target.value)} />
+          <Input label="Alt text" value={alt} onChange={(e) => setAlt(e.target.value)} />
           <Input
             label="Ururka"
             value={collection}
             onChange={(e) => setCollection(e.target.value)}
           />
           <Input
-            label="Fayl (JPG, PNG, PDF · 25MB)"
+            label="File (JPG, PNG, PDF · 25 MB)"
             type="file"
             accept="application/pdf,image/jpeg,image/png"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
@@ -151,25 +144,21 @@ export function MediaPage(): ReactNode {
           {serverError ? <p className="text-sm text-error">{serverError}</p> : null}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-              Jooji
+              Cancel
             </Button>
             <Button type="submit" isLoading={create.isPending}>
-              Kaydi
+              Save
             </Button>
           </div>
         </form>
       </Modal>
-      <Modal
-        open={Boolean(confirming)}
-        onClose={() => setConfirming(null)}
-        title="Tirtir warbaahinta"
-      >
+      <Modal open={Boolean(confirming)} onClose={() => setConfirming(null)} title="Delete media">
         <p className="text-base text-ink">
-          Ma tirtiraysaa <strong>{confirming?.fileName}</strong>? Lama soo celin karo.
+          Delete <strong>{confirming?.fileName}</strong>? This action cannot be undone.
         </p>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setConfirming(null)}>
-            Maya
+            Cancel
           </Button>
           <Button
             variant="danger"
@@ -180,7 +169,7 @@ export function MediaPage(): ReactNode {
               setConfirming(null);
             }}
           >
-            Haa, tirtir
+            Yes, delete
           </Button>
         </div>
       </Modal>

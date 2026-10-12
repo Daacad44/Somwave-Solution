@@ -27,6 +27,7 @@ export async function list(req: Request, res: Response, next: NextFunction): Pro
       pageSize,
       projectId: projectId || undefined,
       status: parseStatus(req.query.status),
+      actor: req.authUser,
     });
     sendData(res, result.items, 200, {
       page: result.page,
@@ -41,8 +42,8 @@ export async function list(req: Request, res: Response, next: NextFunction): Pro
 export async function get(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    const milestone = id ? await milestoneService.getMilestone(id) : null;
-    if (!milestone) throw new AppError('NOT_FOUND', 404, 'Marxaladdan lama helin');
+    const milestone = id ? await milestoneService.getMilestone(id, req.authUser) : null;
+    if (!milestone) throw new AppError('NOT_FOUND', 404, 'Milestone not found');
     sendData(res, milestone);
   } catch (err) {
     next(err);
@@ -51,7 +52,10 @@ export async function get(req: Request, res: Response, next: NextFunction): Prom
 
 export async function create(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const milestone = await milestoneService.createMilestone(req.body as CreateMilestoneInput);
+    const milestone = await milestoneService.createMilestone(
+      req.body as CreateMilestoneInput,
+      req.authUser,
+    );
     sendData(res, milestone, 201);
   } catch (err) {
     next(err);
@@ -61,8 +65,12 @@ export async function create(req: Request, res: Response, next: NextFunction): P
 export async function update(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Marxaladdan lama helin');
-    const milestone = await milestoneService.updateMilestone(id, req.body as UpdateMilestoneInput);
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Milestone not found');
+    const milestone = await milestoneService.updateMilestone(
+      id,
+      req.body as UpdateMilestoneInput,
+      req.authUser,
+    );
     sendData(res, milestone);
   } catch (err) {
     next(err);
@@ -72,8 +80,8 @@ export async function update(req: Request, res: Response, next: NextFunction): P
 export async function remove(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Marxaladdan lama helin');
-    await milestoneService.deleteMilestone(id);
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Milestone not found');
+    await milestoneService.deleteMilestone(id, req.authUser);
     sendData(res, { success: true });
   } catch (err) {
     next(err);

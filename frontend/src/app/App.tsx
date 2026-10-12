@@ -19,6 +19,37 @@ const RolesPage = lazy(() =>
 const ProjectsPage = lazy(() =>
   import('../features/projects/ProjectsPage').then((m) => ({ default: m.ProjectsPage })),
 );
+const EngineeringWorkspacePage = lazy(() =>
+  import('../features/engineering/EngineeringWorkspacePage').then((m) => ({
+    default: m.EngineeringWorkspacePage,
+  })),
+);
+const GitHubPage = lazy(() =>
+  import('../features/github/GitHubPage').then((m) => ({ default: m.GitHubPage })),
+);
+const DocumentationPage = lazy(() =>
+  import('../features/engineering/DocumentationPage').then((m) => ({
+    default: m.DocumentationPage,
+  })),
+);
+const TaskPlanningPage = lazy(() =>
+  import('../features/engineering/TaskPlanningPage').then((m) => ({ default: m.TaskPlanningPage })),
+);
+const EngineeringOperationsPage = lazy(() =>
+  import('../features/engineering/EngineeringOperationsPage').then((m) => ({
+    default: m.EngineeringOperationsPage,
+  })),
+);
+const EngineerManagementPage = lazy(() =>
+  import('../features/engineering/EngineerManagementPage').then((m) => ({
+    default: m.EngineerManagementPage,
+  })),
+);
+const EngineeringAnalyticsPage = lazy(() =>
+  import('../features/engineering/EngineeringAnalyticsPage').then((m) => ({
+    default: m.EngineeringAnalyticsPage,
+  })),
+);
 const TasksPage = lazy(() =>
   import('../features/tasks/TasksPage').then((m) => ({ default: m.TasksPage })),
 );
@@ -180,6 +211,62 @@ export function App(): ReactNode {
             element={
               <Guarded permission={PERMISSIONS.PROJECTS_READ}>
                 <ProjectsPage />
+              </Guarded>
+            }
+          />
+          <Route
+            path="/engineering"
+            element={
+              <Guarded permission={PERMISSIONS.ENGINEERING_READ}>
+                <EngineeringWorkspacePage />
+              </Guarded>
+            }
+          />
+          <Route
+            path="/github"
+            element={
+              <Guarded permission={PERMISSIONS.GITHUB_READ}>
+                <GitHubPage />
+              </Guarded>
+            }
+          />
+          <Route
+            path="/engineering/documentation"
+            element={
+              <Guarded permission={PERMISSIONS.ENGINEERING_READ}>
+                <DocumentationPage />
+              </Guarded>
+            }
+          />
+          <Route
+            path="/engineering/planning"
+            element={
+              <Guarded permission={PERMISSIONS.ENGINEERING_READ}>
+                <TaskPlanningPage />
+              </Guarded>
+            }
+          />
+          <Route
+            path="/engineering/operations"
+            element={
+              <Guarded permission={PERMISSIONS.ENGINEERING_READ}>
+                <EngineeringOperationsPage />
+              </Guarded>
+            }
+          />
+          <Route
+            path="/engineering/engineers"
+            element={
+              <Guarded permission={PERMISSIONS.ENGINEERING_READ}>
+                <EngineerManagementPage />
+              </Guarded>
+            }
+          />
+          <Route
+            path="/engineering/analytics"
+            element={
+              <Guarded permission={PERMISSIONS.ENGINEERING_READ}>
+                <EngineeringAnalyticsPage />
               </Guarded>
             }
           />

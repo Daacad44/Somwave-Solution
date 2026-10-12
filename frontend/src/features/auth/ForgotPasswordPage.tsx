@@ -20,30 +20,30 @@ export function ForgotPasswordPage(): ReactNode {
   return (
     <main className="auth-shell">
       <form className="auth-card" onSubmit={onSubmit} noValidate>
-        <h1 className="text-2xl font-semibold text-ink">Dib-u-dejin furaha</h1>
+        <h1 className="text-2xl font-semibold text-ink">Reset your password</h1>
         {done ? (
           <p className="text-sm text-muted">
-            Haddii iimaylkaasi leeyahay akoon, waxaanu u diri doonnaa xiriir dib-u-dejin.
+            If an account exists for that email address, we will send a reset link.
           </p>
         ) : (
           <>
             <p className="text-sm text-muted">
-              Geli iimaylkaaga. Ma sheegno in akoonku jiro iyo in kale.
+              Enter your email address. We will not disclose whether an account exists.
             </p>
             <Input
-              label="Iimayl"
+              label="Email"
               type="email"
               autoComplete="email"
               error={form.formState.errors.email?.message}
               {...form.register('email')}
             />
             <Button type="submit" className="w-full" isLoading={mutation.isPending}>
-              Dir xiriirka
+              Send reset link
             </Button>
           </>
         )}
         <Link className="text-sm text-brand underline-offset-2 hover:underline" to="/login">
-          Ku noqo soo-galidda
+          Back to sign in
         </Link>
       </form>
     </main>
