@@ -85,7 +85,7 @@ export function TeamMemberFormModal({
       close();
     } catch (err) {
       setServerError(
-        err instanceof ApiError ? err.message : 'Wax baa qaldamay. Fadlan mar kale isku day.',
+        err instanceof ApiError ? err.message : 'Something went wrong. Please try again.',
       );
     }
   });
@@ -93,13 +93,13 @@ export function TeamMemberFormModal({
   const pending = isSubmitting || createMutation.isPending || updateMutation.isPending;
 
   return (
-    <Modal open={open} onClose={close} title={isEdit ? 'Wax ka beddel xubinta' : 'Xubin cusub'}>
+    <Modal open={open} onClose={close} title={isEdit ? 'Edit team member' : 'New team member'}>
       <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
         <Input label="Magaca" error={errors.name?.message} {...register('name')} />
         <Input label="Jagada" error={errors.role?.message} {...register('role')} />
 
         <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-ink">Taariikh-nololeed</span>
+          <span className="text-sm font-medium text-ink">Biography</span>
           <textarea
             className="min-h-24 rounded-md border border-border bg-surface px-3 py-2 text-base text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             rows={3}
@@ -108,7 +108,7 @@ export function TeamMemberFormModal({
         </label>
 
         <Input
-          label="Sawirka (link, ikhtiyaari)"
+          label="Image URL (optional)"
           placeholder="https://"
           error={errors.photoUrl?.message}
           {...register('photoUrl')}
@@ -121,7 +121,7 @@ export function TeamMemberFormModal({
             {...register('linkedinUrl')}
           />
           <Input
-            label="Kala horreyn (order)"
+            label="Display order"
             type="number"
             min={0}
             error={errors.order?.message}
@@ -138,10 +138,10 @@ export function TeamMemberFormModal({
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={close}>
-            Jooji
+            Cancel
           </Button>
           <Button type="submit" isLoading={pending}>
-            {isEdit ? 'Kaydi' : 'Abuur'}
+            {isEdit ? 'Save' : 'Create'}
           </Button>
         </div>
       </form>

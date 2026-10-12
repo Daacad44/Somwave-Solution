@@ -28,30 +28,27 @@ export function SubscribersAdminPage(): ReactNode {
   return (
     <section>
       <div>
-        <h1 className="text-2xl font-semibold text-ink">Diiwaangelinta warsidaha (CMS)</h1>
+        <h1 className="text-2xl font-semibold text-ink">Newsletter subscribers (CMS)</h1>
         <p className="mt-1 text-base text-muted">
-          Dadka iska diiwaangeliyay warsidaha iimaylka ee websaydka.
+          People subscribed to the website email newsletter.
         </p>
       </div>
 
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {query.isLoading ? (
-          <LoadingState rows={6} label="Waa la soo rarayaa" />
+          <LoadingState rows={6} label="Loading" />
         ) : query.isError ? (
-          <ErrorState
-            description="Diiwaangelinta lama soo rari karin."
-            onRetry={() => query.refetch()}
-          />
+          <ErrorState description="Could not load subscribers." onRetry={() => query.refetch()} />
         ) : subscribers.length === 0 ? (
-          <EmptyState title="Weli qof ma diiwaangelin" />
+          <EmptyState title="No subscribers yet" />
         ) : (
           <Table>
             <THead>
               <Tr>
-                <Th>Iimayl</Th>
-                <Th>Taariikh</Th>
-                <Th>Xaalad</Th>
-                <Th className="text-end">Ficil</Th>
+                <Th>Email</Th>
+                <Th>Date</Th>
+                <Th>Status</Th>
+                <Th className="text-end">Actions</Th>
               </Tr>
             </THead>
             <TBody>
@@ -61,7 +58,7 @@ export function SubscribersAdminPage(): ReactNode {
                   <Td className="text-muted">{formatDate(subscriber.createdAt)}</Td>
                   <Td>
                     <Badge tone={subscriber.isActive ? 'success' : 'neutral'}>
-                      {subscriber.isActive ? 'Firfircoon' : 'Joogsan'}
+                      {subscriber.isActive ? 'Active' : 'Joogsan'}
                     </Badge>
                   </Td>
                   <Td>
@@ -72,7 +69,7 @@ export function SubscribersAdminPage(): ReactNode {
                           variant="danger"
                           onClick={() => setConfirming(subscriber)}
                         >
-                          Tirtir
+                          Delete
                         </Button>
                       ) : null}
                     </div>
@@ -87,15 +84,15 @@ export function SubscribersAdminPage(): ReactNode {
       <Modal
         open={Boolean(confirming)}
         onClose={() => setConfirming(null)}
-        title="Tirtir diiwaangalaha"
+        title="Delete subscriber"
       >
         <p className="text-base text-ink">
-          Ma hubtaa inaad ka saarto <strong>{confirming?.email}</strong>? Tallaabadan lama soo celin
-          karo.
+          Are you sure you want to remove <strong>{confirming?.email}</strong>? This action cannot
+          be undone.
         </p>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setConfirming(null)}>
-            Maya
+            Cancel
           </Button>
           <Button
             variant="danger"
@@ -106,7 +103,7 @@ export function SubscribersAdminPage(): ReactNode {
               setConfirming(null);
             }}
           >
-            Haa, tirtir
+            Yes, delete
           </Button>
         </div>
       </Modal>

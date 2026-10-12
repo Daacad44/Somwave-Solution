@@ -51,12 +51,12 @@ export type AdminUser = z.infer<typeof adminUserSchema>;
 // Passwords: min 12 chars (§13 posture — long over complex). Reused by create.
 export const passwordSchema = z
   .string()
-  .min(12, 'Furaha sirta waa inuu ugu yaraan 12 xaraf yahay')
+  .min(12, 'Password must be at least 12 characters')
   .max(200);
 
 export const createUserSchema = z.object({
-  email: z.string().trim().email('Fadlan geli iimayl sax ah'),
-  name: z.string().trim().min(1, 'Magaca waa waajib').max(120),
+  email: z.string().trim().email('Enter a valid email address'),
+  name: z.string().trim().min(1, 'Name is required').max(120),
   password: passwordSchema,
   roleIds: z.array(z.string()).default([]),
 });
@@ -66,12 +66,12 @@ export type CreateUserInput = z.infer<typeof createUserSchema>;
 // Edit: email is immutable (it is the login identity); everything else optional.
 export const updateUserSchema = z
   .object({
-    name: z.string().trim().min(1, 'Magaca waa waajib').max(120).optional(),
+    name: z.string().trim().min(1, 'Name is required').max(120).optional(),
     isActive: z.boolean().optional(),
     roleIds: z.array(z.string()).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
-    message: 'Ugu yaraan hal beddel ayaa loo baahan yahay',
+    message: 'At least one change is required',
   });
 
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;

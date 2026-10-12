@@ -1,0 +1,149 @@
+import { Router } from 'express';
+import { z } from 'zod';
+import {
+  createBugReportSchema,
+  createMaintenanceRequestSchema,
+  createManagedSystemSchema,
+  createReleaseSchema,
+  createSystemUpdateSchema,
+  updateBugReportSchema,
+  updateMaintenanceRequestSchema,
+  transitionSystemUpdateSchema,
+  transitionReleaseSchema,
+  recordDeploymentSchema,
+  PERMISSIONS,
+} from '@somwave/shared';
+import { requireAuth } from '../middleware/auth';
+import { rbac, rbacAny } from '../middleware/rbac';
+import { validate } from '../middleware/validate';
+import * as controller from '../controllers/engineering-operations.controller';
+
+export const engineeringOperationsRouter: Router = Router();
+engineeringOperationsRouter.use(requireAuth);
+engineeringOperationsRouter.get(
+  '/projects/:projectId/systems',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.listSystems,
+);
+engineeringOperationsRouter.post(
+  '/projects/:projectId/systems',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  validate(createManagedSystemSchema),
+  controller.createSystem,
+);
+engineeringOperationsRouter.get(
+  '/systems/:systemId/updates',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.listUpdates,
+);
+engineeringOperationsRouter.post(
+  '/systems/:systemId/updates',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  validate(createSystemUpdateSchema),
+  controller.createUpdate,
+);
+engineeringOperationsRouter.patch(
+  '/updates/:updateId',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  validate(transitionSystemUpdateSchema),
+  controller.transitionUpdate,
+);
+engineeringOperationsRouter.post(
+  '/updates/:updateId/production-approval',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  controller.approveUpdateProduction,
+);
+engineeringOperationsRouter.get(
+  '/systems/:systemId/bugs',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.listBugs,
+);
+engineeringOperationsRouter.post(
+  '/systems/:systemId/bugs',
+  rbacAny([PERMISSIONS.ENGINEERING_TASK_CREATE, PERMISSIONS.ENGINEERING_MANAGE]),
+  validate(createBugReportSchema),
+  controller.createBug,
+);
+engineeringOperationsRouter.patch(
+  '/bugs/:bugId',
+  rbacAny([PERMISSIONS.ENGINEERING_TASK_CREATE, PERMISSIONS.ENGINEERING_MANAGE]),
+  validate(updateBugReportSchema),
+  controller.updateBug,
+);
+engineeringOperationsRouter.get(
+  '/systems/:systemId/maintenance',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.listMaintenance,
+);
+engineeringOperationsRouter.post(
+  '/systems/:systemId/maintenance',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  validate(createMaintenanceRequestSchema),
+  controller.createMaintenance,
+);
+engineeringOperationsRouter.patch(
+  '/maintenance/:requestId',
+  rbacAny([PERMISSIONS.ENGINEERING_TASK_CREATE, PERMISSIONS.ENGINEERING_MANAGE]),
+  validate(updateMaintenanceRequestSchema),
+  controller.updateMaintenance,
+);
+engineeringOperationsRouter.get(
+  '/systems/:systemId/releases',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.listReleases,
+);
+engineeringOperationsRouter.post(
+  '/systems/:systemId/releases',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  validate(createReleaseSchema),
+  controller.createRelease,
+);
+engineeringOperationsRouter.post(
+  '/releases/:releaseId/tasks',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  validate(z.object({ taskId: z.string().min(1) })),
+  controller.addReleaseTask,
+);
+engineeringOperationsRouter.delete(
+  '/releases/:releaseId/tasks/:taskId',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  controller.removeReleaseTask,
+);
+engineeringOperationsRouter.get(
+  '/projects/:projectId/pull-requests',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.listProjectPullRequests,
+);
+engineeringOperationsRouter.post(
+  '/releases/:releaseId/pull-requests',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  validate(z.object({ linkId: z.string().min(1) })),
+  controller.addReleasePullRequest,
+);
+engineeringOperationsRouter.delete(
+  '/releases/:releaseId/pull-requests/:linkId',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  controller.removeReleasePullRequest,
+);
+engineeringOperationsRouter.post(
+  '/releases/:releaseId/approve',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  controller.approveRelease,
+);
+engineeringOperationsRouter.patch(
+  '/releases/:releaseId',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  validate(transitionReleaseSchema),
+  controller.transitionRelease,
+);
+engineeringOperationsRouter.get(
+  '/releases/:releaseId/deployments',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.listDeployments,
+);
+engineeringOperationsRouter.post(
+  '/releases/:releaseId/deployments',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  validate(recordDeploymentSchema),
+  controller.recordDeployment,
+);

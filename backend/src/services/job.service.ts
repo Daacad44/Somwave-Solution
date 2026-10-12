@@ -63,7 +63,7 @@ export async function applyToOpening(
     where: { slug, isPublished: true },
     select: { id: true },
   });
-  if (!opening) throw new AppError('NOT_FOUND', 404, 'Fursaddan shaqo lama helin');
+  if (!opening) throw new AppError('NOT_FOUND', 404, 'Job opening not found');
 
   const cacheKey = `idem:application:${idempotencyKey}`;
   const existingId = await safeGet(cacheKey);
@@ -181,7 +181,7 @@ export async function updateOpening(
   input: UpdateJobOpeningInput,
 ): Promise<AdminJobOpening> {
   const opening = await prisma.jobOpening.findUnique({ where: { id } });
-  if (!opening) throw new AppError('NOT_FOUND', 404, 'Fursaddan shaqo lama helin');
+  if (!opening) throw new AppError('NOT_FOUND', 404, 'Job opening not found');
 
   if (input.slug && input.slug !== opening.slug) {
     const clash = await prisma.jobOpening.findUnique({ where: { slug: input.slug } });
@@ -215,12 +215,12 @@ export async function deleteOpening(id: string): Promise<void> {
     where: { id },
     select: { id: true, _count: { select: { applications: true } } },
   });
-  if (!opening) throw new AppError('NOT_FOUND', 404, 'Fursaddan shaqo lama helin');
+  if (!opening) throw new AppError('NOT_FOUND', 404, 'Job opening not found');
   if (opening._count.applications > 0) {
     throw new AppError(
       'CONFLICT',
       409,
-      'Fursaddan waxay leedahay codsiyo — halkii la tirtiro, ka saar daabacaadda',
+      'This opening has applications; unpublish it instead of deleting it',
     );
   }
   await prisma.jobOpening.delete({ where: { id } });
@@ -259,7 +259,7 @@ export async function updateApplicationStatus(
   status: ApplicationStatus,
 ): Promise<AdminJobApplication> {
   const existing = await prisma.jobApplication.findUnique({ where: { id } });
-  if (!existing) throw new AppError('NOT_FOUND', 404, 'Codsigan lama helin');
+  if (!existing) throw new AppError('NOT_FOUND', 404, 'Request not found');
   const row = await prisma.jobApplication.update({
     where: { id },
     data: { status },

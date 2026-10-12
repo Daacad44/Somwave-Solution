@@ -31,41 +31,36 @@ export function AuditPage(): ReactNode {
 
   return (
     <section>
-      <h1 className="text-2xl font-semibold text-ink">Diiwaanka isbeddelka</h1>
-      <p className="mt-1 text-base text-muted">
-        Diiwaan aan la beddeli karin — cidda, ficilka, iyo waqtiga.
-      </p>
+      <h1 className="text-2xl font-semibold text-ink">Audit log</h1>
+      <p className="mt-1 text-base text-muted">A permanent record of who did what and when.</p>
       <form onSubmit={onSearch} className="mt-6 flex max-w-md gap-2">
         <Input
-          placeholder="Raadi ficil ama nooca…"
+          placeholder="Search action or type…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          aria-label="Raadi diiwaanka"
+          aria-label="Search audit log"
           className="flex-1"
         />
         <Button type="submit" variant="secondary">
-          Raadi
+          Search
         </Button>
       </form>
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {query.isLoading ? (
-          <LoadingState rows={6} label="Waa la soo rarayaa" />
+          <LoadingState rows={6} label="Loading" />
         ) : query.isError ? (
-          <ErrorState
-            description="Diiwaanka lama soo rari karin."
-            onRetry={() => query.refetch()}
-          />
+          <ErrorState description="Could not load audit records." onRetry={() => query.refetch()} />
         ) : rows.length === 0 ? (
-          <EmptyState title="Diiwaan majiro" />
+          <EmptyState title="No audit records" />
         ) : (
           <Table>
             <THead>
               <Tr>
-                <Th>Ficil</Th>
-                <Th>Nooca</Th>
+                <Th>Actions</Th>
+                <Th>Type</Th>
                 <Th>Aqoonsi</Th>
                 <Th>Qofka</Th>
-                <Th>Waqti</Th>
+                <Th>Time</Th>
               </Tr>
             </THead>
             <TBody>
@@ -85,7 +80,7 @@ export function AuditPage(): ReactNode {
       {rows.length > PAGE_SIZE ? (
         <div className="mt-4 flex items-center justify-between text-sm text-muted">
           <span>
-            Bogga {page} / {totalPages} · {rows.length} diiwaan
+            Page {page} / {totalPages} · {rows.length} records
           </span>
           <div className="flex gap-2">
             <Button

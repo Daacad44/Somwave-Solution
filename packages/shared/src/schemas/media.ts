@@ -15,7 +15,7 @@ export type AdminMediaAsset = z.infer<typeof adminMediaAssetSchema>;
 export const createMediaAssetSchema = z.object({
   fileName: z.string().trim().min(1).max(200),
   mimeType: z.string().trim().min(1).max(120),
-  contentBase64: z.string().min(1, 'Faylka waa waajib'),
+  contentBase64: z.string().min(1, 'File is required'),
   alt: z.string().trim().max(200).optional(),
   collection: z.string().trim().max(80).optional(),
 });

@@ -16,7 +16,7 @@ export const PAYMENT_STATUSES = ['PENDING', 'COMPLETED', 'FAILED'] as const;
 export const paymentStatusSchema = z.enum(PAYMENT_STATUSES);
 export type PaymentStatus = z.infer<typeof paymentStatusSchema>;
 
-const moneyString = z.string().regex(/^\d{1,10}(\.\d{1,2})?$/, 'Fadlan geli qiime sax ah');
+const moneyString = z.string().regex(/^\d{1,10}(\.\d{1,2})?$/, 'Enter a valid amount');
 
 export const paymentRecordSchema = z.object({
   id: z.string(),
@@ -31,7 +31,7 @@ export const paymentRecordSchema = z.object({
 export type PaymentRecord = z.infer<typeof paymentRecordSchema>;
 
 export const recordPaymentSchema = z.object({
-  invoiceId: z.string().min(1, 'Biilka waa waajib'),
+  invoiceId: z.string().min(1, 'Invoice is required'),
   amount: moneyString,
   method: paymentMethodSchema.default('BANK_TRANSFER'),
   reference: z.string().trim().max(120).optional(),
@@ -43,10 +43,10 @@ export type RecordPaymentInput = z.infer<typeof recordPaymentSchema>;
 export const evcPhoneSchema = z
   .string()
   .trim()
-  .regex(/^(\+252|252|0)?[67]\d{8}$/, 'Fadlan geli lambar EVC Plus sax ah');
+  .regex(/^(\+252|252|0)?[67]\d{8}$/, 'Enter a valid EVC Plus number');
 
 export const chargeEvcPaymentSchema = z.object({
-  invoiceId: z.string().min(1, 'Biilka waa waajib'),
+  invoiceId: z.string().min(1, 'Invoice is required'),
   amount: moneyString,
   phone: evcPhoneSchema,
 });

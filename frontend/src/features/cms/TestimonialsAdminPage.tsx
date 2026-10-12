@@ -40,23 +40,22 @@ export function TestimonialsAdminPage(): ReactNode {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-ink">Marag-furka (CMS)</h1>
-          <p className="mt-1 text-base text-muted">Maamul marag-furka macaamiisha ee websaydka.</p>
+          <p className="mt-1 text-base text-muted">
+            Manage client testimonials shown on the website.
+          </p>
         </div>
-        {canCreate ? <Button onClick={openCreate}>Marag-fur cusub</Button> : null}
+        {canCreate ? <Button onClick={openCreate}>New testimonial</Button> : null}
       </div>
 
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {query.isLoading ? (
-          <LoadingState rows={5} label="Waa la soo rarayaa" />
+          <LoadingState rows={5} label="Loading" />
         ) : query.isError ? (
-          <ErrorState
-            description="Marag-furka lama soo rari karin."
-            onRetry={() => query.refetch()}
-          />
+          <ErrorState description="Could not load testimonials." onRetry={() => query.refetch()} />
         ) : testimonials.length === 0 ? (
           <EmptyState
-            title="Weli marag-fur ma jiro"
-            action={canCreate ? <Button onClick={openCreate}>Marag-fur cusub</Button> : undefined}
+            title="No testimonials yet"
+            action={canCreate ? <Button onClick={openCreate}>New testimonial</Button> : undefined}
           />
         ) : (
           <Table>
@@ -65,8 +64,8 @@ export function TestimonialsAdminPage(): ReactNode {
                 <Th>Qoraaga</Th>
                 <Th>Shirkadda</Th>
                 <Th>Qiimeyn</Th>
-                <Th>Xaalad</Th>
-                <Th className="text-end">Ficil</Th>
+                <Th>Status</Th>
+                <Th className="text-end">Actions</Th>
               </Tr>
             </THead>
             <TBody>
@@ -84,7 +83,7 @@ export function TestimonialsAdminPage(): ReactNode {
                     <div className="flex justify-end gap-2">
                       {canUpdate ? (
                         <Button size="sm" variant="secondary" onClick={() => openEdit(testimonial)}>
-                          Wax ka beddel
+                          Edit
                         </Button>
                       ) : null}
                       {canDelete ? (
@@ -93,7 +92,7 @@ export function TestimonialsAdminPage(): ReactNode {
                           variant="danger"
                           onClick={() => setConfirming(testimonial)}
                         >
-                          Tirtir
+                          Delete
                         </Button>
                       ) : null}
                     </div>
@@ -117,15 +116,15 @@ export function TestimonialsAdminPage(): ReactNode {
       <Modal
         open={Boolean(confirming)}
         onClose={() => setConfirming(null)}
-        title="Tirtir marag-furka"
+        title="Delete testimonial"
       >
         <p className="text-base text-ink">
-          Ma hubtaa inaad tirtirayso marag-furka <strong>{confirming?.author}</strong>? Tallaabadan
-          lama soo celin karo.
+          Are you sure you want to delete testimonial from <strong>{confirming?.author}</strong>?
+          This action cannot be undone.
         </p>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setConfirming(null)}>
-            Maya
+            Cancel
           </Button>
           <Button
             variant="danger"
@@ -136,7 +135,7 @@ export function TestimonialsAdminPage(): ReactNode {
               setConfirming(null);
             }}
           >
-            Haa, tirtir
+            Yes, delete
           </Button>
         </div>
       </Modal>

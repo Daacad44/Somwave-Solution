@@ -6,6 +6,7 @@ import {
   createInvoiceSchema,
   INVOICE_STATUS_LABELS,
   PERMISSIONS,
+  ROLES,
   type CreateInvoiceInput,
   type InvoiceStatus,
 } from '@somwave/shared';
@@ -17,10 +18,20 @@ import { Select } from '../../components/ui/Select';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { LoadingState, EmptyState, ErrorState } from '../../components/states';
-import { useHasPermission } from '../../lib/rbac';
+import { hasRole, useHasPermission } from '../../lib/rbac';
 import { formatDate } from '../../lib/date';
 import { ApiError } from '../../lib/apiClient';
+import { useCurrentUser } from '../auth/hooks';
 import { useInvoices, useCreateInvoice, useClients } from './hooks';
+
+const STAFF_STATUS_LABELS: Record<InvoiceStatus, string> = {
+  DRAFT: 'Draft',
+  SENT: 'Sent',
+  PARTIAL: 'Partially paid',
+  PAID: 'Paid',
+  OVERDUE: 'Overdue',
+  VOID: 'Void',
+};
 
 const STATUS_TONE: Record<InvoiceStatus, 'neutral' | 'info' | 'success' | 'warning' | 'error'> = {
   DRAFT: 'neutral',
@@ -32,6 +43,9 @@ const STATUS_TONE: Record<InvoiceStatus, 'neutral' | 'info' | 'success' | 'warni
 };
 
 export function InvoicesPage(): ReactNode {
+  const { data: user } = useCurrentUser();
+  const isPortalClient = hasRole(user, ROLES.CLIENT);
+  const t = (english: string, somali: string): string => (isPortalClient ? somali : english);
   const query = useInvoices();
   const create = useCreateInvoice();
   const canCreate = useHasPermission(PERMISSIONS.INVOICES_CREATE);
@@ -65,7 +79,9 @@ export function InvoicesPage(): ReactNode {
       });
       setOpen(false);
     } catch (err) {
-      setServerError(err instanceof ApiError ? err.message : 'Wax baa qaldamay.');
+      setServerError(
+        err instanceof ApiError ? err.message : t('Something went wrong.', 'Wax baa qaldamay.'),
+      );
     }
   });
 
@@ -73,32 +89,41 @@ export function InvoicesPage(): ReactNode {
     <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-ink">Biilasha</h1>
-          <p className="mt-1 text-base text-muted">Qabyo-dhis, dirid, iyo liiska biilasha.</p>
+          <h1 className="text-2xl font-semibold text-ink">{t('Invoices', 'Biilasha')}</h1>
+          <p className="mt-1 text-base text-muted">
+            {t('Draft, send, and track invoices.', 'Qabyo-dhis, dirid, iyo liiska biilasha.')}
+          </p>
         </div>
-        {canCreate ? <Button onClick={() => setOpen(true)}>Biil cusub</Button> : null}
+        {canCreate ? (
+          <Button onClick={() => setOpen(true)}>{t('New invoice', 'Biil cusub')}</Button>
+        ) : null}
       </div>
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {query.isLoading ? (
-          <LoadingState rows={6} label="Waa la soo rarayaa" />
+          <LoadingState rows={6} label={t('Loading', 'Waa la soo rarayaa')} />
         ) : query.isError ? (
-          <ErrorState description="Biilasha lama soo rari karin." onRetry={() => query.refetch()} />
+          <ErrorState
+            description={t('Invoices could not be loaded.', 'Biilasha lama soo rari karin.')}
+            onRetry={() => query.refetch()}
+          />
         ) : rows.length === 0 ? (
           <EmptyState
-            title="Biil majiro"
+            title={t('No invoices', 'Biil majiro')}
             action={
-              canCreate ? <Button onClick={() => setOpen(true)}>Biil cusub</Button> : undefined
+              canCreate ? (
+                <Button onClick={() => setOpen(true)}>{t('New invoice', 'Biil cusub')}</Button>
+              ) : undefined
             }
           />
         ) : (
           <Table>
             <THead>
               <Tr>
-                <Th>Lambarka</Th>
-                <Th>Macmiil</Th>
-                <Th>Wadarta</Th>
-                <Th>Dhicitaanka</Th>
-                <Th>Xaalad</Th>
+                <Th>{t('Number', 'Lambarka')}</Th>
+                <Th>{t('Client', 'Macmiil')}</Th>
+                <Th>{t('Total', 'Wadarta')}</Th>
+                <Th>{t('Due date', 'Dhicitaanka')}</Th>
+                <Th>{t('Status', 'Xaalad')}</Th>
               </Tr>
             </THead>
             <TBody>
@@ -117,7 +142,9 @@ export function InvoicesPage(): ReactNode {
                   <Td>{formatDate(row.dueDate)}</Td>
                   <Td>
                     <Badge tone={STATUS_TONE[row.status]}>
-                      {INVOICE_STATUS_LABELS[row.status]}
+                      {isPortalClient
+                        ? INVOICE_STATUS_LABELS[row.status]
+                        : STAFF_STATUS_LABELS[row.status]}
                     </Badge>
                   </Td>
                 </Tr>
@@ -126,10 +153,10 @@ export function InvoicesPage(): ReactNode {
           </Table>
         )}
       </div>
-      <Modal open={open} onClose={() => setOpen(false)} title="Biil cusub">
+      <Modal open={open} onClose={() => setOpen(false)} title={t('New invoice', 'Biil cusub')}>
         <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
           <Select
-            label="Macmiil"
+            label={t('Client', 'Macmiil')}
             options={(clients.data ?? []).map((client) => ({
               value: client.id,
               label: client.companyName,
@@ -138,39 +165,42 @@ export function InvoicesPage(): ReactNode {
             {...form.register('clientId')}
           />
           <DatePicker
-            label="La soo saaray"
+            label={t('Issue date', 'La soo saaray')}
             error={form.formState.errors.issueDate?.message}
             {...form.register('issueDate')}
           />
           <DatePicker
-            label="Dhicitaanka"
+            label={t('Due date', 'Dhicitaanka')}
             error={form.formState.errors.dueDate?.message}
             {...form.register('dueDate')}
           />
           <Input
-            label="Sharaxaad"
+            label={t('Description', 'Sharaxaad')}
             error={form.formState.errors.items?.[0]?.description?.message}
             {...form.register('items.0.description')}
           />
-          <Input label="Tirada" {...form.register('items.0.quantity')} />
-          <Input label="Qiimaha (USD)" {...form.register('items.0.unitPrice')} />
+          <Input label={t('Quantity', 'Tirada')} {...form.register('items.0.quantity')} />
           <Input
-            label="Canshuur (USD)"
+            label={t('Unit price (USD)', 'Qiimaha (USD)')}
+            {...form.register('items.0.unitPrice')}
+          />
+          <Input
+            label={t('Tax (USD)', 'Canshuur (USD)')}
             error={form.formState.errors.tax?.message}
             {...form.register('tax')}
           />
           <Input
-            label="Qiimo-dhimis (USD)"
+            label={t('Discount (USD)', 'Qiimo-dhimis (USD)')}
             error={form.formState.errors.discount?.message}
             {...form.register('discount')}
           />
           {serverError ? <p className="text-sm text-error">{serverError}</p> : null}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-              Jooji
+              {t('Cancel', 'Jooji')}
             </Button>
             <Button type="submit" isLoading={form.formState.isSubmitting || create.isPending}>
-              Abuur qabyo
+              {t('Create draft', 'Abuur qabyo')}
             </Button>
           </div>
         </form>

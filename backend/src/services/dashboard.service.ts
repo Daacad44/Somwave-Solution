@@ -22,10 +22,18 @@ import {
   type TicketStatus,
 } from '@somwave/shared';
 import { prisma } from '../lib/prisma';
+import { projectScope } from './project.service';
 
 const TZ_OFFSET_MS = 3 * 60 * 60 * 1000; // Africa/Mogadishu is UTC+3 year-round
 const OPEN_INVOICE = ['DRAFT', 'SENT', 'PARTIAL', 'OVERDUE'] as const;
-const OPEN_TASK: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'IN_REVIEW'];
+const OPEN_TASK: TaskStatus[] = [
+  'BACKLOG',
+  'TODO',
+  'IN_PROGRESS',
+  'BLOCKED',
+  'IN_REVIEW',
+  'TESTING',
+];
 const OPEN_TICKET: TicketStatus[] = ['OPEN', 'IN_PROGRESS', 'WAITING'];
 const INTERNAL_SURFACE: PermissionKey[] = [
   PERMISSIONS.CONTENT_READ,
@@ -198,6 +206,8 @@ async function getInternalOverview(
   const { from, to } = window;
   const overview = emptyOverview('internal', range, from, to);
   const notDeleted = { deletedAt: null } as const;
+  const projectWhere = { ...notDeleted, ...projectScope(user) };
+  const taskWhere = { ...notDeleted, project: projectScope(user) };
 
   const jobs: Array<Promise<void>> = [];
 
@@ -205,11 +215,11 @@ async function getInternalOverview(
     jobs.push(
       (async () => {
         const [total, active, previousTotal, recent, createdDates] = await Promise.all([
-          prisma.project.count({ where: notDeleted }),
-          prisma.project.count({ where: { ...notDeleted, status: 'ACTIVE' } }),
-          prisma.project.count({ where: { ...notDeleted, createdAt: { lt: from } } }),
+          prisma.project.count({ where: projectWhere }),
+          prisma.project.count({ where: { ...projectWhere, status: 'ACTIVE' } }),
+          prisma.project.count({ where: { ...projectWhere, createdAt: { lt: from } } }),
           prisma.project.findMany({
-            where: notDeleted,
+            where: projectWhere,
             orderBy: { updatedAt: 'desc' },
             take: 6,
             select: {
@@ -224,7 +234,7 @@ async function getInternalOverview(
             },
           }),
           prisma.project.findMany({
-            where: { ...notDeleted, createdAt: { gte: from, lte: to } },
+            where: { ...projectWhere, createdAt: { gte: from, lte: to } },
             select: { createdAt: true },
           }),
         ]);
@@ -244,16 +254,16 @@ async function getInternalOverview(
   if (can(user, PERMISSIONS.TASKS_READ)) {
     jobs.push(
       (async () => {
-        const privileged = user.roles.some(
-          (role) => role === ROLES.SUPER_ADMIN || role === ROLES.ADMIN || role === ROLES.MANAGER,
-        );
-        const staffOnly = user.roles.includes(ROLES.STAFF) && !privileged;
-        const assigned = staffOnly ? { assigneeId: user.id } : {};
+        const assigned = user.roles.some(
+          (role) => role === ROLES.SUPER_ADMIN || role === ROLES.ADMIN,
+        )
+          ? {}
+          : { project: projectScope(user) };
         const [open, previousOpen, grouped, recent] = await Promise.all([
-          prisma.task.count({ where: { ...notDeleted, ...assigned, status: { in: OPEN_TASK } } }),
+          prisma.task.count({ where: { ...taskWhere, ...assigned, status: { in: OPEN_TASK } } }),
           prisma.task.count({
             where: {
-              ...notDeleted,
+              ...taskWhere,
               ...assigned,
               status: { in: OPEN_TASK },
               createdAt: { lt: from },
@@ -261,11 +271,11 @@ async function getInternalOverview(
           }),
           prisma.task.groupBy({
             by: ['status'],
-            where: { ...notDeleted, ...assigned },
+            where: { ...taskWhere, ...assigned },
             _count: { _all: true },
           }),
           prisma.task.findMany({
-            where: { ...notDeleted, ...assigned },
+            where: { ...taskWhere, ...assigned },
             orderBy: { updatedAt: 'desc' },
             take: 6,
             select: {
@@ -470,7 +480,7 @@ async function getInternalOverview(
     jobs.push(
       (async () => {
         const open = await prisma.milestone.count({
-          where: { ...notDeleted, status: { not: 'COMPLETED' } },
+          where: { ...notDeleted, project: projectScope(user), status: { not: 'COMPLETED' } },
         });
         overview.kpis.milestones = { value: open, previous: null };
         overview.modules.push({ key: 'milestones', count: open });
@@ -702,7 +712,7 @@ async function listUpcoming(
         deletedAt: null,
         dueDate: { gte: new Date(), lte: horizon },
         status: { in: ['PLANNING', 'ACTIVE', 'ON_HOLD'] },
-        ...(clientId ? { clientId } : {}),
+        ...(clientId ? { clientId } : projectScope(user)),
       },
       select: { id: true, name: true, dueDate: true },
       orderBy: { dueDate: 'asc' },
@@ -727,7 +737,7 @@ async function listUpcoming(
         deletedAt: null,
         status: { not: 'COMPLETED' },
         dueDate: { gte: new Date(), lte: horizon },
-        ...(clientId ? { project: { clientId, deletedAt: null } } : {}),
+        project: clientId ? { clientId, deletedAt: null } : projectScope(user),
       },
       select: { id: true, title: true, dueDate: true, project: { select: { name: true } } },
       orderBy: { dueDate: 'asc' },
@@ -752,6 +762,7 @@ async function listUpcoming(
         deletedAt: null,
         status: { in: OPEN_TASK },
         dueDate: { gte: new Date(), lte: horizon },
+        project: projectScope(user),
       },
       select: {
         id: true,

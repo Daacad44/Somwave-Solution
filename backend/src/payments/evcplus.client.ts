@@ -28,7 +28,7 @@ export function isEvcPlusConfigured(): boolean {
 export async function initiateEvcCharge(params: EvcInitiateParams): Promise<EvcInitiateResult> {
   if (!evcConfigured()) {
     if (env.NODE_ENV === 'production') {
-      throw new AppError('PAYMENT_FAILED', 502, 'EVC Plus lama habeeyin');
+      throw new AppError('PAYMENT_FAILED', 502, 'EVC Plus is not configured');
     }
     return { transactionId: `evc_dev_${params.merchantReference}` };
   }

@@ -41,7 +41,7 @@ function fieldErrors(details: unknown): string | null {
 }
 
 function articleErrorMessage(err: unknown): string {
-  if (!(err instanceof ApiError)) return 'Wax baa qaldamay. Fadlan mar kale isku day.';
+  if (!(err instanceof ApiError)) return 'Something went wrong. Please try again.';
   if (err.code === 'UNAUTHORIZED') return 'Your session has expired. Please sign in again.';
   if (err.code === 'FORBIDDEN') return 'You do not have permission to create articles.';
   if (err.code === 'NOT_FOUND') return 'The article could not be found.';
@@ -56,14 +56,14 @@ function articleErrorMessage(err: unknown): string {
 }
 
 function uploadErrorMessage(err: unknown): string {
-  if (err instanceof ApiError && err.message === 'Soo gelinta waa la joojiyay.') return err.message;
-  if (!(err instanceof ApiError)) return 'Sawirka lama soo gelin karin. Fadlan mar kale isku day.';
+  if (err instanceof ApiError && err.message === 'Upload canceled.') return err.message;
+  if (!(err instanceof ApiError)) return 'The image could not be uploaded. Please try again.';
   if (err.code === 'UNAUTHORIZED') return 'Your session has expired. Please sign in again.';
-  if (err.code === 'FORBIDDEN') return 'Ma haysatid ogolaansho aad ku soo geliso sawir.';
-  if (err.code === 'VALIDATION_ERROR') return err.message || 'Fadlan soo geli sawir sax ah.';
-  if (err.message === 'Network error') return 'Shabakadda waa go’day. Fadlan mar kale isku day.';
-  if (err.message?.includes('Kaynta')) return 'Kaynta sawirrada lama heli karo.';
-  return 'Sawirka lama soo gelin karin. Fadlan mar kale isku day.';
+  if (err.code === 'FORBIDDEN') return 'You do not have permission to upload images.';
+  if (err.code === 'VALIDATION_ERROR') return err.message || 'Please upload a valid image.';
+  if (err.message === 'Network error') return 'The network connection was lost. Please try again.';
+  if (err.message?.includes('File storage')) return 'Image storage is unavailable.';
+  return 'The image could not be uploaded. Please try again.';
 }
 
 export function PostFormModal({ open, onClose, categories, post }: PostFormModalProps): ReactNode {
@@ -173,16 +173,12 @@ export function PostFormModal({ open, onClose, categories, post }: PostFormModal
       }
       uploadAbort.current = null;
       toast(
-        imageFile
-          ? 'Sawirka si guul leh ayaa loo soo geliyay.'
-          : isEdit
-            ? 'Maqaalka waa la kaydiyay.'
-            : 'Maqaalka waa la abuuray.',
+        imageFile ? 'Image uploaded successfully.' : isEdit ? 'Article saved.' : 'Article created.',
         'success',
       );
       close();
     } catch (err) {
-      if (err instanceof ApiError && err.message === 'Soo gelinta waa la joojiyay.') return;
+      if (err instanceof ApiError && err.message === 'Upload canceled.') return;
       setUploading(false);
       setUploadProgress(null);
       setServerError(phase === 'upload' ? uploadErrorMessage(err) : articleErrorMessage(err));
@@ -192,24 +188,24 @@ export function PostFormModal({ open, onClose, categories, post }: PostFormModal
   const pending = isSubmitting || createMutation.isPending || updateMutation.isPending;
 
   return (
-    <Modal open={open} onClose={close} title={isEdit ? 'Wax ka beddel maqaalka' : 'Maqaal cusub'}>
+    <Modal open={open} onClose={close} title={isEdit ? 'Edit article' : 'New article'}>
       <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
-        <Input label="Cinwaanka" error={errors.title?.message} {...register('title')} />
+        <Input label="Title" error={errors.title?.message} {...register('title')} />
         <Input
           label="Slug (URL)"
-          placeholder="sida-loo-doorto-shirkad"
+          placeholder="how-to-choose-a-company"
           error={errors.slug?.message}
           {...register('slug')}
         />
-        <Input label="Kooban" error={errors.excerpt?.message} {...register('excerpt')} />
+        <Input label="Excerpt" error={errors.excerpt?.message} {...register('excerpt')} />
         <Input
-          label="Qoraaga (ikhtiyaari)"
+          label="Author (optional)"
           error={errors.authorName?.message}
           {...register('authorName')}
         />
 
         <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-ink">Qoraalka</span>
+          <span className="text-sm font-medium text-ink">Body</span>
           <textarea
             className="min-h-40 rounded-md border border-border bg-surface px-3 py-2 text-base text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             rows={8}
@@ -235,17 +231,17 @@ export function PostFormModal({ open, onClose, categories, post }: PostFormModal
 
         <div className="flex items-end gap-4">
           <Select
-            label="Qaybta"
+            label="Category"
             className="flex-1"
             options={[
-              { value: '', label: 'Qayb la’aan' },
+              { value: '', label: 'No category' },
               ...categories.map((c) => ({ value: c.id, label: c.name })),
             ]}
             {...register('categoryId')}
           />
           <label className="mb-2 flex items-center gap-2 text-base text-ink">
             <input type="checkbox" className="size-4 accent-primary" {...register('isPublished')} />
-            La daabaco
+            Published
           </label>
         </div>
 
@@ -253,10 +249,10 @@ export function PostFormModal({ open, onClose, categories, post }: PostFormModal
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={close}>
-            Jooji
+            Cancel
           </Button>
           <Button type="submit" isLoading={pending}>
-            {isEdit ? 'Kaydi' : 'Abuur'}
+            {isEdit ? 'Save' : 'Create'}
           </Button>
         </div>
       </form>

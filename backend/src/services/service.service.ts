@@ -97,7 +97,7 @@ export async function createService(input: CreateServiceInput): Promise<AdminSer
 
 export async function updateService(id: string, input: UpdateServiceInput): Promise<AdminService> {
   const service = await prisma.service.findUnique({ where: { id } });
-  if (!service) throw new AppError('NOT_FOUND', 404, 'Adeegan lama helin');
+  if (!service) throw new AppError('NOT_FOUND', 404, 'Service not found');
 
   // A new slug must stay unique.
   if (input.slug && input.slug !== service.slug) {
@@ -123,7 +123,7 @@ export async function updateService(id: string, input: UpdateServiceInput): Prom
 
 export async function deleteService(id: string): Promise<void> {
   const service = await prisma.service.findUnique({ where: { id } });
-  if (!service) throw new AppError('NOT_FOUND', 404, 'Adeegan lama helin');
+  if (!service) throw new AppError('NOT_FOUND', 404, 'Service not found');
   await prisma.service.delete({ where: { id } });
   await invalidateCache();
 }

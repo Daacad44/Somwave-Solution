@@ -46,7 +46,7 @@ export function ArticleImageField({
   }, [file]);
 
   const currentUrl = previewUrl ?? (!removed ? existingUrl : null) ?? null;
-  const fileName = file?.name ?? (currentUrl ? 'Sawirka hadda' : null);
+  const fileName = file?.name ?? (currentUrl ? 'Current image' : null);
 
   const take = (next: File | undefined): void => {
     if (!next || uploading) return;
@@ -56,7 +56,7 @@ export function ArticleImageField({
   return (
     <div className="flex flex-col gap-2">
       <span className="text-sm font-medium text-ink" id={`${inputId}-label`}>
-        Sawirka Maqaalka
+        Post image
       </span>
       <div
         className={`rounded-lg border border-dashed bg-surface-alt p-4 ${
@@ -102,14 +102,14 @@ export function ArticleImageField({
             </div>
             {uploading ? (
               <div>
-                <p className="mb-2 text-sm text-muted">Sawirka waa la soo gelinayaa...</p>
+                <p className="mb-2 text-sm text-muted">Uploading image...</p>
                 <div
                   className="h-2 overflow-hidden rounded-full bg-surface"
                   role="progressbar"
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={progress ?? 0}
-                  aria-label="Sawirka waa la soo gelinayaa"
+                  aria-label="Uploading image"
                 >
                   <div
                     className="h-full bg-primary transition-all"
@@ -120,10 +120,10 @@ export function ArticleImageField({
             ) : (
               <div className="flex flex-wrap gap-2">
                 <Button type="button" variant="secondary" onClick={() => inputRef.current?.click()}>
-                  Beddel Sawirka
+                  Replace image
                 </Button>
                 <Button type="button" variant="secondary" onClick={onRemove}>
-                  Ka saar
+                  Remove
                 </Button>
               </div>
             )}
@@ -132,7 +132,7 @@ export function ArticleImageField({
           <div className="flex flex-col items-center gap-2 py-4 text-center">
             <ImagePlus className="h-8 w-8 text-muted" aria-hidden="true" />
             <p className="text-base font-medium text-ink">Jiid sawirka halkan</p>
-            <p className="text-sm text-muted">ama guji si aad u doorato</p>
+            <p className="text-sm text-muted">or click to choose</p>
             <p className="text-sm text-muted">PNG, JPG, JPEG, WEBP — max 5MB</p>
             <Button
               type="button"
@@ -141,7 +141,7 @@ export function ArticleImageField({
               disabled={uploading}
               onClick={() => inputRef.current?.click()}
             >
-              Dooro Sawir
+              Choose image
             </Button>
           </div>
         )}

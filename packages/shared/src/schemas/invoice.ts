@@ -13,10 +13,10 @@ export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
   VOID: 'La buriyay',
 };
 
-const moneyString = z.string().regex(/^\d{1,10}(\.\d{1,2})?$/, 'Fadlan geli qiime sax ah');
+const moneyString = z.string().regex(/^\d{1,10}(\.\d{1,2})?$/, 'Enter a valid amount');
 
 export const invoiceItemInputSchema = z.object({
-  description: z.string().trim().min(1, 'Sharaxaadda waa waajib').max(500),
+  description: z.string().trim().min(1, 'Description is required').max(500),
   quantity: moneyString,
   unitPrice: moneyString,
 });
@@ -58,13 +58,13 @@ export const invoiceDetailSchema = adminInvoiceSchema.extend({
 export type InvoiceDetail = z.infer<typeof invoiceDetailSchema>;
 
 export const createInvoiceSchema = z.object({
-  clientId: z.string().min(1, 'Macmiilka waa waajib'),
+  clientId: z.string().min(1, 'Client is required'),
   projectId: z.string().optional(),
-  issueDate: z.string().refine((v) => !Number.isNaN(Date.parse(v)), 'Taariikh aan sax ahayn'),
-  dueDate: z.string().refine((v) => !Number.isNaN(Date.parse(v)), 'Taariikh aan sax ahayn'),
+  issueDate: z.string().refine((v) => !Number.isNaN(Date.parse(v)), 'Invalid date'),
+  dueDate: z.string().refine((v) => !Number.isNaN(Date.parse(v)), 'Invalid date'),
   tax: moneyString.default('0'),
   discount: moneyString.default('0'),
-  items: z.array(invoiceItemInputSchema).min(1, 'Ugu yaraan hal sadar'),
+  items: z.array(invoiceItemInputSchema).min(1, 'At least one line item is required'),
 });
 
 export type CreateInvoiceInput = z.infer<typeof createInvoiceSchema>;

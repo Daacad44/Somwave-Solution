@@ -21,7 +21,7 @@ export function AttendancePage(): ReactNode {
 
   const run = async (action: 'in' | 'out'): Promise<void> => {
     if (!employeeId) {
-      setServerError('Dooro shaqaale.');
+      setServerError('Select an employee.');
       return;
     }
     setServerError(null);
@@ -29,7 +29,7 @@ export function AttendancePage(): ReactNode {
       if (action === 'in') await checkIn.mutateAsync(employeeId);
       else await checkOut.mutateAsync(employeeId);
     } catch (err) {
-      setServerError(err instanceof ApiError ? err.message : 'Wax baa qaldamay.');
+      setServerError(err instanceof ApiError ? err.message : 'Something went wrong.');
     }
   };
 
@@ -38,7 +38,7 @@ export function AttendancePage(): ReactNode {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-ink">Imaanshaha</h1>
-          <p className="mt-1 text-base text-muted">Soo-galidda iyo bixitaanka maalinlaha ah.</p>
+          <p className="mt-1 text-base text-muted">Daily clock-in and clock-out records.</p>
         </div>
       </div>
       {canWrite ? (
@@ -46,7 +46,7 @@ export function AttendancePage(): ReactNode {
           <Select
             label="Shaqaalaha"
             options={[
-              { value: '', label: 'Dooro shaqaale' },
+              { value: '', label: 'Select an employee' },
               ...(employees.data ?? []).map((row) => ({
                 value: row.id,
                 label: `${row.user.name} (${row.employeeNo})`,
@@ -56,7 +56,7 @@ export function AttendancePage(): ReactNode {
             onChange={(e) => setEmployeeId(e.target.value)}
           />
           <Button onClick={() => void run('in')} isLoading={checkIn.isPending}>
-            Soo gal
+            Clock in
           </Button>
           <Button
             variant="secondary"
@@ -70,22 +70,19 @@ export function AttendancePage(): ReactNode {
       {serverError ? <p className="mt-3 text-sm text-error">{serverError}</p> : null}
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {query.isLoading ? (
-          <LoadingState rows={6} label="Waa la soo rarayaa" />
+          <LoadingState rows={6} label="Loading" />
         ) : query.isError ? (
-          <ErrorState
-            description="Imaanshaha lama soo rari karin."
-            onRetry={() => query.refetch()}
-          />
+          <ErrorState description="Could not load attendance." onRetry={() => query.refetch()} />
         ) : rows.length === 0 ? (
-          <EmptyState title="Diiwaan imaansho majiro" />
+          <EmptyState title="No attendance records" />
         ) : (
           <Table>
             <THead>
               <Tr>
                 <Th>Shaqaalaha</Th>
-                <Th>Taariikh</Th>
-                <Th>Soo-galid</Th>
-                <Th>Bixitaan</Th>
+                <Th>Date</Th>
+                <Th>Clock-in</Th>
+                <Th>Clock-out</Th>
               </Tr>
             </THead>
             <TBody>

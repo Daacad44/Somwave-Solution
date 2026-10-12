@@ -41,6 +41,10 @@ import {
 } from './routes/ops-extra.routes';
 import { dashboardRouter } from './routes/dashboard.routes';
 import { searchRouter } from './routes/search.routes';
+import { engineeringRouter } from './routes/engineering.routes';
+import { engineeringOperationsRouter } from './routes/engineering-operations.routes';
+import { projectDocumentationRouter } from './routes/project-documentation.routes';
+import { githubRouter, githubWebhooksRouter } from './routes/github.routes';
 
 export function createApp(): Express {
   const app = express();
@@ -59,9 +63,16 @@ export function createApp(): Express {
     express.raw({ type: 'application/json', limit: '256kb' }),
     paymentWebhooksRouter,
   );
+  app.use(
+    '/api/v1/github/webhooks',
+    express.raw({ type: 'application/json', limit: '256kb' }),
+    githubWebhooksRouter,
+  );
   app.use('/api/v1/media', express.json({ limit: '35mb' }));
   app.use('/api/v1/cms/article-images', express.json({ limit: '8mb' }));
   app.use('/api/v1/documents', express.json({ limit: '35mb' }));
+  app.use('/api/v1/projects/:projectId/documentation', express.json({ limit: '35mb' }));
+  app.use('/api/v1/engineering/tasks/:taskId/attachments', express.json({ limit: '35mb' }));
   app.use(express.json({ limit: '1mb' }));
   app.use(pinoHttp({ logger }));
 
@@ -76,6 +87,10 @@ export function createApp(): Express {
   app.use('/api/v1/roles', rolesRouter);
   app.use('/api/v1/permissions', permissionsRouter);
   app.use('/api/v1/projects', projectsRouter);
+  app.use('/api/v1/projects', projectDocumentationRouter);
+  app.use('/api/v1/engineering', engineeringRouter);
+  app.use('/api/v1/engineering', engineeringOperationsRouter);
+  app.use('/api/v1/github', githubRouter);
   app.use('/api/v1/tasks', tasksRouter);
   app.use('/api/v1/milestones', milestonesRouter);
   app.use('/api/v1/cms', cmsRouter);

@@ -93,7 +93,7 @@ export async function login(email: string, password: string): Promise<LoginResul
   const hash = user?.passwordHash ?? '$2b$12$0000000000000000000000000000000000000000000000000000';
   const ok = await verifyPassword(password, hash);
   if (!user || !ok) {
-    throw new AppError('UNAUTHORIZED', 401, 'Iimayl ama furaha waa khalad');
+    throw new AppError('UNAUTHORIZED', 401, 'Incorrect email or password');
   }
   if (user.twoFactorEnabled) {
     return { kind: 'twoFactor', challengeToken: signTwoFactorChallenge(user.id) };
@@ -109,16 +109,16 @@ export async function verifyTwoFactorLogin(
   try {
     userId = verifyTwoFactorChallenge(challengeToken).sub;
   } catch {
-    throw new AppError('UNAUTHORIZED', 401, 'Fadlan mar kale gal');
+    throw new AppError('UNAUTHORIZED', 401, 'Please sign in again');
   }
   const user = await loadActiveUser({ id: userId });
   if (!user?.twoFactorEnabled || !user.twoFactorSecret) {
-    throw new AppError('UNAUTHORIZED', 401, 'Fadlan mar kale gal');
+    throw new AppError('UNAUTHORIZED', 401, 'Please sign in again');
   }
   const totpOk = await verifyTotp(user.twoFactorSecret, code);
   if (totpOk) return issueSession(user);
   const used = await consumeBackupCode(user.id, code);
-  if (!used) throw new AppError('UNAUTHORIZED', 401, 'Koodhka 2FA waa khalad');
+  if (!used) throw new AppError('UNAUTHORIZED', 401, 'Invalid 2FA code');
   return issueSession(user);
 }
 
@@ -128,7 +128,7 @@ export async function startTwoFactorEnrolment(
   const user = await loadActiveUser({ id: userId });
   if (!user) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
   if (user.twoFactorEnabled) {
-    throw new AppError('CONFLICT', 409, '2FA hore ayaa loo shiday');
+    throw new AppError('CONFLICT', 409, '2FA is already enabled');
   }
   const secret = createTotpSecret();
   await prisma.user.update({
@@ -159,14 +159,14 @@ export async function confirmTwoFactorEnrolment(
   const user = await loadActiveUser({ id: userId });
   if (!user) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
   if (user.twoFactorEnabled) {
-    throw new AppError('CONFLICT', 409, '2FA hore ayaa loo shiday');
+    throw new AppError('CONFLICT', 409, '2FA is already enabled');
   }
   if (!user.twoFactorSecret) {
-    throw new AppError('VALIDATION_ERROR', 400, 'Marka hore bilow diiwaangelinta 2FA');
+    throw new AppError('VALIDATION_ERROR', 400, 'Start 2FA enrollment first');
   }
   const valid = await verifyTotp(user.twoFactorSecret, code);
   if (!valid) {
-    throw new AppError('VALIDATION_ERROR', 400, 'Koodhka 2FA waa khalad');
+    throw new AppError('VALIDATION_ERROR', 400, 'Invalid 2FA code');
   }
   await prisma.user.update({
     where: { id: user.id },
@@ -185,14 +185,14 @@ async function assertCurrentTwoFactorCode(user: UserWithRoles, code: string): Pr
   const totpOk = await verifyTotp(user.twoFactorSecret, code);
   if (totpOk) return;
   const used = await consumeBackupCode(user.id, code);
-  if (!used) throw new AppError('VALIDATION_ERROR', 400, 'Koodhka 2FA waa khalad');
+  if (!used) throw new AppError('VALIDATION_ERROR', 400, 'Invalid 2FA code');
 }
 
 export async function disableTwoFactor(userId: string, code: string): Promise<AuthUser> {
   const user = await loadActiveUser({ id: userId });
   if (!user) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
   if (isTwoFactorRequired(user.roles.map((row) => row.role.name))) {
-    throw new AppError('FORBIDDEN', 403, 'Doorkaagan wuxuu u baahan yahay 2FA');
+    throw new AppError('FORBIDDEN', 403, 'Your role requires 2FA');
   }
   await assertCurrentTwoFactorCode(user, code);
   await prisma.$transaction([
@@ -303,7 +303,7 @@ export async function resetPassword(token: string, password: string): Promise<vo
     where: { tokenHash: hashRefreshToken(token) },
   });
   if (!row || row.usedAt || row.expiresAt.getTime() <= Date.now()) {
-    throw new AppError('NOT_FOUND', 404, 'Xiriirka dib-u-dejinta waa dhacay');
+    throw new AppError('NOT_FOUND', 404, 'Password reset link has expired');
   }
   await prisma.$transaction([
     prisma.user.update({

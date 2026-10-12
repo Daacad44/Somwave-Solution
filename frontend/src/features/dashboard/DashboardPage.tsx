@@ -62,10 +62,14 @@ const RANGE_LABELS: Record<DashboardRange, string> = {
 };
 
 const TASK_SLICE: Record<TaskStatus, { label: string; className: string }> = {
+  BACKLOG: { label: 'Backlog', className: 'text-muted' },
   TODO: { label: 'To do', className: 'text-muted' },
   IN_PROGRESS: { label: 'In progress', className: 'text-brand' },
+  BLOCKED: { label: 'Blocked', className: 'text-error' },
   IN_REVIEW: { label: 'In review', className: 'text-warning' },
+  TESTING: { label: 'Testing', className: 'text-brand' },
   DONE: { label: 'Done', className: 'text-success' },
+  CANCELLED: { label: 'Cancelled', className: 'text-muted' },
 };
 
 const PILL: Record<PillTone, string> = {
@@ -328,7 +332,7 @@ function WidgetFrame({
         </div>
       ) : isError ? (
         <ErrorState
-          title="Xogta lama soo gelin karin."
+          title="The dashboard data could not be loaded."
           retryLabel="Isku day mar kale"
           onRetry={onRetry}
         />
@@ -552,7 +556,7 @@ export function DashboardPage(): ReactNode {
         </ul>
       ) : query.isError ? (
         <ErrorState
-          title="Xogta lama soo gelin karin."
+          title="The dashboard data could not be loaded."
           retryLabel="Isku day mar kale"
           onRetry={retry}
         />

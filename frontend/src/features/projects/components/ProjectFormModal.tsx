@@ -5,7 +5,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
   createProjectSchema,
   PROJECT_STATUSES,
-  PROJECT_STATUS_LABELS,
   type AdminProject,
   type CreateProjectInput,
 } from '@somwave/shared';
@@ -16,6 +15,7 @@ import { Select } from '../../../components/ui/Select';
 import { Button } from '../../../components/ui/Button';
 import { ApiError } from '../../../lib/apiClient';
 import { useCreateProject, useUpdateProject } from '../hooks';
+import { INTERNAL_PROJECT_STATUS } from '../../../lib/internalLabels';
 
 export interface ProjectFormModalProps {
   open: boolean;
@@ -25,7 +25,7 @@ export interface ProjectFormModalProps {
 
 const statusOptions = PROJECT_STATUSES.map((value) => ({
   value,
-  label: PROJECT_STATUS_LABELS[value],
+  label: INTERNAL_PROJECT_STATUS[value],
 }));
 
 // A date input yields 'YYYY-MM-DD'; the ISO field portion for editing.
@@ -90,7 +90,7 @@ export function ProjectFormModal({ open, onClose, project }: ProjectFormModalPro
       close();
     } catch (err) {
       setServerError(
-        err instanceof ApiError ? err.message : 'Wax baa qaldamay. Fadlan mar kale isku day.',
+        err instanceof ApiError ? err.message : 'Something went wrong. Please try again.',
       );
     }
   });
@@ -98,16 +98,12 @@ export function ProjectFormModal({ open, onClose, project }: ProjectFormModalPro
   const pending = isSubmitting || createMutation.isPending || updateMutation.isPending;
 
   return (
-    <Modal
-      open={open}
-      onClose={close}
-      title={isEdit ? 'Wax ka beddel mashruuca' : 'Mashruuc cusub'}
-    >
+    <Modal open={open} onClose={close} title={isEdit ? 'Edit project' : 'New project'}>
       <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
-        <Input label="Magaca" error={errors.name?.message} {...register('name')} />
+        <Input label="Name" error={errors.name?.message} {...register('name')} />
 
         <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-ink">Sharaxaad</span>
+          <span className="text-sm font-medium text-ink">Description</span>
           <textarea
             className="min-h-24 rounded-md border border-border bg-surface px-3 py-2 text-base text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             rows={3}
@@ -116,7 +112,7 @@ export function ProjectFormModal({ open, onClose, project }: ProjectFormModalPro
         </label>
 
         <Select
-          label="Xaalada"
+          label="Status"
           options={statusOptions}
           error={errors.status?.message}
           {...register('status')}
@@ -124,19 +120,15 @@ export function ProjectFormModal({ open, onClose, project }: ProjectFormModalPro
 
         <div className="grid grid-cols-2 gap-3">
           <DatePicker
-            label="Taariikhda bilowga"
+            label="Start date"
             error={errors.startDate?.message}
             {...register('startDate')}
           />
-          <DatePicker
-            label="Taariikhda dhammaadka"
-            error={errors.dueDate?.message}
-            {...register('dueDate')}
-          />
+          <DatePicker label="End date" error={errors.dueDate?.message} {...register('dueDate')} />
         </div>
 
         <Input
-          label="Miisaaniyad (USD)"
+          label="Budget (USD)"
           inputMode="decimal"
           placeholder="0.00"
           error={errors.budget?.message}
@@ -147,10 +139,10 @@ export function ProjectFormModal({ open, onClose, project }: ProjectFormModalPro
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={close}>
-            Jooji
+            Cancel
           </Button>
           <Button type="submit" isLoading={pending}>
-            {isEdit ? 'Kaydi' : 'Abuur'}
+            {isEdit ? 'Save' : 'Create'}
           </Button>
         </div>
       </form>

@@ -18,7 +18,7 @@ export async function list(_req: Request, res: Response, next: NextFunction): Pr
 export async function update(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Codsigan lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Inquiry not found');
     const body = req.body as UpdateInquiryInput;
     sendData(res, await updateInquiryStatus(id, body.status));
   } catch (err) {

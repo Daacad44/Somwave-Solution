@@ -22,7 +22,7 @@ export class EvcPlusGateway implements PaymentGateway {
     }
 
     if (!input.payerPhone) {
-      throw new AppError('VALIDATION_ERROR', 400, 'Lambarka EVC waa waajib');
+      throw new AppError('VALIDATION_ERROR', 400, 'EVC number is required');
     }
 
     const invoice = await loadPayableInvoice(

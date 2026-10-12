@@ -1,0 +1,221 @@
+import { Router } from 'express';
+import {
+  addProjectMemberSchema,
+  createEngineeringTaskSchema,
+  reviewEngineeringTaskSchema,
+  updateProjectMemberSchema,
+  createProjectPhaseSchema,
+  createTaskCommentSchema,
+  createTaskProgressSchema,
+  createTaskChecklistItemSchema,
+  updateTaskChecklistItemSchema,
+  createTaskDependencySchema,
+  scheduleEngineeringTaskSchema,
+  taskTimeEntrySchema,
+  taskAttachmentSchema,
+  updateEngineerProfileSchema,
+  createEngineerAvailabilitySchema,
+  PERMISSIONS,
+} from '@somwave/shared';
+import { requireAuth } from '../middleware/auth';
+import { rbac } from '../middleware/rbac';
+import { validate } from '../middleware/validate';
+import * as controller from '../controllers/engineering.controller';
+
+export const engineeringRouter: Router = Router();
+engineeringRouter.use(requireAuth);
+
+engineeringRouter.get('/projects', rbac(PERMISSIONS.ENGINEERING_READ), controller.myProjects);
+engineeringRouter.get(
+  '/engineers/me/profile',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.myEngineerProfile,
+);
+engineeringRouter.patch(
+  '/engineers/me/profile',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  validate(updateEngineerProfileSchema),
+  controller.updateMyEngineerProfile,
+);
+engineeringRouter.get(
+  '/engineers/me/availability',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.myAvailability,
+);
+engineeringRouter.post(
+  '/engineers/me/availability',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  validate(createEngineerAvailabilitySchema),
+  controller.addMyAvailability,
+);
+engineeringRouter.delete(
+  '/engineers/me/availability/:slotId',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.removeMyAvailability,
+);
+engineeringRouter.get('/metrics', rbac(PERMISSIONS.ENGINEERING_READ), controller.metrics);
+engineeringRouter.get('/analytics', rbac(PERMISSIONS.ENGINEERING_READ), controller.analytics);
+engineeringRouter.get(
+  '/projects/:projectId/engineer-profiles',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.engineerProfiles,
+);
+engineeringRouter.get(
+  '/projects/:projectId/assignment-history',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  controller.assignmentHistory,
+);
+engineeringRouter.get(
+  '/projects/:projectId/members',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.members,
+);
+engineeringRouter.get(
+  '/projects/:projectId/eligible-engineers',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  controller.eligibleEngineers,
+);
+engineeringRouter.post(
+  '/projects/:projectId/members',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  validate(addProjectMemberSchema),
+  controller.addMember,
+);
+engineeringRouter.patch(
+  '/projects/:projectId/members/:userId',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  validate(updateProjectMemberSchema),
+  controller.updateMember,
+);
+engineeringRouter.delete(
+  '/projects/:projectId/members/:userId',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  controller.removeMember,
+);
+engineeringRouter.get(
+  '/projects/:projectId/tasks',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.tasks,
+);
+engineeringRouter.get(
+  '/projects/:projectId/phases',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.phases,
+);
+engineeringRouter.post(
+  '/projects/:projectId/phases',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  validate(createProjectPhaseSchema),
+  controller.createPhase,
+);
+engineeringRouter.post(
+  '/projects/:projectId/tasks',
+  rbac(PERMISSIONS.ENGINEERING_TASK_CREATE),
+  validate(createEngineeringTaskSchema),
+  controller.createTask,
+);
+engineeringRouter.post(
+  '/tasks/:taskId/submit',
+  rbac(PERMISSIONS.ENGINEERING_TASK_CREATE),
+  controller.submitTask,
+);
+engineeringRouter.post(
+  '/tasks/:taskId/review',
+  rbac(PERMISSIONS.ENGINEERING_TASK_REVIEW),
+  validate(reviewEngineeringTaskSchema),
+  controller.reviewTask,
+);
+engineeringRouter.get(
+  '/tasks/:taskId/comments',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.comments,
+);
+engineeringRouter.post(
+  '/tasks/:taskId/comments',
+  rbac(PERMISSIONS.ENGINEERING_TASK_CREATE),
+  validate(createTaskCommentSchema),
+  controller.addComment,
+);
+engineeringRouter.get(
+  '/tasks/:taskId/progress',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.progress,
+);
+engineeringRouter.post(
+  '/tasks/:taskId/progress',
+  rbac(PERMISSIONS.ENGINEERING_TASK_CREATE),
+  validate(createTaskProgressSchema),
+  controller.addProgress,
+);
+engineeringRouter.get(
+  '/tasks/:taskId/checklist',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.checklist,
+);
+engineeringRouter.post(
+  '/tasks/:taskId/checklist',
+  rbac(PERMISSIONS.ENGINEERING_TASK_CREATE),
+  validate(createTaskChecklistItemSchema),
+  controller.addChecklistItem,
+);
+engineeringRouter.patch(
+  '/tasks/:taskId/checklist/:itemId',
+  rbac(PERMISSIONS.ENGINEERING_TASK_CREATE),
+  validate(updateTaskChecklistItemSchema),
+  controller.setChecklistItem,
+);
+engineeringRouter.get(
+  '/tasks/:taskId/dependencies',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.dependencies,
+);
+engineeringRouter.post(
+  '/tasks/:taskId/dependencies',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  validate(createTaskDependencySchema),
+  controller.addDependency,
+);
+engineeringRouter.delete(
+  '/tasks/:taskId/dependencies/:dependsOnId',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  controller.removeDependency,
+);
+engineeringRouter.post(
+  '/tasks/:taskId/verify-qa',
+  rbac(PERMISSIONS.ENGINEERING_TASK_REVIEW),
+  controller.verifyQa,
+);
+engineeringRouter.get(
+  '/tasks/:taskId/transitions',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.transitions,
+);
+engineeringRouter.patch(
+  '/tasks/:taskId/schedule',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  validate(scheduleEngineeringTaskSchema),
+  controller.scheduleTask,
+);
+engineeringRouter.get('/tasks/:taskId/hours', rbac(PERMISSIONS.ENGINEERING_READ), controller.hours);
+engineeringRouter.post(
+  '/tasks/:taskId/hours',
+  rbac(PERMISSIONS.ENGINEERING_TASK_CREATE),
+  validate(taskTimeEntrySchema),
+  controller.recordHours,
+);
+engineeringRouter.get(
+  '/tasks/:taskId/attachments',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.attachments,
+);
+engineeringRouter.post(
+  '/tasks/:taskId/attachments',
+  rbac(PERMISSIONS.ENGINEERING_TASK_CREATE),
+  validate(taskAttachmentSchema),
+  controller.addAttachment,
+);
+engineeringRouter.get(
+  '/tasks/:taskId/attachments/:attachmentId/file',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.downloadAttachment,
+);

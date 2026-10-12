@@ -15,7 +15,7 @@ function scopedClientId(req: Request): string | null {
 function requireScopedClient(req: Request): string | null {
   const roles = req.authUser?.roles ?? [];
   if (roles.includes(ROLES.CLIENT) && !req.authUser?.clientId) {
-    throw new AppError('NOT_FOUND', 404, 'Biilkan lama helin');
+    throw new AppError('NOT_FOUND', 404, 'Invoice not found');
   }
   return scopedClientId(req);
 }
@@ -73,7 +73,7 @@ export async function listForInvoice(
 ): Promise<void> {
   try {
     const invoiceId = typeof req.query.invoiceId === 'string' ? req.query.invoiceId : '';
-    if (!invoiceId) throw new AppError('VALIDATION_ERROR', 400, 'invoiceId waa waajib');
+    if (!invoiceId) throw new AppError('VALIDATION_ERROR', 400, 'invoiceId is required');
     sendData(res, await paymentService.listPayments(invoiceId, requireScopedClient(req)));
   } catch (err) {
     next(err);

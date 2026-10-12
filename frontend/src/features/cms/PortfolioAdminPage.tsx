@@ -40,33 +40,35 @@ export function PortfolioAdminPage(): ReactNode {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-ink">Shaqooyinka (CMS)</h1>
-          <p className="mt-1 text-base text-muted">Maamul shaqooyinka la soo bandhigo websaydka.</p>
+          <p className="mt-1 text-base text-muted">Manage portfolio items shown on the website.</p>
         </div>
-        {canCreate ? <Button onClick={openCreate}>Shaqo cusub</Button> : null}
+        {canCreate ? <Button onClick={openCreate}>New portfolio item</Button> : null}
       </div>
 
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {query.isLoading ? (
-          <LoadingState rows={5} label="Waa la soo rarayaa" />
+          <LoadingState rows={5} label="Loading" />
         ) : query.isError ? (
           <ErrorState
-            description="Shaqooyinka lama soo rari karin."
+            description="Could not load portfolio items."
             onRetry={() => query.refetch()}
           />
         ) : items.length === 0 ? (
           <EmptyState
-            title="Weli shaqo ma jirto"
-            action={canCreate ? <Button onClick={openCreate}>Shaqo cusub</Button> : undefined}
+            title="No portfolio items yet"
+            action={
+              canCreate ? <Button onClick={openCreate}>New portfolio item</Button> : undefined
+            }
           />
         ) : (
           <Table>
             <THead>
               <Tr>
-                <Th>Cinwaan</Th>
-                <Th>Macmiil</Th>
-                <Th>Kala horreyn</Th>
-                <Th>Xaalad</Th>
-                <Th className="text-end">Ficil</Th>
+                <Th>Title</Th>
+                <Th>Client</Th>
+                <Th>Order</Th>
+                <Th>Status</Th>
+                <Th className="text-end">Actions</Th>
               </Tr>
             </THead>
             <TBody>
@@ -84,12 +86,12 @@ export function PortfolioAdminPage(): ReactNode {
                     <div className="flex justify-end gap-2">
                       {canUpdate ? (
                         <Button size="sm" variant="secondary" onClick={() => openEdit(item)}>
-                          Wax ka beddel
+                          Edit
                         </Button>
                       ) : null}
                       {canDelete ? (
                         <Button size="sm" variant="danger" onClick={() => setConfirming(item)}>
-                          Tirtir
+                          Delete
                         </Button>
                       ) : null}
                     </div>
@@ -110,14 +112,18 @@ export function PortfolioAdminPage(): ReactNode {
         />
       ) : null}
 
-      <Modal open={Boolean(confirming)} onClose={() => setConfirming(null)} title="Tirtir shaqada">
+      <Modal
+        open={Boolean(confirming)}
+        onClose={() => setConfirming(null)}
+        title="Delete portfolio item"
+      >
         <p className="text-base text-ink">
-          Ma hubtaa inaad tirtirayso <strong>{confirming?.title}</strong>? Tallaabadan lama soo
-          celin karo.
+          Are you sure you want to delete <strong>{confirming?.title}</strong>? This action cannot
+          be undone.
         </p>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setConfirming(null)}>
-            Maya
+            Cancel
           </Button>
           <Button
             variant="danger"
@@ -128,7 +134,7 @@ export function PortfolioAdminPage(): ReactNode {
               setConfirming(null);
             }}
           >
-            Haa, tirtir
+            Yes, delete
           </Button>
         </div>
       </Modal>

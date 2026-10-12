@@ -20,16 +20,16 @@ describe('articleImageFileError', () => {
   it('rejects documents, svg, gif, and oversized files', () => {
     expect(
       articleImageFileError({ name: 'notes.pdf', type: 'application/pdf', size: 100 }),
-    ).toMatch(/JPG, PNG ama WEBP/);
+    ).toMatch(/JPG, PNG, or WebP/);
     expect(articleImageFileError({ name: 'icon.svg', type: 'image/svg+xml', size: 100 })).toMatch(
-      /JPG, PNG ama WEBP/,
+      /JPG, PNG, or WebP/,
     );
     expect(articleImageFileError({ name: 'anim.gif', type: 'image/gif', size: 100 })).toMatch(
-      /JPG, PNG ama WEBP/,
+      /JPG, PNG, or WebP/,
     );
     expect(
       articleImageFileError({ name: 'huge.jpg', type: 'image/jpeg', size: 5 * 1024 * 1024 + 1 }),
-    ).toMatch(/5MB/);
+    ).toMatch(/5 MB/);
   });
 });
 

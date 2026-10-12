@@ -61,6 +61,14 @@ export const PERMISSIONS = {
   MEDIA_DELETE: 'media.delete',
   AUDIT_READ: 'audit.read',
   NOTIFICATIONS_READ: 'notifications.read',
+  ENGINEERING_READ: 'engineering.read',
+  ENGINEERING_MANAGE: 'engineering.manage',
+  ENGINEERING_TASK_CREATE: 'engineering.tasks.create',
+  ENGINEERING_TASK_REVIEW: 'engineering.tasks.review',
+  PROJECT_DOCUMENTATION_READ: 'project-documentation.read',
+  PROJECT_DOCUMENTATION_MANAGE: 'project-documentation.manage',
+  GITHUB_READ: 'github.read',
+  GITHUB_MANAGE: 'github.manage',
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
