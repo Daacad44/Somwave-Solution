@@ -58,9 +58,7 @@ export function ResetPasswordPage(): ReactNode {
               }
               {...form.register('password')}
             />
-            {!token ? (
-              <p className="text-sm text-error">The reset link is incomplete.</p>
-            ) : null}
+            {!token ? <p className="text-sm text-error">The reset link is incomplete.</p> : null}
             {error ? <p className="text-sm text-error">{error}</p> : null}
             <Button
               type="submit"

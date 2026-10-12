@@ -65,7 +65,10 @@ export function LoginPage(): ReactNode {
 
   if (challengeToken) {
     return (
-      <AuthLayout title="Verify your sign-in" subtitle="Enter the 2FA code from your authenticator app.">
+      <AuthLayout
+        title="Verify your sign-in"
+        subtitle="Enter the 2FA code from your authenticator app."
+      >
         <form className="flex flex-col gap-4" onSubmit={onVerify} noValidate>
           <input type="hidden" {...codeForm.register('challengeToken')} />
           <Input
