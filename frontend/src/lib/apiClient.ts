@@ -154,7 +154,7 @@ function uploadOnce<T>(
       onProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
     };
     xhr.onerror = () => fail(new ApiError('INTERNAL_ERROR', 'Network error'));
-    xhr.onabort = () => fail(new ApiError('INTERNAL_ERROR', 'Soo gelinta waa la joojiyay.'));
+    xhr.onabort = () => fail(new ApiError('INTERNAL_ERROR', 'Upload canceled.'));
     xhr.onload = () => {
       signal?.removeEventListener('abort', onAbort);
       const body = (() => {
@@ -187,7 +187,7 @@ function uploadOnce<T>(
       resolve(body?.data as T);
     };
     if (signal?.aborted) {
-      fail(new ApiError('INTERNAL_ERROR', 'Soo gelinta waa la joojiyay.'));
+      fail(new ApiError('INTERNAL_ERROR', 'Upload canceled.'));
       return;
     }
     xhr.send(JSON.stringify(payload));

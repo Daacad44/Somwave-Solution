@@ -6,10 +6,14 @@ import { Select } from '../../components/ui/Select';
 import { useUpdateTask } from './hooks';
 
 const STATUS_TONE: Record<TaskStatus, 'neutral' | 'info' | 'success' | 'warning'> = {
+  BACKLOG: 'neutral',
   TODO: 'neutral',
   IN_PROGRESS: 'info',
+  BLOCKED: 'warning',
   IN_REVIEW: 'warning',
+  TESTING: 'info',
   DONE: 'success',
+  CANCELLED: 'neutral',
 };
 
 export function TaskKanban({

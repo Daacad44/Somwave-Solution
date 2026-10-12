@@ -39,3 +39,34 @@
   --color-invoice: #7c5cbf;
   --color-invoice-soft: #f1e9fb;
 }
+
+:root[data-theme='dark'] {
+  --color-primary: #93baff;
+  --color-primary-600: #b5d0ff;
+  --color-accent: #fbbf24;
+  --color-accent-600: #fcd34d;
+  --color-success: #4ade80;
+  --color-warning: #fbbf24;
+  --color-error: #f87171;
+  --color-info: #38bdf8;
+  --color-surface: #111c2d;
+  --color-surface-alt: #1a2940;
+  --color-ink: #f8fafc;
+  --color-muted: #b7c8dd;
+  --color-border: #354860;
+  --color-sidebar: #07162b;
+  --color-sidebar-muted: #b1c4db;
+  --color-brand: #93baff;
+  --color-brand-soft: #203b60;
+  --color-canvas: #0b1423;
+  --color-banner: #1c3554;
+  --color-success-soft: #113825;
+  --color-warning-soft: #43321a;
+  --color-invoice: #c4a7ef;
+  --color-invoice-soft: #34254a;
+  color-scheme: dark;
+}
+
+:root[data-theme='dark'] .bg-sidebar .text-surface:not(.bg-brand) {
+  color: var(--color-ink);
+}

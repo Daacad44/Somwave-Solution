@@ -35,7 +35,7 @@ export async function createClient(input: CreateClientInput): Promise<AdminClien
 
 export async function updateClient(id: string, input: UpdateClientInput): Promise<AdminClient> {
   const existing = await prisma.client.findFirst({ where: { id, deletedAt: null } });
-  if (!existing) throw new AppError('NOT_FOUND', 404, 'Macmiilkan lama helin');
+  if (!existing) throw new AppError('NOT_FOUND', 404, 'Client not found');
   const row = await prisma.client.update({
     where: { id },
     data: {

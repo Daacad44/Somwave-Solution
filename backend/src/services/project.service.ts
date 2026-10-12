@@ -5,6 +5,7 @@ import type {
   CreateProjectInput,
   UpdateProjectInput,
   ProjectStatus,
+  AuthUser,
 } from '@somwave/shared';
 import { MAX_PAGE_SIZE } from '@somwave/shared';
 import { Prisma } from '@prisma/client';
@@ -57,6 +58,15 @@ export interface ListProjectsParams {
   pageSize: number;
   search?: string;
   status?: ProjectStatus;
+  actor?: AuthUser;
+}
+
+/** Administrative roles may manage the portfolio; other staff only see their projects. */
+export function projectScope(actor?: AuthUser): Prisma.ProjectWhereInput {
+  if (!actor || actor.roles.some((role) => role === 'SUPER_ADMIN' || role === 'ADMIN')) return {};
+  return {
+    OR: [{ managerId: actor.id }, { members: { some: { userId: actor.id, removedAt: null } } }],
+  };
 }
 
 export interface PagedProjects {
@@ -71,12 +81,14 @@ export async function listProjects({
   pageSize,
   search,
   status,
+  actor,
 }: ListProjectsParams): Promise<PagedProjects> {
   const take = Math.min(Math.max(pageSize, 1), MAX_PAGE_SIZE);
   const skip = (Math.max(page, 1) - 1) * take;
 
   const where: Prisma.ProjectWhereInput = {
     deletedAt: null,
+    ...projectScope(actor),
     ...(status ? { status } : {}),
     ...(search ? { name: { contains: search, mode: 'insensitive' } } : {}),
   };
@@ -95,9 +107,9 @@ export async function listProjects({
   return { items: rows.map(toAdminProject), page: Math.max(page, 1), pageSize: take, total };
 }
 
-export async function getProject(id: string): Promise<AdminProject | null> {
+export async function getProject(id: string, actor?: AuthUser): Promise<AdminProject | null> {
   const row = await prisma.project.findFirst({
-    where: { id, deletedAt: null },
+    where: { id, deletedAt: null, ...projectScope(actor) },
     select: adminProjectSelect,
   });
   return row ? toAdminProject(row) : null;
@@ -110,7 +122,7 @@ async function assertManagerExists(managerId: string | null | undefined): Promis
     where: { id: managerId, deletedAt: null },
     select: { id: true },
   });
-  if (!manager) throw new AppError('VALIDATION_ERROR', 400, 'Maareeyaha lama helin');
+  if (!manager) throw new AppError('VALIDATION_ERROR', 400, 'Manager not found');
 }
 
 export async function createProject(input: CreateProjectInput): Promise<AdminProject> {
@@ -132,9 +144,15 @@ export async function createProject(input: CreateProjectInput): Promise<AdminPro
   return toAdminProject(row);
 }
 
-export async function updateProject(id: string, input: UpdateProjectInput): Promise<AdminProject> {
-  const project = await prisma.project.findFirst({ where: { id, deletedAt: null } });
-  if (!project) throw new AppError('NOT_FOUND', 404, 'Mashruucan lama helin');
+export async function updateProject(
+  id: string,
+  input: UpdateProjectInput,
+  actor?: AuthUser,
+): Promise<AdminProject> {
+  const project = await prisma.project.findFirst({
+    where: { id, deletedAt: null, ...projectScope(actor) },
+  });
+  if (!project) throw new AppError('NOT_FOUND', 404, 'Project not found');
 
   if (input.managerId) await assertManagerExists(input.managerId);
 
@@ -162,8 +180,10 @@ export async function updateProject(id: string, input: UpdateProjectInput): Prom
 }
 
 // Soft delete — project history is preserved (§7).
-export async function deleteProject(id: string): Promise<void> {
-  const project = await prisma.project.findFirst({ where: { id, deletedAt: null } });
-  if (!project) throw new AppError('NOT_FOUND', 404, 'Mashruucan lama helin');
+export async function deleteProject(id: string, actor?: AuthUser): Promise<void> {
+  const project = await prisma.project.findFirst({
+    where: { id, deletedAt: null, ...projectScope(actor) },
+  });
+  if (!project) throw new AppError('NOT_FOUND', 404, 'Project not found');
   await prisma.project.update({ where: { id }, data: { deletedAt: new Date() } });
 }

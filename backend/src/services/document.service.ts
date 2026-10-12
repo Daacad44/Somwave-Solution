@@ -34,7 +34,7 @@ export async function createDocument(
 ): Promise<AdminDocument> {
   const clientId = scopedClientId ?? input.clientId ?? null;
   if (scopedClientId && input.clientId && input.clientId !== scopedClientId) {
-    throw new AppError('NOT_FOUND', 404, 'Dukumeentiga lama helin');
+    throw new AppError('NOT_FOUND', 404, 'Document not found');
   }
   const bytes = decodeUpload(input.contentBase64, input.mimeType);
   const storageKey = await putObject(bytes, input.mimeType);
@@ -62,9 +62,9 @@ export async function getDocumentFile(
   clientId?: string | null,
 ): Promise<{ bytes: Buffer; mimeType: string; fileName: string }> {
   const row = await prisma.clientDocument.findFirst({ where: ownerWhere(id, clientId) });
-  if (!row) throw new AppError('NOT_FOUND', 404, 'Dukumeentiga lama helin');
+  if (!row) throw new AppError('NOT_FOUND', 404, 'Document not found');
   const bytes = getObject(row.storageKey);
-  if (!bytes) throw new AppError('NOT_FOUND', 404, 'Dukumeentiga lama helin');
+  if (!bytes) throw new AppError('NOT_FOUND', 404, 'Document not found');
   return { bytes, mimeType: row.mimeType, fileName: row.title };
 }
 
@@ -74,7 +74,7 @@ export async function deleteDocument(
   clientId?: string | null,
 ): Promise<void> {
   const row = await prisma.clientDocument.findFirst({ where: ownerWhere(id, clientId) });
-  if (!row) throw new AppError('NOT_FOUND', 404, 'Dukumeentiga lama helin');
+  if (!row) throw new AppError('NOT_FOUND', 404, 'Document not found');
   await prisma.clientDocument.update({ where: { id }, data: { deletedAt: new Date() } });
   await writeAudit({
     actorId,

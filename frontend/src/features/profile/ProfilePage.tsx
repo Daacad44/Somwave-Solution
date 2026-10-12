@@ -146,7 +146,7 @@ export function ProfilePage(): ReactNode {
           />
           <Input label="Email" value={user.email} disabled readOnly />
           <p className="text-sm text-muted">
-            Iimaylku waa aqoonsiga gelitaanka. Lama beddeli karo halkan.
+            Your email address is your sign-in identifier and cannot be changed here.
           </p>
           {update.error instanceof ApiError ? (
             <p className="text-sm text-error">{update.error.message}</p>
@@ -173,7 +173,7 @@ export function ProfilePage(): ReactNode {
             </div>
           </dl>
           <p className="mt-4 text-sm text-muted">
-            Doorashooyinkan waa kuwa goobta. Lama keydin karo wali.
+            These settings are local to this browser and cannot be saved yet.
           </p>
         </article>
       ) : null}

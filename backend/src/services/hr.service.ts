@@ -58,11 +58,11 @@ export async function createEmployee(
   actorId: string,
 ): Promise<AdminEmployee> {
   const user = await prisma.user.findFirst({ where: { id: input.userId, deletedAt: null } });
-  if (!user) throw new AppError('NOT_FOUND', 404, 'Isticmaalaha lama helin');
+  if (!user) throw new AppError('NOT_FOUND', 404, 'User not found');
   const existing = await prisma.employee.findFirst({
     where: { OR: [{ userId: input.userId }, { employeeNo: input.employeeNo }], deletedAt: null },
   });
-  if (existing) throw new AppError('CONFLICT', 409, 'Shaqaalahan hore ayuu u jiray');
+  if (existing) throw new AppError('CONFLICT', 409, 'This employee already exists');
   const row = await prisma.employee.create({
     data: {
       userId: input.userId,
@@ -89,7 +89,7 @@ export async function updateEmployee(
   actorId: string,
 ): Promise<AdminEmployee> {
   const existing = await prisma.employee.findFirst({ where: { id, deletedAt: null } });
-  if (!existing) throw new AppError('NOT_FOUND', 404, 'Shaqaalahan lama helin');
+  if (!existing) throw new AppError('NOT_FOUND', 404, 'Employee not found');
   const row = await prisma.employee.update({
     where: { id },
     data: {
@@ -128,12 +128,12 @@ export async function listAttendance(): Promise<AdminAttendance[]> {
 
 export async function checkIn(employeeId: string): Promise<AdminAttendance> {
   const employee = await prisma.employee.findFirst({ where: { id: employeeId, deletedAt: null } });
-  if (!employee) throw new AppError('NOT_FOUND', 404, 'Shaqaalahan lama helin');
+  if (!employee) throw new AppError('NOT_FOUND', 404, 'Employee not found');
   const date = dayStart();
   const existing = await prisma.attendance.findUnique({
     where: { employeeId_date: { employeeId, date } },
   });
-  if (existing?.checkInAt) throw new AppError('CONFLICT', 409, 'Maanta hore ayaad u soo gashay');
+  if (existing?.checkInAt) throw new AppError('CONFLICT', 409, 'You have already checked in today');
   const row = existing
     ? await prisma.attendance.update({
         where: { id: existing.id },
@@ -163,8 +163,8 @@ export async function checkOut(employeeId: string): Promise<AdminAttendance> {
     where: { employeeId_date: { employeeId, date } },
     include: { employee: { include: { user: { select: { name: true } } } } },
   });
-  if (!existing?.checkInAt) throw new AppError('NOT_FOUND', 404, 'Soo-gelitaan maanta lama helin');
-  if (existing.checkOutAt) throw new AppError('CONFLICT', 409, 'Hore ayaad u baxday');
+  if (!existing?.checkInAt) throw new AppError('NOT_FOUND', 404, 'No check-in found for today');
+  if (existing.checkOutAt) throw new AppError('CONFLICT', 409, 'You have already checked out');
   const row = await prisma.attendance.update({
     where: { id: existing.id },
     data: { checkOutAt: new Date() },
@@ -211,11 +211,11 @@ export async function createLeaveRequest(
   const employee = await prisma.employee.findFirst({
     where: { id: input.employeeId, deletedAt: null },
   });
-  if (!employee) throw new AppError('NOT_FOUND', 404, 'Shaqaalahan lama helin');
+  if (!employee) throw new AppError('NOT_FOUND', 404, 'Employee not found');
   const start = new Date(input.startDate);
   const end = new Date(input.endDate);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
-    throw new AppError('VALIDATION_ERROR', 400, 'Taariikhaha fasaxa waa khalad');
+    throw new AppError('VALIDATION_ERROR', 400, 'Invalid leave dates');
   }
   const row = await prisma.leaveRequest.create({
     data: {
@@ -249,9 +249,9 @@ export async function updateLeaveRequest(
   actorId: string,
 ): Promise<AdminLeaveRequest> {
   const existing = await prisma.leaveRequest.findFirst({ where: { id, deletedAt: null } });
-  if (!existing) throw new AppError('NOT_FOUND', 404, 'Codsiga fasaxa lama helin');
+  if (!existing) throw new AppError('NOT_FOUND', 404, 'Leave request not found');
   if (existing.status !== 'PENDING') {
-    throw new AppError('CONFLICT', 409, "Codsigan hore ayaa loo go'aamiyay");
+    throw new AppError('CONFLICT', 409, 'This request has already been decided');
   }
   const status: LeaveStatus = input.status;
   const row = await prisma.leaveRequest.update({

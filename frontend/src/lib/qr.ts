@@ -108,7 +108,11 @@ function placeFinder(grid: number[][], x: number, y: number): void {
         dy === -1 ||
         dx === 7 ||
         dy === 7 ||
-        (dx >= 0 && dx <= 6 && dy >= 0 && dy <= 6 && (dx === 0 || dx === 6 || dy === 0 || dy === 6)) ||
+        (dx >= 0 &&
+          dx <= 6 &&
+          dy >= 0 &&
+          dy <= 6 &&
+          (dx === 0 || dx === 6 || dy === 0 || dy === 6)) ||
         (dx >= 2 && dx <= 4 && dy >= 2 && dy <= 4);
       const row = grid[yy];
       if (row) row[xx] = dark ? 1 : 0;
@@ -140,7 +144,11 @@ function reserved(size: number, version: number): boolean[][] {
   const aligns = ALIGN[version] ?? [];
   for (const ay of aligns) {
     for (const ax of aligns) {
-      if ((ax === 6 && ay === 6) || (ax === 6 && ay === size - 7) || (ax === size - 7 && ay === 6)) {
+      if (
+        (ax === 6 && ay === 6) ||
+        (ax === 6 && ay === size - 7) ||
+        (ax === size - 7 && ay === 6)
+      ) {
         continue;
       }
       for (let dy = -2; dy <= 2; dy += 1) {
@@ -208,7 +216,11 @@ export function qrSvg(text: string, moduleSize = 4): string {
   const aligns = ALIGN[version] ?? [];
   for (const ay of aligns) {
     for (const ax of aligns) {
-      if ((ax === 6 && ay === 6) || (ax === 6 && ay === size - 7) || (ax === size - 7 && ay === 6)) {
+      if (
+        (ax === 6 && ay === 6) ||
+        (ax === 6 && ay === size - 7) ||
+        (ax === size - 7 && ay === 6)
+      ) {
         continue;
       }
       for (let dy = -2; dy <= 2; dy += 1) {
@@ -248,13 +260,38 @@ export function qrSvg(text: string, moduleSize = 4): string {
   const formatBits = [];
   for (let i = 14; i >= 0; i -= 1) formatBits.push((format >> i) & 1);
   const fmtPosA: Array<[number, number]> = [
-    [8, 0], [8, 1], [8, 2], [8, 3], [8, 4], [8, 5], [8, 7], [8, 8],
-    [7, 8], [5, 8], [4, 8], [3, 8], [2, 8], [1, 8], [0, 8],
+    [8, 0],
+    [8, 1],
+    [8, 2],
+    [8, 3],
+    [8, 4],
+    [8, 5],
+    [8, 7],
+    [8, 8],
+    [7, 8],
+    [5, 8],
+    [4, 8],
+    [3, 8],
+    [2, 8],
+    [1, 8],
+    [0, 8],
   ];
   const fmtPosB: Array<[number, number]> = [
-    [size - 1, 8], [size - 2, 8], [size - 3, 8], [size - 4, 8], [size - 5, 8],
-    [size - 6, 8], [size - 7, 8], [8, size - 8], [8, size - 7], [8, size - 6],
-    [8, size - 5], [8, size - 4], [8, size - 3], [8, size - 2], [8, size - 1],
+    [size - 1, 8],
+    [size - 2, 8],
+    [size - 3, 8],
+    [size - 4, 8],
+    [size - 5, 8],
+    [size - 6, 8],
+    [size - 7, 8],
+    [8, size - 8],
+    [8, size - 7],
+    [8, size - 6],
+    [8, size - 5],
+    [8, size - 4],
+    [8, size - 3],
+    [8, size - 2],
+    [8, size - 1],
   ];
   formatBits.forEach((bit, i) => {
     const a = fmtPosA[i];

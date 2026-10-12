@@ -27,6 +27,7 @@ export async function list(req: Request, res: Response, next: NextFunction): Pro
       pageSize,
       search: search || undefined,
       status: parseStatus(req.query.status),
+      actor: req.authUser,
     });
     sendData(res, result.items, 200, {
       page: result.page,
@@ -41,8 +42,8 @@ export async function list(req: Request, res: Response, next: NextFunction): Pro
 export async function get(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    const project = id ? await projectService.getProject(id) : null;
-    if (!project) throw new AppError('NOT_FOUND', 404, 'Mashruucan lama helin');
+    const project = id ? await projectService.getProject(id, req.authUser) : null;
+    if (!project) throw new AppError('NOT_FOUND', 404, 'Project not found');
     sendData(res, project);
   } catch (err) {
     next(err);
@@ -61,8 +62,12 @@ export async function create(req: Request, res: Response, next: NextFunction): P
 export async function update(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Mashruucan lama helin');
-    const project = await projectService.updateProject(id, req.body as UpdateProjectInput);
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Project not found');
+    const project = await projectService.updateProject(
+      id,
+      req.body as UpdateProjectInput,
+      req.authUser,
+    );
     sendData(res, project);
   } catch (err) {
     next(err);
@@ -72,8 +77,8 @@ export async function update(req: Request, res: Response, next: NextFunction): P
 export async function remove(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Mashruucan lama helin');
-    await projectService.deleteProject(id);
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Project not found');
+    await projectService.deleteProject(id, req.authUser);
     sendData(res, { success: true });
   } catch (err) {
     next(err);

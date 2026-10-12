@@ -55,8 +55,8 @@ export const ticketDetailSchema = adminTicketSchema.extend({
 export type TicketDetail = z.infer<typeof ticketDetailSchema>;
 
 export const createTicketSchema = z.object({
-  subject: z.string().trim().min(1, 'Mawduuca waa waajib').max(200),
-  description: z.string().trim().min(1, 'Faahfaahin waa waajib').max(8000),
+  subject: z.string().trim().min(1, 'Subject is required').max(200),
+  description: z.string().trim().min(1, 'Description is required').max(8000),
   priority: ticketPrioritySchema.default('MEDIUM'),
   projectId: z.string().optional(),
 });
@@ -70,13 +70,13 @@ export const updateTicketSchema = z
     assigneeId: z.string().nullable().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
-    message: 'Ugu yaraan hal beddel ayaa loo baahan yahay',
+    message: 'At least one change is required',
   });
 
 export type UpdateTicketInput = z.infer<typeof updateTicketSchema>;
 
 export const createTicketReplySchema = z.object({
-  body: z.string().trim().min(1, 'Jawaabta waa waajib').max(8000),
+  body: z.string().trim().min(1, 'Reply is required').max(8000),
 });
 
 export type CreateTicketReplyInput = z.infer<typeof createTicketReplySchema>;

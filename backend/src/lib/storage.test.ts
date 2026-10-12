@@ -15,10 +15,10 @@ describe('decodeArticleImage', () => {
 
   it('rejects a gif and a png claimed as jpeg', () => {
     expect(() => decodeArticleImage(GIF.toString('base64'), 'image/jpeg')).toThrow(
-      /JPG, PNG ama WEBP/,
+      /JPG, PNG, or WebP/,
     );
     expect(() => decodeArticleImage(PNG.toString('base64'), 'image/jpeg')).toThrow(
-      /JPG, PNG ama WEBP/,
+      /JPG, PNG, or WebP/,
     );
   });
 });

@@ -54,7 +54,7 @@ export function FaqFormModal({ open, onClose, faq }: FaqFormModalProps): ReactNo
       close();
     } catch (err) {
       setServerError(
-        err instanceof ApiError ? err.message : 'Wax baa qaldamay. Fadlan mar kale isku day.',
+        err instanceof ApiError ? err.message : 'Something went wrong. Please try again.',
       );
     }
   });
@@ -62,12 +62,12 @@ export function FaqFormModal({ open, onClose, faq }: FaqFormModalProps): ReactNo
   const pending = isSubmitting || createMutation.isPending || updateMutation.isPending;
 
   return (
-    <Modal open={open} onClose={close} title={isEdit ? 'Wax ka beddel su’aasha' : 'Su’aal cusub'}>
+    <Modal open={open} onClose={close} title={isEdit ? 'Edit question' : 'New question'}>
       <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
-        <Input label="Su’aasha" error={errors.question?.message} {...register('question')} />
+        <Input label="Question" error={errors.question?.message} {...register('question')} />
 
         <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-ink">Jawaabta</span>
+          <span className="text-sm font-medium text-ink">Answer</span>
           <textarea
             className="min-h-32 rounded-md border border-border bg-surface px-3 py-2 text-base text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             rows={5}
@@ -80,7 +80,7 @@ export function FaqFormModal({ open, onClose, faq }: FaqFormModalProps): ReactNo
 
         <div className="flex items-end gap-4">
           <Input
-            label="Kala horreyn (order)"
+            label="Display order"
             type="number"
             min={0}
             className="w-32"
@@ -97,10 +97,10 @@ export function FaqFormModal({ open, onClose, faq }: FaqFormModalProps): ReactNo
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={close}>
-            Jooji
+            Cancel
           </Button>
           <Button type="submit" isLoading={pending}>
-            {isEdit ? 'Kaydi' : 'Abuur'}
+            {isEdit ? 'Save' : 'Create'}
           </Button>
         </div>
       </form>

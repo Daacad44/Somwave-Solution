@@ -42,34 +42,31 @@ export function CareersAdminPage(): ReactNode {
     <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-ink">Fursadaha shaqo (CMS)</h1>
-          <p className="mt-1 text-base text-muted">Maamul fursadaha shaqo ee websaydka.</p>
+          <h1 className="text-2xl font-semibold text-ink">Job openings (CMS)</h1>
+          <p className="mt-1 text-base text-muted">Manage website job openings.</p>
         </div>
-        {canCreate ? <Button onClick={openCreate}>Fursad cusub</Button> : null}
+        {canCreate ? <Button onClick={openCreate}>New opening</Button> : null}
       </div>
 
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {query.isLoading ? (
-          <LoadingState rows={5} label="Waa la soo rarayaa" />
+          <LoadingState rows={5} label="Loading" />
         ) : query.isError ? (
-          <ErrorState
-            description="Fursadaha lama soo rari karin."
-            onRetry={() => query.refetch()}
-          />
+          <ErrorState description="Could not load job openings." onRetry={() => query.refetch()} />
         ) : openings.length === 0 ? (
           <EmptyState
-            title="Weli fursad ma jirto"
-            action={canCreate ? <Button onClick={openCreate}>Fursad cusub</Button> : undefined}
+            title="No job openings yet"
+            action={canCreate ? <Button onClick={openCreate}>New opening</Button> : undefined}
           />
         ) : (
           <Table>
             <THead>
               <Tr>
-                <Th>Cinwaan</Th>
-                <Th>Nooc</Th>
-                <Th>Codsiyo</Th>
-                <Th>Xaalad</Th>
-                <Th className="text-end">Ficil</Th>
+                <Th>Title</Th>
+                <Th>Type</Th>
+                <Th>Applications</Th>
+                <Th>Status</Th>
+                <Th className="text-end">Actions</Th>
               </Tr>
             </THead>
             <TBody>
@@ -87,7 +84,7 @@ export function CareersAdminPage(): ReactNode {
                     <div className="flex justify-end gap-2">
                       {canUpdate ? (
                         <Button size="sm" variant="secondary" onClick={() => openEdit(opening)}>
-                          Wax ka beddel
+                          Edit
                         </Button>
                       ) : null}
                       {canDelete ? (
@@ -99,7 +96,7 @@ export function CareersAdminPage(): ReactNode {
                             setConfirming(opening);
                           }}
                         >
-                          Tirtir
+                          Delete
                         </Button>
                       ) : null}
                     </div>
@@ -120,17 +117,17 @@ export function CareersAdminPage(): ReactNode {
         />
       ) : null}
 
-      <Modal open={Boolean(confirming)} onClose={() => setConfirming(null)} title="Tirtir fursadda">
+      <Modal open={Boolean(confirming)} onClose={() => setConfirming(null)} title="Delete opening">
         <p className="text-base text-ink">
-          Ma hubtaa inaad tirtirayso <strong>{confirming?.title}</strong>?
+          Are you sure you want to delete <strong>{confirming?.title}</strong>?
           {confirming && confirming.applicationCount > 0
-            ? ' Fursaddan waxay leedahay codsiyo — halkii, ka saar daabacaadda.'
-            : ' Tallaabadan lama soo celin karo.'}
+            ? ' This opening has applications. Unpublish it instead.'
+            : ' This action cannot be undone.'}
         </p>
         {deleteError ? <p className="mt-3 text-sm text-error">{deleteError}</p> : null}
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setConfirming(null)}>
-            Maya
+            Cancel
           </Button>
           <Button
             variant="danger"
@@ -145,7 +142,7 @@ export function CareersAdminPage(): ReactNode {
               }
             }}
           >
-            Haa, tirtir
+            Yes, delete
           </Button>
         </div>
       </Modal>

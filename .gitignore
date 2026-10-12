@@ -28,6 +28,8 @@ pino.log
 # Coverage / test output
 coverage/
 .nyc_output/
+test-results/
+playwright-report/
 
 # Editor / OS
 .DS_Store

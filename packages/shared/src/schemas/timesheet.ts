@@ -10,7 +10,7 @@ export const TIMESHEET_STATUS_LABELS: Record<TimesheetStatus, string> = {
   REJECTED: 'La diiday',
 };
 
-const hoursString = z.string().regex(/^\d{1,3}(\.\d{1,2})?$/, 'Fadlan geli saacado sax ah');
+const hoursString = z.string().regex(/^\d{1,3}(\.\d{1,2})?$/, 'Enter valid hours');
 
 export const adminTimesheetSchema = z.object({
   id: z.string(),
@@ -27,7 +27,7 @@ export const adminTimesheetSchema = z.object({
 export type AdminTimesheet = z.infer<typeof adminTimesheetSchema>;
 
 export const createTimesheetSchema = z.object({
-  date: z.string().refine((v) => !Number.isNaN(Date.parse(v)), 'Taariikh aan sax ahayn'),
+  date: z.string().refine((v) => !Number.isNaN(Date.parse(v)), 'Invalid date'),
   hours: hoursString,
   projectId: z.string().optional(),
   isBillable: z.boolean().default(true),

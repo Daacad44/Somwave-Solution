@@ -31,20 +31,47 @@ model User {
   updatedAt        DateTime  @updatedAt @map("updated_at")
   deletedAt        DateTime? @map("deleted_at")
 
-  roles           UserRole[]
-  refreshTokens   RefreshToken[]
-  managedProjects Project[]      @relation("ProjectManager")
-  assignedTasks   Task[]         @relation("TaskAssignee")
-  assignedTickets SupportTicket[] @relation("TicketAssignee")
-  ticketReplies   TicketReply[]  @relation("TicketReplyAuthor")
-  recordedPayments Payment[]     @relation("PaymentRecorder")
-  passwordResets  PasswordResetToken[]
-  backupCodes     TwoFactorBackupCode[]
-  mediaAssets     MediaAsset[]
-  documents       ClientDocument[] @relation("DocumentUploader")
-  notifications   Notification[]
-  client          Client?        @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  employee        Employee?
+  roles                         UserRole[]
+  refreshTokens                 RefreshToken[]
+  managedProjects               Project[]                @relation("ProjectManager")
+  assignedTasks                 Task[]                   @relation("TaskAssignee")
+  assignedTickets               SupportTicket[]          @relation("TicketAssignee")
+  ticketReplies                 TicketReply[]            @relation("TicketReplyAuthor")
+  recordedPayments              Payment[]                @relation("PaymentRecorder")
+  passwordResets                PasswordResetToken[]
+  backupCodes                   TwoFactorBackupCode[]
+  mediaAssets                   MediaAsset[]
+  documents                     ClientDocument[]         @relation("DocumentUploader")
+  notifications                 Notification[]
+  notificationPreferences       NotificationPreference[]
+  projectMemberships            ProjectMember[]
+  ownedDocumentation            ProjectDocumentation[]   @relation("DocumentationOwner")
+  createdDocumentation          ProjectDocumentation[]   @relation("DocumentationCreator")
+  updatedDocumentation          ProjectDocumentation[]   @relation("DocumentationUpdater")
+  approvedDocumentation         ProjectDocumentation[]   @relation("DocumentationApprover")
+  documentationVersions         DocumentationVersion[]
+  documentationComments         DocumentationComment[]
+  approvedDocumentationVersions DocumentationVersion[]   @relation("DocumentationVersionApprover")
+  reportedTasks                 Task[]                   @relation("TaskReporter")
+  reviewedTasks                 Task[]                   @relation("TaskReviewer")
+  taskComments                  TaskComment[]
+  taskTimeEntries               TaskTimeEntry[]
+  taskReviewsAuthored           TaskReview[]             @relation("TaskReviewAuthor")
+  taskReviewsGiven              TaskReview[]             @relation("TaskReviewReviewer")
+  taskProgressReports           TaskProgressReport[]
+  taskTransitions               TaskTransition[]
+  verifiedTasks                 Task[]                   @relation("TaskQaVerifier")
+  approvedSystemUpdates         SystemUpdate[]           @relation("SystemUpdateProductionApprover")
+  assignedSystems               ManagedSystem[]
+  assignedBugs                  BugReport[]
+  assignedMaintenance           MaintenanceRequest[]
+  githubInstallations           GitHubInstallation[]
+  ownedReleases                 Release[]                @relation("ReleaseOwner")
+  approvedReleases              Release[]                @relation("ReleaseApprover")
+  engineerProfile               EngineerProfile?
+  availabilitySlots             EngineerAvailability[]
+  client                        Client?                  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  employee                      Employee?
 
   @@index([clientId])
   @@index([employeeId])
@@ -136,15 +163,15 @@ model TwoFactorBackupCode {
 }
 
 model MediaAsset {
-  id         String   @id @default(cuid())
-  storageKey String   @unique @map("storage_key")
-  fileName   String   @map("file_name")
-  mimeType   String   @map("mime_type")
-  sizeBytes  Int      @map("size_bytes")
-  alt        String?
-  collection String?
-  createdById String? @map("created_by_id")
-  createdAt  DateTime @default(now()) @map("created_at")
+  id          String   @id @default(cuid())
+  storageKey  String   @unique @map("storage_key")
+  fileName    String   @map("file_name")
+  mimeType    String   @map("mime_type")
+  sizeBytes   Int      @map("size_bytes")
+  alt         String?
+  collection  String?
+  createdById String?  @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
@@ -178,10 +205,47 @@ model Notification {
   readAt    DateTime? @map("read_at")
   createdAt DateTime  @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries NotificationDelivery[]
 
   @@index([userId, readAt])
   @@map("notifications")
+}
+
+model NotificationDelivery {
+  id             String    @id @default(cuid())
+  notificationId String    @map("notification_id")
+  channel        String
+  status         String    @default("PENDING")
+  attempts       Int       @default(0)
+  nextAttemptAt  DateTime? @map("next_attempt_at")
+  sentAt         DateTime? @map("sent_at")
+  error          String?
+  dedupeKey      String?   @unique @map("dedupe_key")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt])
+  @@index([notificationId])
+  @@map("notification_deliveries")
+}
+
+model NotificationPreference {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  eventKey  String   @map("event_key")
+  inApp     Boolean  @default(true) @map("in_app")
+  email     Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventKey])
+  @@index([userId])
+  @@map("notification_preferences")
 }
 
 // ── Website (web.prisma domain, §7) ──────────────────────────────────────────
@@ -338,11 +402,12 @@ model Client {
   updatedAt   DateTime     @updatedAt @map("updated_at")
   deletedAt   DateTime?    @map("deleted_at")
 
-  users     User[]
-  projects  Project[]
-  invoices  Invoice[]
-  tickets   SupportTicket[]
-  documents ClientDocument[]
+  users          User[]
+  projects       Project[]
+  invoices       Invoice[]
+  tickets        SupportTicket[]
+  documents      ClientDocument[]
+  managedSystems ManagedSystem[]
 
   @@index([status])
   @@map("clients")
@@ -366,9 +431,9 @@ model Employee {
   updatedAt  DateTime       @updatedAt @map("updated_at")
   deletedAt  DateTime?      @map("deleted_at")
 
-  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  timesheets  Timesheet[]
-  attendance  Attendance[]
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timesheets    Timesheet[]
+  attendance    Attendance[]
   leaveRequests LeaveRequest[]
 
   @@map("employees")
@@ -404,17 +469,17 @@ enum LeaveStatus {
 }
 
 model LeaveRequest {
-  id               String      @id @default(cuid())
-  employeeId       String      @map("employee_id")
-  type             LeaveType
-  startDate        DateTime    @map("start_date") @db.Date
-  endDate          DateTime    @map("end_date") @db.Date
-  reason           String?
-  status           LeaveStatus @default(PENDING)
-  rejectionReason  String?     @map("rejection_reason")
-  createdAt        DateTime    @default(now()) @map("created_at")
-  updatedAt        DateTime    @updatedAt @map("updated_at")
-  deletedAt        DateTime?   @map("deleted_at")
+  id              String      @id @default(cuid())
+  employeeId      String      @map("employee_id")
+  type            LeaveType
+  startDate       DateTime    @map("start_date") @db.Date
+  endDate         DateTime    @map("end_date") @db.Date
+  reason          String?
+  status          LeaveStatus @default(PENDING)
+  rejectionReason String?     @map("rejection_reason")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+  deletedAt       DateTime?   @map("deleted_at")
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
@@ -459,21 +524,21 @@ enum InvoiceStatus {
 }
 
 model Invoice {
-  id          String        @id @default(cuid())
-  number      String        @unique
-  clientId    String        @map("client_id")
-  projectId   String?       @map("project_id")
-  issueDate   DateTime      @map("issue_date")
-  dueDate     DateTime      @map("due_date")
-  subtotal    Decimal       @db.Decimal(12, 2)
-  tax         Decimal       @db.Decimal(12, 2) @default(0)
-  discount    Decimal       @db.Decimal(12, 2) @default(0)
-  total       Decimal       @db.Decimal(12, 2)
-  paidAmount  Decimal       @db.Decimal(12, 2) @default(0) @map("paid_amount")
-  status      InvoiceStatus @default(DRAFT)
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
-  deletedAt   DateTime?     @map("deleted_at")
+  id         String        @id @default(cuid())
+  number     String        @unique
+  clientId   String        @map("client_id")
+  projectId  String?       @map("project_id")
+  issueDate  DateTime      @map("issue_date")
+  dueDate    DateTime      @map("due_date")
+  subtotal   Decimal       @db.Decimal(12, 2)
+  tax        Decimal       @default(0) @db.Decimal(12, 2)
+  discount   Decimal       @default(0) @db.Decimal(12, 2)
+  total      Decimal       @db.Decimal(12, 2)
+  paidAmount Decimal       @default(0) @map("paid_amount") @db.Decimal(12, 2)
+  status     InvoiceStatus @default(DRAFT)
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+  deletedAt  DateTime?     @map("deleted_at")
 
   client   Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
   project  Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
@@ -490,8 +555,8 @@ model InvoiceItem {
   invoiceId   String  @map("invoice_id")
   description String
   quantity    Decimal @db.Decimal(12, 2)
-  unitPrice   Decimal @db.Decimal(12, 2) @map("unit_price")
-  lineTotal   Decimal @db.Decimal(12, 2) @map("line_total")
+  unitPrice   Decimal @map("unit_price") @db.Decimal(12, 2)
+  lineTotal   Decimal @map("line_total") @db.Decimal(12, 2)
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
@@ -640,13 +705,22 @@ model Project {
   updatedAt   DateTime      @updatedAt @map("updated_at")
   deletedAt   DateTime?     @map("deleted_at")
 
-  manager    User?       @relation("ProjectManager", fields: [managerId], references: [id], onDelete: SetNull)
-  client     Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  tasks      Task[]
-  milestones Milestone[]
-  timesheets Timesheet[]
-  invoices   Invoice[]
-  tickets    SupportTicket[]
+  manager             User?                  @relation("ProjectManager", fields: [managerId], references: [id], onDelete: SetNull)
+  client              Client?                @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  tasks               Task[]
+  milestones          Milestone[]
+  timesheets          Timesheet[]
+  invoices            Invoice[]
+  tickets             SupportTicket[]
+  members             ProjectMember[]
+  documentation       ProjectDocumentation[]
+  managedSystems      ManagedSystem[]
+  systemUpdates       SystemUpdate[]
+  releases            Release[]
+  bugs                BugReport[]
+  maintenanceRequests MaintenanceRequest[]
+  githubRepositories  GitHubRepository[]
+  phases              ProjectPhase[]
 
   @@index([clientId])
   @@index([status])
@@ -674,17 +748,48 @@ model Milestone {
   updatedAt   DateTime        @updatedAt @map("updated_at")
   deletedAt   DateTime?       @map("deleted_at")
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project       Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks         Task[]
+  documentLinks DocumentMilestoneLink[]
 
   @@index([projectId, status])
   @@map("milestones")
 }
 
+model ProjectPhase {
+  id          String    @id @default(cuid())
+  projectId   String    @map("project_id")
+  title       String
+  description String?
+  order       Int       @default(0)
+  startDate   DateTime? @map("start_date")
+  dueDate     DateTime? @map("due_date")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks   Task[]
+
+  @@index([projectId, order])
+  @@map("project_phases")
+}
+
+enum TaskKind {
+  EPIC
+  TASK
+  SUBTASK
+}
+
 enum TaskStatus {
+  BACKLOG
   TODO
   IN_PROGRESS
+  BLOCKED
   IN_REVIEW
+  TESTING
   DONE
+  CANCELLED
 }
 
 enum TaskPriority {
@@ -694,26 +799,806 @@ enum TaskPriority {
   URGENT
 }
 
+enum TaskType {
+  FEATURE
+  BUG_FIX
+  IMPROVEMENT
+  RESEARCH
+  DESIGN
+  TESTING
+  DOCUMENTATION
+  MAINTENANCE
+  OTHER
+}
+
+enum TaskApprovalStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  CHANGES_REQUESTED
+}
+
 // Tasks belong to a project (the owner key, §7). assigneeId links to a staff User.
 model Task {
-  id          String       @id @default(cuid())
-  projectId   String       @map("project_id")
-  title       String
-  description String?
-  status      TaskStatus   @default(TODO)
-  priority    TaskPriority @default(MEDIUM)
-  assigneeId  String?      @map("assignee_id")
-  dueDate     DateTime?    @map("due_date")
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @updatedAt @map("updated_at")
-  deletedAt   DateTime?    @map("deleted_at")
+  id                 String             @id @default(cuid())
+  code               String?            @unique
+  projectId          String             @map("project_id")
+  title              String
+  description        String?
+  type               TaskType           @default(FEATURE)
+  kind               TaskKind           @default(TASK)
+  status             TaskStatus         @default(TODO)
+  priority           TaskPriority       @default(MEDIUM)
+  assigneeId         String?            @map("assignee_id")
+  reporterId         String?            @map("reporter_id")
+  milestoneId        String?            @map("milestone_id")
+  parentTaskId       String?            @map("parent_task_id")
+  phaseId            String?            @map("phase_id")
+  progressPercent    Int                @default(0) @map("progress_percent")
+  blockedReason      String?            @map("blocked_reason")
+  completedAt        DateTime?          @map("completed_at")
+  qaVerifiedById     String?            @map("qa_verified_by_id")
+  qaVerifiedAt       DateTime?          @map("qa_verified_at")
+  startDate          DateTime?          @map("start_date")
+  dueDate            DateTime?          @map("due_date")
+  estimatedHours     Decimal?           @map("estimated_hours") @db.Decimal(8, 2)
+  acceptanceCriteria String?            @map("acceptance_criteria")
+  reviewRequired     Boolean            @default(true) @map("review_required")
+  approvalStatus     TaskApprovalStatus @default(DRAFT) @map("approval_status")
+  submittedAt        DateTime?          @map("submitted_at")
+  reviewedById       String?            @map("reviewed_by_id")
+  reviewedAt         DateTime?          @map("reviewed_at")
+  reviewNote         String?            @map("review_note")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+  deletedAt          DateTime?          @map("deleted_at")
 
-  project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  assignee User?   @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  project         Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee        User?                @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  reporter        User?                @relation("TaskReporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  reviewer        User?                @relation("TaskReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  milestone       Milestone?           @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  phase           ProjectPhase?        @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+  qaVerifiedBy    User?                @relation("TaskQaVerifier", fields: [qaVerifiedById], references: [id], onDelete: SetNull)
+  parentTask      Task?                @relation("TaskSubtasks", fields: [parentTaskId], references: [id], onDelete: SetNull)
+  subtasks        Task[]               @relation("TaskSubtasks")
+  dependencies    TaskDependency[]     @relation("TaskDependencyTask")
+  dependents      TaskDependency[]     @relation("TaskDependencyPrerequisite")
+  comments        TaskComment[]
+  attachments     TaskAttachment[]
+  timeEntries     TaskTimeEntry[]
+  reviews         TaskReview[]
+  checklist       TaskChecklistItem[]
+  progressReports TaskProgressReport[]
+  transitions     TaskTransition[]
+  documentLinks   DocumentTaskLink[]
+  githubLinks     GitHubTaskLink[]
+  updateLinks     SystemUpdateTask[]
+  releaseLinks    ReleaseTask[]
 
   @@index([projectId, status])
   @@index([assigneeId])
+  @@index([milestoneId])
+  @@index([parentTaskId])
+  @@index([phaseId])
+  @@index([reporterId])
   @@map("tasks")
+}
+
+enum ProjectMemberRole {
+  MANAGER
+  LEAD_ENGINEER
+  ENGINEER
+  QA_ENGINEER
+  VIEWER
+}
+
+model ProjectMember {
+  id               String            @id @default(cuid())
+  projectId        String            @map("project_id")
+  userId           String            @map("user_id")
+  role             ProjectMemberRole @default(ENGINEER)
+  responsibilities String?
+  assignedAt       DateTime          @default(now()) @map("assigned_at")
+  removedAt        DateTime?         @map("removed_at")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([userId, removedAt])
+  @@map("project_members")
+}
+
+enum EngineerAvailabilityStatus {
+  AVAILABLE
+  LIMITED
+  UNAVAILABLE
+}
+
+model EngineerProfile {
+  userId              String                     @id @map("user_id")
+  headline            String?
+  skills              String[]                   @default([])
+  availability        EngineerAvailabilityStatus @default(AVAILABLE)
+  weeklyCapacityHours Decimal                    @default(40) @map("weekly_capacity_hours") @db.Decimal(5, 2)
+  timezone            String                     @default("UTC")
+  updatedAt           DateTime                   @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("engineer_profiles")
+}
+
+model EngineerAvailability {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  startAt   DateTime @map("start_at")
+  endAt     DateTime @map("end_at")
+  kind      String
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startAt, endAt])
+  @@map("engineer_availability")
+}
+
+model ProjectAssignmentEvent {
+  id         String   @id @default(cuid())
+  projectId  String   @map("project_id")
+  userId     String   @map("user_id")
+  actorId    String   @map("actor_id")
+  action     String
+  role       String
+  occurredAt DateTime @default(now()) @map("occurred_at")
+
+  @@index([projectId, occurredAt])
+  @@index([userId, occurredAt])
+  @@map("project_assignment_events")
+}
+
+enum DocumentationFormat {
+  MARKDOWN
+  RICH_TEXT
+  FILE
+}
+
+enum DocumentationStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  ARCHIVED
+}
+
+model ProjectDocumentation {
+  id             String              @id @default(cuid())
+  projectId      String              @map("project_id")
+  title          String
+  category       String?
+  folder         String?
+  format         DocumentationFormat @default(MARKDOWN)
+  content        String?
+  storageKey     String?             @map("storage_key")
+  fileName       String?             @map("file_name")
+  mimeType       String?             @map("mime_type")
+  sizeBytes      Int?                @map("size_bytes")
+  status         DocumentationStatus @default(DRAFT)
+  currentVersion Int                 @default(1) @map("current_version")
+  ownerId        String?             @map("owner_id")
+  createdById    String              @map("created_by_id")
+  updatedById    String?             @map("updated_by_id")
+  approvedById   String?             @map("approved_by_id")
+  approvedAt     DateTime?           @map("approved_at")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+  deletedAt      DateTime?           @map("deleted_at")
+
+  project        Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  owner          User?                   @relation("DocumentationOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  createdBy      User                    @relation("DocumentationCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy      User?                   @relation("DocumentationUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  approvedBy     User?                   @relation("DocumentationApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  versions       DocumentationVersion[]
+  comments       DocumentationComment[]
+  taskLinks      DocumentTaskLink[]
+  milestoneLinks DocumentMilestoneLink[]
+
+  @@index([projectId, status])
+  @@index([projectId, category])
+  @@index([ownerId])
+  @@map("project_documentation")
+}
+
+model DocumentationComment {
+  id         String    @id @default(cuid())
+  documentId String    @map("document_id")
+  authorId   String    @map("author_id")
+  body       String
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  deletedAt  DateTime? @map("deleted_at")
+
+  document ProjectDocumentation @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  author   User                 @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([documentId, createdAt])
+  @@map("documentation_comments")
+}
+
+model DocumentationVersion {
+  id           String              @id @default(cuid())
+  documentId   String              @map("document_id")
+  version      Int
+  title        String
+  content      String?
+  storageKey   String?             @map("storage_key")
+  fileName     String?             @map("file_name")
+  mimeType     String?             @map("mime_type")
+  sizeBytes    Int?                @map("size_bytes")
+  status       DocumentationStatus @default(DRAFT)
+  createdById  String?             @map("created_by_id")
+  approvedById String?             @map("approved_by_id")
+  approvedAt   DateTime?           @map("approved_at")
+  createdAt    DateTime            @default(now()) @map("created_at")
+
+  document   ProjectDocumentation @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdBy  User?                @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  approvedBy User?                @relation("DocumentationVersionApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@unique([documentId, version])
+  @@map("documentation_versions")
+}
+
+model DocumentTaskLink {
+  documentId String @map("document_id")
+  taskId     String @map("task_id")
+
+  document ProjectDocumentation @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  task     Task                 @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, taskId])
+  @@index([taskId])
+  @@map("document_task_links")
+}
+
+model DocumentMilestoneLink {
+  documentId  String @map("document_id")
+  milestoneId String @map("milestone_id")
+
+  document  ProjectDocumentation @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  milestone Milestone            @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, milestoneId])
+  @@index([milestoneId])
+  @@map("document_milestone_links")
+}
+
+model TaskDependency {
+  taskId      String   @map("task_id")
+  dependsOnId String   @map("depends_on_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  task      Task @relation("TaskDependencyTask", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOn Task @relation("TaskDependencyPrerequisite", fields: [dependsOnId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, dependsOnId])
+  @@index([dependsOnId])
+  @@map("task_dependencies")
+}
+
+model TaskComment {
+  id        String    @id @default(cuid())
+  taskId    String    @map("task_id")
+  authorId  String    @map("author_id")
+  body      String
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([taskId, createdAt])
+  @@map("task_comments")
+}
+
+model TaskAttachment {
+  id         String   @id @default(cuid())
+  taskId     String   @map("task_id")
+  storageKey String   @unique @map("storage_key")
+  fileName   String   @map("file_name")
+  mimeType   String   @map("mime_type")
+  sizeBytes  Int      @map("size_bytes")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("task_attachments")
+}
+
+model TaskTimeEntry {
+  id        String   @id @default(cuid())
+  taskId    String   @map("task_id")
+  userId    String   @map("user_id")
+  minutes   Int
+  note      String?
+  date      DateTime @db.Date
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([taskId, date])
+  @@index([userId, date])
+  @@map("task_time_entries")
+}
+
+model TaskReview {
+  id         String             @id @default(cuid())
+  taskId     String             @map("task_id")
+  authorId   String             @map("author_id")
+  reviewerId String?            @map("reviewer_id")
+  status     TaskApprovalStatus
+  note       String?
+  createdAt  DateTime           @default(now()) @map("created_at")
+
+  task     Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author   User  @relation("TaskReviewAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  reviewer User? @relation("TaskReviewReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  @@index([taskId, createdAt])
+  @@map("task_reviews")
+}
+
+model TaskChecklistItem {
+  id          String    @id @default(cuid())
+  taskId      String    @map("task_id")
+  title       String
+  completedAt DateTime? @map("completed_at")
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, order])
+  @@map("task_checklist_items")
+}
+
+model TaskProgressReport {
+  id              String   @id @default(cuid())
+  taskId          String   @map("task_id")
+  authorId        String   @map("author_id")
+  body            String
+  progressPercent Int      @map("progress_percent")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([taskId, createdAt])
+  @@map("task_progress_reports")
+}
+
+model TaskTransition {
+  id         String     @id @default(cuid())
+  taskId     String     @map("task_id")
+  actorId    String     @map("actor_id")
+  fromStatus TaskStatus @map("from_status")
+  toStatus   TaskStatus @map("to_status")
+  note       String?
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  task  Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  actor User @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([taskId, createdAt])
+  @@map("task_transitions")
+}
+
+enum MaintenanceStatus {
+  ACTIVE
+  PAUSED
+  RETIRED
+}
+
+model ManagedSystem {
+  id                 String            @id @default(cuid())
+  projectId          String            @map("project_id")
+  clientId           String?           @map("client_id")
+  name               String
+  description        String?
+  technologyStack    String[]          @default([]) @map("technology_stack")
+  productionUrl      String?           @map("production_url")
+  stagingUrl         String?           @map("staging_url")
+  githubRepositoryId String?           @map("github_repository_id")
+  hostingProvider    String?           @map("hosting_provider")
+  currentVersion     String?           @map("current_version")
+  assignedEngineerId String?           @map("assigned_engineer_id")
+  maintenanceStatus  MaintenanceStatus @default(ACTIVE) @map("maintenance_status")
+  lastUpdateAt       DateTime?         @map("last_update_at")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+  deletedAt          DateTime?         @map("deleted_at")
+
+  project          Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  client           Client?              @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  githubRepository GitHubRepository?    @relation(fields: [githubRepositoryId], references: [id], onDelete: SetNull)
+  assignedEngineer User?                @relation(fields: [assignedEngineerId], references: [id], onDelete: SetNull)
+  updates          SystemUpdate[]
+  releases         Release[]
+  bugs             BugReport[]
+  maintenance      MaintenanceRequest[]
+
+  @@index([projectId, maintenanceStatus])
+  @@index([clientId])
+  @@index([assignedEngineerId])
+  @@map("managed_systems")
+}
+
+enum SystemUpdateCategory {
+  NEW_FEATURE
+  SECURITY_PATCH
+  BUG_FIX
+  PERFORMANCE_OPTIMIZATION
+  UI_UX_UPDATE
+  DATABASE_MIGRATION
+  DEPENDENCY_UPGRADE
+  INFRASTRUCTURE_CHANGE
+}
+
+enum SystemUpdateStatus {
+  REQUESTED
+  APPROVED
+  ASSIGNED
+  IN_DEVELOPMENT
+  CODE_REVIEW
+  TESTING
+  STAGING
+  PRODUCTION_APPROVAL
+  DEPLOYED
+  VERIFIED
+  COMPLETED
+  CANCELLED
+}
+
+model SystemUpdate {
+  id                     String               @id @default(cuid())
+  systemId               String               @map("system_id")
+  projectId              String               @map("project_id")
+  title                  String
+  description            String?
+  category               SystemUpdateCategory
+  status                 SystemUpdateStatus   @default(REQUESTED)
+  requestedAt            DateTime             @default(now()) @map("requested_at")
+  deployedAt             DateTime?            @map("deployed_at")
+  productionApprovedById String?              @map("production_approved_by_id")
+  productionApprovedAt   DateTime?            @map("production_approved_at")
+  createdAt              DateTime             @default(now()) @map("created_at")
+  updatedAt              DateTime             @updatedAt @map("updated_at")
+
+  system     ManagedSystem      @relation(fields: [systemId], references: [id], onDelete: Cascade)
+  project    Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  approvedBy User?              @relation("SystemUpdateProductionApprover", fields: [productionApprovedById], references: [id], onDelete: SetNull)
+  taskLinks  SystemUpdateTask[]
+
+  @@index([systemId, status])
+  @@index([projectId, createdAt])
+  @@map("system_updates")
+}
+
+model SystemUpdateTask {
+  updateId String @map("update_id")
+  taskId   String @map("task_id")
+
+  update SystemUpdate @relation(fields: [updateId], references: [id], onDelete: Cascade)
+  task   Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@id([updateId, taskId])
+  @@index([taskId])
+  @@map("system_update_tasks")
+}
+
+enum ReleaseStatus {
+  PLANNED
+  IN_PROGRESS
+  PENDING_APPROVAL
+  APPROVED
+  DEPLOYED
+  VERIFIED
+  ROLLED_BACK
+  CANCELLED
+}
+
+model Release {
+  id            String        @id @default(cuid())
+  systemId      String        @map("system_id")
+  projectId     String        @map("project_id")
+  version       String
+  notes         String?
+  changeHistory String?       @map("change_history")
+  status        ReleaseStatus @default(PLANNED)
+  ownerId       String?       @map("owner_id")
+  approvedById  String?       @map("approved_by_id")
+  approvedAt    DateTime?     @map("approved_at")
+  deployedAt    DateTime?     @map("deployed_at")
+  rollbackPlan  String?       @map("rollback_plan")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  system           ManagedSystem        @relation(fields: [systemId], references: [id], onDelete: Cascade)
+  project          Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  owner            User?                @relation("ReleaseOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  approvedBy       User?                @relation("ReleaseApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  deployments      Deployment[]
+  taskLinks        ReleaseTask[]
+  pullRequestLinks ReleasePullRequest[]
+
+  @@unique([systemId, version])
+  @@index([projectId, status])
+  @@map("releases")
+}
+
+model ReleaseTask {
+  releaseId String @map("release_id")
+  taskId    String @map("task_id")
+
+  release Release @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  task    Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@id([releaseId, taskId])
+  @@index([taskId])
+  @@map("release_tasks")
+}
+
+model ReleasePullRequest {
+  releaseId        String @map("release_id")
+  githubTaskLinkId String @map("github_task_link_id")
+
+  release        Release        @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  githubTaskLink GitHubTaskLink @relation(fields: [githubTaskLinkId], references: [id], onDelete: Cascade)
+
+  @@id([releaseId, githubTaskLinkId])
+  @@index([githubTaskLinkId])
+  @@map("release_pull_requests")
+}
+
+enum DeploymentStatus {
+  PENDING
+  IN_PROGRESS
+  SUCCEEDED
+  FAILED
+  ROLLED_BACK
+}
+
+model Deployment {
+  id           String           @id @default(cuid())
+  releaseId    String           @map("release_id")
+  environment  String
+  status       DeploymentStatus @default(PENDING)
+  notes        String?
+  deployedAt   DateTime?        @map("deployed_at")
+  rolledBackAt DateTime?        @map("rolled_back_at")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  release Release @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+
+  @@index([releaseId, createdAt])
+  @@map("deployments")
+}
+
+enum BugSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum BugStatus {
+  REPORTED
+  TRIAGED
+  ASSIGNED
+  IN_PROGRESS
+  CODE_REVIEW
+  TESTING
+  RESOLVED
+  CLOSED
+  REOPENED
+}
+
+model BugReport {
+  id                String       @id @default(cuid())
+  code              String?      @unique
+  systemId          String       @map("system_id")
+  projectId         String       @map("project_id")
+  title             String
+  description       String
+  severity          BugSeverity  @default(MEDIUM)
+  priority          TaskPriority @default(MEDIUM)
+  status            BugStatus    @default(REPORTED)
+  environment       String?
+  reproductionSteps String?      @map("reproduction_steps")
+  expectedResult    String?      @map("expected_result")
+  actualResult      String?      @map("actual_result")
+  errorLogs         String?      @map("error_logs")
+  attachmentKey     String?      @map("attachment_key")
+  rootCause         String?      @map("root_cause")
+  assigneeId        String?      @map("assignee_id")
+  githubIssueUrl    String?      @map("github_issue_url")
+  reportedAt        DateTime     @default(now()) @map("reported_at")
+  responseDueAt     DateTime?    @map("response_due_at")
+  resolutionDueAt   DateTime?    @map("resolution_due_at")
+  respondedAt       DateTime?    @map("responded_at")
+  resolvedAt        DateTime?    @map("resolved_at")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  system   ManagedSystem @relation(fields: [systemId], references: [id], onDelete: Cascade)
+  project  Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee User?         @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, status])
+  @@index([systemId, severity])
+  @@index([assigneeId])
+  @@map("bug_reports")
+}
+
+enum MaintenanceType {
+  PREVENTIVE
+  CORRECTIVE
+  EMERGENCY
+  SCHEDULED
+  SECURITY_PATCH
+  HEALTH_CHECK
+  INCIDENT
+}
+
+enum MaintenanceRequestStatus {
+  REQUESTED
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model MaintenanceRequest {
+  id              String                   @id @default(cuid())
+  systemId        String                   @map("system_id")
+  projectId       String                   @map("project_id")
+  title           String
+  description     String?
+  type            MaintenanceType
+  status          MaintenanceRequestStatus @default(REQUESTED)
+  assigneeId      String?                  @map("assignee_id")
+  scheduledAt     DateTime?                @map("scheduled_at")
+  recurrenceRule  String?                  @map("recurrence_rule")
+  responseDueAt   DateTime?                @map("response_due_at")
+  resolutionDueAt DateTime?                @map("resolution_due_at")
+  respondedAt     DateTime?                @map("responded_at")
+  completedAt     DateTime?                @map("completed_at")
+  rootCause       String?                  @map("root_cause")
+  resolutionNotes String?                  @map("resolution_notes")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @updatedAt @map("updated_at")
+
+  system   ManagedSystem @relation(fields: [systemId], references: [id], onDelete: Cascade)
+  project  Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee User?         @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, status])
+  @@index([systemId, scheduledAt])
+  @@index([assigneeId])
+  @@map("maintenance_requests")
+}
+
+enum GitHubConnectionStatus {
+  ACTIVE
+  SUSPENDED
+  DISCONNECTED
+}
+
+model GitHubInstallation {
+  id             String                 @id @default(cuid())
+  installationId String                 @unique @map("installation_id")
+  accountLogin   String                 @map("account_login")
+  accountType    String?                @map("account_type")
+  status         GitHubConnectionStatus @default(ACTIVE)
+  connectedById  String?                @map("connected_by_id")
+  createdAt      DateTime               @default(now()) @map("created_at")
+  updatedAt      DateTime               @updatedAt @map("updated_at")
+
+  connectedBy  User?              @relation(fields: [connectedById], references: [id], onDelete: SetNull)
+  repositories GitHubRepository[]
+
+  @@index([accountLogin, status])
+  @@map("github_installations")
+}
+
+model GitHubRepository {
+  id             String   @id @default(cuid())
+  installationId String   @map("installation_id")
+  githubId       String   @unique @map("github_id")
+  fullName       String   @unique @map("full_name")
+  defaultBranch  String?  @map("default_branch")
+  isPrivate      Boolean  @default(true) @map("is_private")
+  projectId      String?  @map("project_id")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  installation  GitHubInstallation   @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  project       Project?             @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  systems       ManagedSystem[]
+  taskLinks     GitHubTaskLink[]
+  webhookEvents GitHubWebhookEvent[]
+
+  @@index([projectId, isActive])
+  @@map("github_repositories")
+}
+
+enum GitHubLinkKind {
+  ISSUE
+  BRANCH
+  COMMIT
+  PULL_REQUEST
+  CHECK_RUN
+  RELEASE
+}
+
+model GitHubTaskLink {
+  id           String         @id @default(cuid())
+  taskId       String         @map("task_id")
+  repositoryId String         @map("repository_id")
+  kind         GitHubLinkKind
+  externalId   String         @map("external_id")
+  url          String
+  title        String?
+  number       Int?
+  state        String?
+  lastSyncedAt DateTime?      @map("last_synced_at")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  task         Task                 @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  repository   GitHubRepository     @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  releaseLinks ReleasePullRequest[]
+
+  @@unique([repositoryId, kind, externalId])
+  @@index([taskId, kind])
+  @@map("github_task_links")
+}
+
+enum GitHubWebhookStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+}
+
+model GitHubWebhookEvent {
+  id           String              @id @default(cuid())
+  deliveryId   String              @unique @map("delivery_id")
+  eventType    String              @map("event_type")
+  action       String?
+  status       GitHubWebhookStatus @default(RECEIVED)
+  repositoryId String?             @map("repository_id")
+  payload      Json?
+  error        String?
+  receivedAt   DateTime            @default(now()) @map("received_at")
+  processedAt  DateTime?           @map("processed_at")
+
+  repository GitHubRepository? @relation(fields: [repositoryId], references: [id], onDelete: SetNull)
+
+  @@index([status, receivedAt])
+  @@map("github_webhook_events")
 }
 
 // ── Website: social proof (web.prisma domain, §7) ────────────────────────────

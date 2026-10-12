@@ -74,10 +74,74 @@ async function main(): Promise<void> {
           'media.',
           'audit.',
           'notifications.',
+          'engineering.',
+          'project-documentation.',
+          'github.read',
         ).map((permission) => ({ id: permission.id })),
       },
     },
   });
+
+  // Engineering roles receive project workflow access without finance, HR, or
+  // organization administration privileges. Project membership still gates data.
+  const engineeringRolePermissions: Record<string, string[]> = {
+    [ROLES.PROJECT_MANAGER]: [
+      'projects.',
+      'tasks.',
+      'milestones.',
+      'engineering.',
+      'project-documentation.',
+      'github.read',
+      'notifications.',
+    ],
+    [ROLES.LEAD_ENGINEER]: [
+      'projects.read',
+      'tasks.read',
+      'tasks.create',
+      'tasks.update',
+      'milestones.read',
+      'engineering.read',
+      'engineering.tasks.create',
+      'engineering.tasks.review',
+      'project-documentation.read',
+      'github.read',
+      'notifications.read',
+    ],
+    [ROLES.ENGINEER]: [
+      'projects.read',
+      'tasks.read',
+      'tasks.create',
+      'tasks.update',
+      'milestones.read',
+      'engineering.read',
+      'engineering.tasks.create',
+      'project-documentation.read',
+      'github.read',
+      'notifications.read',
+    ],
+    [ROLES.QA_ENGINEER]: [
+      'projects.read',
+      'tasks.read',
+      'tasks.update',
+      'milestones.read',
+      'engineering.read',
+      'project-documentation.read',
+      'github.read',
+      'notifications.read',
+    ],
+  };
+  for (const [name, prefixes] of Object.entries(engineeringRolePermissions)) {
+    await prisma.role.update({
+      where: { name },
+      data: {
+        permissions: {
+          set: permissions
+            .filter((permission) => prefixes.some((prefix) => permission.key.startsWith(prefix)))
+            .map((permission) => ({ id: permission.id })),
+        },
+      },
+    });
+  }
 
   const staffKeys = new Set<string>([
     PERMISSIONS.PROJECTS_READ,
@@ -95,6 +159,9 @@ async function main(): Promise<void> {
     PERMISSIONS.LEAVE_READ,
     PERMISSIONS.LEAVE_CREATE,
     PERMISSIONS.NOTIFICATIONS_READ,
+    PERMISSIONS.ENGINEERING_READ,
+    PERMISSIONS.ENGINEERING_TASK_CREATE,
+    PERMISSIONS.PROJECT_DOCUMENTATION_READ,
   ]);
   await prisma.role.update({
     where: { name: ROLES.STAFF },

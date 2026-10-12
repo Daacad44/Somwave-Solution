@@ -8,7 +8,9 @@ import {
   TICKET_PRIORITY_LABELS,
   TICKET_STATUSES,
   PERMISSIONS,
+  ROLES,
   type CreateTicketInput,
+  type TicketPriority,
   type TicketStatus,
 } from '@somwave/shared';
 import { Table, THead, TBody, Tr, Th, Td } from '../../components/ui/Table';
@@ -19,13 +21,28 @@ import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { LoadingState, EmptyState, ErrorState } from '../../components/states';
 import { useCurrentUser } from '../auth/hooks';
-import { useHasPermission } from '../../lib/rbac';
+import { hasRole, useHasPermission } from '../../lib/rbac';
 import { formatDate } from '../../lib/date';
 import { ApiError } from '../../lib/apiClient';
 import { useTickets, useCreateTicket, useUpdateTicket } from './hooks';
 
+const STAFF_STATUS_LABELS: Record<TicketStatus, string> = {
+  OPEN: 'Open',
+  IN_PROGRESS: 'In progress',
+  WAITING: 'Waiting',
+  RESOLVED: 'Resolved',
+};
+const STAFF_PRIORITY_LABELS: Record<TicketPriority, string> = {
+  LOW: 'Low',
+  MEDIUM: 'Medium',
+  HIGH: 'High',
+  URGENT: 'Urgent',
+};
+
 export function TicketsPage(): ReactNode {
   const { data: user } = useCurrentUser();
+  const isPortalClient = hasRole(user, ROLES.CLIENT);
+  const t = (english: string, somali: string): string => (isPortalClient ? somali : english);
   const query = useTickets();
   const create = useCreateTicket();
   const update = useUpdateTicket();
@@ -46,7 +63,9 @@ export function TicketsPage(): ReactNode {
       form.reset({ subject: '', description: '', priority: 'MEDIUM' });
       setOpen(false);
     } catch (err) {
-      setServerError(err instanceof ApiError ? err.message : 'Wax baa qaldamay.');
+      setServerError(
+        err instanceof ApiError ? err.message : t('Something went wrong.', 'Wax baa qaldamay.'),
+      );
     }
   });
 
@@ -54,31 +73,35 @@ export function TicketsPage(): ReactNode {
     <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-ink">Tikidhada</h1>
-          <p className="mt-1 text-base text-muted">Taageerada macaamiisha.</p>
+          <h1 className="text-2xl font-semibold text-ink">{t('Tickets', 'Tikidhada')}</h1>
+          <p className="mt-1 text-base text-muted">
+            {t('Customer support.', 'Taageerada macaamiisha.')}
+          </p>
         </div>
-        {canCreate ? <Button onClick={() => setOpen(true)}>Tikidh cusub</Button> : null}
+        {canCreate ? (
+          <Button onClick={() => setOpen(true)}>{t('New ticket', 'Tikidh cusub')}</Button>
+        ) : null}
       </div>
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {query.isLoading ? (
-          <LoadingState rows={6} label="Waa la soo rarayaa" />
+          <LoadingState rows={6} label={t('Loading', 'Waa la soo rarayaa')} />
         ) : query.isError ? (
           <ErrorState
-            description="Tikidhada lama soo rari karin."
+            description={t('Tickets could not be loaded.', 'Tikidhada lama soo rari karin.')}
             onRetry={() => query.refetch()}
           />
         ) : rows.length === 0 ? (
-          <EmptyState title="Tikidh majiro" />
+          <EmptyState title={t('No tickets', 'Tikidh majiro')} />
         ) : (
           <Table>
             <THead>
               <Tr>
-                <Th>Koodh</Th>
-                <Th>Mawduuc</Th>
-                <Th>Macmiil</Th>
-                <Th>Mudnaan</Th>
-                <Th>Xaalad</Th>
-                <Th>Taariikh</Th>
+                <Th>{t('Code', 'Koodh')}</Th>
+                <Th>{t('Subject', 'Mawduuc')}</Th>
+                <Th>{t('Client', 'Macmiil')}</Th>
+                <Th>{t('Priority', 'Mudnaan')}</Th>
+                <Th>{t('Status', 'Xaalad')}</Th>
+                <Th>{t('Date', 'Taariikh')}</Th>
               </Tr>
             </THead>
             <TBody>
@@ -94,13 +117,19 @@ export function TicketsPage(): ReactNode {
                   </Td>
                   <Td>{row.subject}</Td>
                   <Td>{row.client.companyName}</Td>
-                  <Td>{TICKET_PRIORITY_LABELS[row.priority]}</Td>
+                  <Td>
+                    {isPortalClient
+                      ? TICKET_PRIORITY_LABELS[row.priority]
+                      : STAFF_PRIORITY_LABELS[row.priority]}
+                  </Td>
                   <Td>
                     {canUpdate ? (
                       <Select
                         options={TICKET_STATUSES.map((value) => ({
                           value,
-                          label: TICKET_STATUS_LABELS[value],
+                          label: isPortalClient
+                            ? TICKET_STATUS_LABELS[value]
+                            : STAFF_STATUS_LABELS[value],
                         }))}
                         value={row.status}
                         onChange={(event) =>
@@ -111,7 +140,11 @@ export function TicketsPage(): ReactNode {
                         }
                       />
                     ) : (
-                      <Badge>{TICKET_STATUS_LABELS[row.status]}</Badge>
+                      <Badge>
+                        {isPortalClient
+                          ? TICKET_STATUS_LABELS[row.status]
+                          : STAFF_STATUS_LABELS[row.status]}
+                      </Badge>
                     )}
                   </Td>
                   <Td className="text-muted">{formatDate(row.createdAt)}</Td>
@@ -121,37 +154,37 @@ export function TicketsPage(): ReactNode {
           </Table>
         )}
       </div>
-      <Modal open={open} onClose={() => setOpen(false)} title="Tikidh cusub">
+      <Modal open={open} onClose={() => setOpen(false)} title={t('New ticket', 'Tikidh cusub')}>
         <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
           <Input
-            label="Mawduuca"
+            label={t('Subject', 'Mawduuca')}
             error={form.formState.errors.subject?.message}
             {...form.register('subject')}
           />
           <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-ink">Faahfaahin</span>
+            <span className="text-sm font-medium text-ink">{t('Description', 'Faahfaahin')}</span>
             <textarea
               className="min-h-24 rounded-md border border-border bg-surface px-3 py-2 text-base text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               {...form.register('description')}
             />
           </label>
           <Select
-            label="Mudnaan"
+            label={t('Priority', 'Mudnaan')}
             options={[
-              { value: 'LOW', label: 'Hoose' },
-              { value: 'MEDIUM', label: 'Dhexe' },
-              { value: 'HIGH', label: 'Sare' },
-              { value: 'URGENT', label: 'Degdeg' },
+              { value: 'LOW', label: t('Low', 'Hoose') },
+              { value: 'MEDIUM', label: t('Medium', 'Dhexe') },
+              { value: 'HIGH', label: t('High', 'Sare') },
+              { value: 'URGENT', label: t('Urgent', 'Degdeg') },
             ]}
             {...form.register('priority')}
           />
           {serverError ? <p className="text-sm text-error">{serverError}</p> : null}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-              Jooji
+              {t('Cancel', 'Jooji')}
             </Button>
             <Button type="submit" isLoading={form.formState.isSubmitting || create.isPending}>
-              Dir
+              {t('Submit', 'Dir')}
             </Button>
           </div>
         </form>

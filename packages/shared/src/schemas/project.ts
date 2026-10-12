@@ -25,7 +25,7 @@ export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
 // Money is transmitted as a decimal string (§7 — stored Decimal(12,2), never Float).
 const moneyString = z
   .string()
-  .regex(/^\d{1,10}(\.\d{1,2})?$/, 'Fadlan geli qiime sax ah')
+  .regex(/^\d{1,10}(\.\d{1,2})?$/, 'Enter a valid amount')
   .optional();
 
 // A project as shown in the internal admin list/detail.
@@ -47,11 +47,11 @@ export type AdminProject = z.infer<typeof adminProjectSchema>;
 // Dates arrive from the form as ISO date strings (the shared picker, §11).
 const isoDate = z
   .string()
-  .refine((v) => !Number.isNaN(Date.parse(v)), 'Taariikh aan sax ahayn')
+  .refine((v) => !Number.isNaN(Date.parse(v)), 'Invalid date')
   .optional();
 
 export const createProjectSchema = z.object({
-  name: z.string().trim().min(1, 'Magaca waa waajib').max(200),
+  name: z.string().trim().min(1, 'Name is required').max(200),
   description: z.string().trim().max(5000).optional(),
   status: projectStatusSchema.default('PLANNING'),
   startDate: isoDate,
@@ -65,7 +65,7 @@ export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 
 export const updateProjectSchema = z
   .object({
-    name: z.string().trim().min(1, 'Magaca waa waajib').max(200).optional(),
+    name: z.string().trim().min(1, 'Name is required').max(200).optional(),
     description: z.string().trim().max(5000).nullable().optional(),
     status: projectStatusSchema.optional(),
     startDate: isoDate.nullable(),
@@ -75,7 +75,7 @@ export const updateProjectSchema = z
     managerId: z.string().nullable().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
-    message: 'Ugu yaraan hal beddel ayaa loo baahan yahay',
+    message: 'At least one change is required',
   });
 
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;

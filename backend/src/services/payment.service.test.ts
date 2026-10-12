@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Prisma } from '@prisma/client';
 
 vi.mock('../lib/prisma', () => ({
-    prisma: {
+  prisma: {
     invoice: { findFirst: vi.fn(), update: vi.fn() },
     payment: {
       findUnique: vi.fn(),

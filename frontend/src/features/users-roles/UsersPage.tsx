@@ -55,48 +55,45 @@ export function UsersPage(): ReactNode {
     <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-ink">Isticmaalayaasha</h1>
-          <p className="mt-1 text-base text-muted">Maamul akoonnada iyo doorarkooda.</p>
+          <h1 className="text-2xl font-semibold text-ink">Users</h1>
+          <p className="mt-1 text-base text-muted">Manage user accounts and roles.</p>
         </div>
-        {canCreate ? <Button onClick={openCreate}>Isticmaale cusub</Button> : null}
+        {canCreate ? <Button onClick={openCreate}>New user</Button> : null}
       </div>
 
       <form onSubmit={submitSearch} className="mt-6 flex max-w-md gap-2">
         <Input
-          placeholder="Raadi magac ama iimayl…"
+          placeholder="Search name or email…"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          aria-label="Raadi isticmaalayaasha"
+          aria-label="Search users"
           className="flex-1"
         />
         <Button type="submit" variant="secondary">
-          Raadi
+          Search
         </Button>
       </form>
 
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {usersQuery.isLoading ? (
-          <LoadingState rows={6} label="Waa la soo rarayaa" />
+          <LoadingState rows={6} label="Loading" />
         ) : usersQuery.isError ? (
-          <ErrorState
-            description="Isticmaalayaasha lama soo rari karin."
-            onRetry={() => usersQuery.refetch()}
-          />
+          <ErrorState description="Could not load users." onRetry={() => usersQuery.refetch()} />
         ) : users.length === 0 ? (
           <EmptyState
-            title="Weli isticmaale ma jiro"
-            description={search ? 'Raadintaadu waxba ma soo celin.' : undefined}
-            action={canCreate ? <Button onClick={openCreate}>Isticmaale cusub</Button> : undefined}
+            title="No users yet"
+            description={search ? 'No results match your search.' : undefined}
+            action={canCreate ? <Button onClick={openCreate}>New user</Button> : undefined}
           />
         ) : (
           <Table>
             <THead>
               <Tr>
                 <Th>Magaca</Th>
-                <Th>Iimayl</Th>
-                <Th>Doorar</Th>
-                <Th>Xaalad</Th>
-                <Th className="text-end">Ficil</Th>
+                <Th>Email</Th>
+                <Th>Roles</Th>
+                <Th>Status</Th>
+                <Th className="text-end">Actions</Th>
               </Tr>
             </THead>
             <TBody>
@@ -119,19 +116,19 @@ export function UsersPage(): ReactNode {
                   </Td>
                   <Td>
                     <Badge tone={user.isActive ? 'success' : 'neutral'}>
-                      {user.isActive ? 'Firfircoon' : 'Joojiyay'}
+                      {user.isActive ? 'Active' : 'Inactive'}
                     </Badge>
                   </Td>
                   <Td>
                     <div className="flex justify-end gap-2">
                       {canUpdate ? (
                         <Button size="sm" variant="secondary" onClick={() => openEdit(user)}>
-                          Wax ka beddel
+                          Edit
                         </Button>
                       ) : null}
                       {canDelete && user.isActive ? (
                         <Button size="sm" variant="danger" onClick={() => setConfirming(user)}>
-                          Jooji
+                          Cancel
                         </Button>
                       ) : null}
                     </div>
@@ -146,7 +143,7 @@ export function UsersPage(): ReactNode {
       {total > PAGE_SIZE ? (
         <div className="mt-4 flex items-center justify-between text-sm text-muted">
           <span>
-            Bogga {page} / {totalPages} · {total} isticmaale
+            Page {page} / {totalPages} · {total} user
           </span>
           <div className="flex gap-2">
             <Button
@@ -179,18 +176,14 @@ export function UsersPage(): ReactNode {
         />
       ) : null}
 
-      <Modal
-        open={Boolean(confirming)}
-        onClose={() => setConfirming(null)}
-        title="Jooji isticmaalaha"
-      >
+      <Modal open={Boolean(confirming)} onClose={() => setConfirming(null)} title="Deactivate user">
         <p className="text-base text-ink">
-          Ma hubtaa inaad joojinayso <strong>{confirming?.name}</strong>? Fadhigooda waa la joojin
-          doonaa isla markiiba.
+          Are you sure you want to deactivate <strong>{confirming?.name}</strong>? Their sessions
+          will be ended doonaa isla markiiba.
         </p>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setConfirming(null)}>
-            Maya
+            Cancel
           </Button>
           <Button
             variant="danger"
@@ -201,7 +194,7 @@ export function UsersPage(): ReactNode {
               setConfirming(null);
             }}
           >
-            Haa, jooji
+            Yes, deactivate
           </Button>
         </div>
       </Modal>

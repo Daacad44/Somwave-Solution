@@ -6,7 +6,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
   createMilestoneSchema,
   MILESTONE_STATUSES,
-  MILESTONE_STATUS_LABELS,
   type AdminMilestone,
   type CreateMilestoneInput,
 } from '@somwave/shared';
@@ -16,6 +15,7 @@ import { Select } from '../../../components/ui/Select';
 import { Button } from '../../../components/ui/Button';
 import { ApiError } from '../../../lib/apiClient';
 import { useCreateMilestone, useUpdateMilestone } from '../hooks';
+import { INTERNAL_MILESTONE_STATUS } from '../../../lib/internalLabels';
 
 export interface MilestoneFormModalProps {
   open: boolean;
@@ -26,7 +26,7 @@ export interface MilestoneFormModalProps {
 
 const statusOptions = MILESTONE_STATUSES.map((value) => ({
   value,
-  label: MILESTONE_STATUS_LABELS[value],
+  label: INTERNAL_MILESTONE_STATUS[value],
 }));
 
 const dateValue = (iso: string | null | undefined): string => (iso ? iso.slice(0, 10) : '');
@@ -94,7 +94,7 @@ export function MilestoneFormModal({
       close();
     } catch (err) {
       setServerError(
-        err instanceof ApiError ? err.message : 'Wax baa qaldamay. Fadlan mar kale isku day.',
+        err instanceof ApiError ? err.message : 'Something went wrong. Please try again.',
       );
     }
   });
@@ -102,24 +102,20 @@ export function MilestoneFormModal({
   const pending = isSubmitting || createMutation.isPending || updateMutation.isPending;
 
   return (
-    <Modal
-      open={open}
-      onClose={close}
-      title={isEdit ? 'Wax ka beddel marxaladda' : 'Marxalad cusub'}
-    >
+    <Modal open={open} onClose={close} title={isEdit ? 'Edit milestone' : 'New milestone'}>
       <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
         <Select
-          label="Mashruuca"
+          label="Project"
           options={projects.map((p) => ({ value: p.id, label: p.name }))}
-          placeholder={projects.length === 0 ? 'Wali mashruuc ma jiro' : undefined}
+          placeholder={projects.length === 0 ? 'No projects available yet' : undefined}
           disabled={isEdit}
           error={errors.projectId?.message}
           {...register('projectId')}
         />
-        <Input label="Cinwaanka" error={errors.title?.message} {...register('title')} />
+        <Input label="Title" error={errors.title?.message} {...register('title')} />
 
         <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-ink">Sharaxaad</span>
+          <span className="text-sm font-medium text-ink">Description</span>
           <textarea
             className="min-h-24 rounded-md border border-border bg-surface px-3 py-2 text-base text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             rows={3}
@@ -128,9 +124,9 @@ export function MilestoneFormModal({
         </label>
 
         <div className="grid grid-cols-2 gap-3">
-          <Select label="Xaalada" options={statusOptions} {...register('status')} />
+          <Select label="Status" options={statusOptions} {...register('status')} />
           <Input
-            label="Taariikhda dhammaadka"
+            label="End date"
             type="date"
             error={errors.dueDate?.message}
             {...register('dueDate')}
@@ -138,7 +134,7 @@ export function MilestoneFormModal({
         </div>
 
         <Input
-          label="Kala horreyn (order)"
+          label="Display order"
           type="number"
           min={0}
           error={errors.order?.message}
@@ -149,10 +145,10 @@ export function MilestoneFormModal({
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={close}>
-            Jooji
+            Cancel
           </Button>
           <Button type="submit" isLoading={pending} disabled={!isEdit && projects.length === 0}>
-            {isEdit ? 'Kaydi' : 'Abuur'}
+            {isEdit ? 'Save' : 'Create'}
           </Button>
         </div>
       </form>

@@ -152,7 +152,7 @@ export async function updatePortfolioItem(
   input: UpdatePortfolioItemInput,
 ): Promise<AdminPortfolioItem> {
   const item = await prisma.portfolioItem.findUnique({ where: { id } });
-  if (!item) throw new AppError('NOT_FOUND', 404, 'Shaqadan lama helin');
+  if (!item) throw new AppError('NOT_FOUND', 404, 'Portfolio item not found');
 
   if (input.slug && input.slug !== item.slug) {
     const clash = await prisma.portfolioItem.findUnique({ where: { slug: input.slug } });
@@ -182,7 +182,7 @@ export async function updatePortfolioItem(
 
 export async function deletePortfolioItem(id: string): Promise<void> {
   const item = await prisma.portfolioItem.findUnique({ where: { id } });
-  if (!item) throw new AppError('NOT_FOUND', 404, 'Shaqadan lama helin');
+  if (!item) throw new AppError('NOT_FOUND', 404, 'Portfolio item not found');
   await prisma.portfolioItem.delete({ where: { id } });
   await invalidateCache();
 }

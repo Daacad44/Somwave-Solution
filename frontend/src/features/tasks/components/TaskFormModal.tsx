@@ -92,7 +92,7 @@ export function TaskFormModal({ open, onClose, projects, task }: TaskFormModalPr
       close();
     } catch (err) {
       setServerError(
-        err instanceof ApiError ? err.message : 'Wax baa qaldamay. Fadlan mar kale isku day.',
+        err instanceof ApiError ? err.message : 'Something went wrong. Please try again.',
       );
     }
   });
@@ -100,20 +100,20 @@ export function TaskFormModal({ open, onClose, projects, task }: TaskFormModalPr
   const pending = isSubmitting || createMutation.isPending || updateMutation.isPending;
 
   return (
-    <Modal open={open} onClose={close} title={isEdit ? 'Wax ka beddel hawsha' : 'Hawl cusub'}>
+    <Modal open={open} onClose={close} title={isEdit ? 'Edit task' : 'New task'}>
       <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
         <Select
-          label="Mashruuca"
+          label="Project"
           options={projects.map((p) => ({ value: p.id, label: p.name }))}
-          placeholder={projects.length === 0 ? 'Wali mashruuc ma jiro' : undefined}
+          placeholder={projects.length === 0 ? 'No projects available yet' : undefined}
           disabled={isEdit}
           error={errors.projectId?.message}
           {...register('projectId')}
         />
-        <Input label="Cinwaanka" error={errors.title?.message} {...register('title')} />
+        <Input label="Title" error={errors.title?.message} {...register('title')} />
 
         <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-ink">Sharaxaad</span>
+          <span className="text-sm font-medium text-ink">Description</span>
           <textarea
             className="min-h-24 rounded-md border border-border bg-surface px-3 py-2 text-base text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             rows={3}
@@ -122,12 +122,12 @@ export function TaskFormModal({ open, onClose, projects, task }: TaskFormModalPr
         </label>
 
         <div className="grid grid-cols-2 gap-3">
-          <Select label="Xaalada" options={statusOptions} {...register('status')} />
-          <Select label="Mudnaanta" options={priorityOptions} {...register('priority')} />
+          <Select label="Status" options={statusOptions} {...register('status')} />
+          <Select label="Priority" options={priorityOptions} {...register('priority')} />
         </div>
 
         <Input
-          label="Taariikhda dhammaadka"
+          label="End date"
           type="date"
           error={errors.dueDate?.message}
           {...register('dueDate')}
@@ -137,10 +137,10 @@ export function TaskFormModal({ open, onClose, projects, task }: TaskFormModalPr
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={close}>
-            Jooji
+            Cancel
           </Button>
           <Button type="submit" isLoading={pending} disabled={!isEdit && projects.length === 0}>
-            {isEdit ? 'Kaydi' : 'Abuur'}
+            {isEdit ? 'Save' : 'Create'}
           </Button>
         </div>
       </form>

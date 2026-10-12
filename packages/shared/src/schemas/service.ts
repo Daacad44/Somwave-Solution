@@ -37,10 +37,10 @@ export const createServiceSchema = z.object({
   slug: z
     .string()
     .trim()
-    .min(1, 'Slug waa waajib')
-    .regex(/^[a-z0-9-]+$/, 'Slug waa inuu noqdaa kebab-case (a-z, 0-9, -)'),
-  title: z.string().trim().min(1, 'Cinwaanka waa waajib').max(200),
-  summary: z.string().trim().min(1, 'Kooban waa waajib').max(500),
+    .min(1, 'Slug is required')
+    .regex(/^[a-z0-9-]+$/, 'Slug must use kebab-case (a-z, 0-9, -)'),
+  title: z.string().trim().min(1, 'Title is required').max(200),
+  summary: z.string().trim().min(1, 'Summary is required').max(500),
   description: z.string().trim().max(5000).optional(),
   order: z.number().int().nonnegative().default(0),
   isPublished: z.boolean().default(true),
@@ -55,7 +55,7 @@ export const updateServiceSchema = z
       .string()
       .trim()
       .min(1)
-      .regex(/^[a-z0-9-]+$/, 'Slug waa inuu noqdaa kebab-case (a-z, 0-9, -)')
+      .regex(/^[a-z0-9-]+$/, 'Slug must use kebab-case (a-z, 0-9, -)')
       .optional(),
     title: z.string().trim().min(1).max(200).optional(),
     summary: z.string().trim().min(1).max(500).optional(),
@@ -64,7 +64,7 @@ export const updateServiceSchema = z
     isPublished: z.boolean().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
-    message: 'Ugu yaraan hal beddel ayaa loo baahan yahay',
+    message: 'At least one change is required',
   });
 
 export type UpdateServiceInput = z.infer<typeof updateServiceSchema>;

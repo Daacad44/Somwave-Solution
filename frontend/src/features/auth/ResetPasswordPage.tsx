@@ -28,13 +28,13 @@ export function ResetPasswordPage(): ReactNode {
   return (
     <main className="auth-shell">
       <form className="auth-card" onSubmit={onSubmit} noValidate>
-        <h1 className="text-2xl font-semibold text-ink">Furaha cusub</h1>
+        <h1 className="text-2xl font-semibold text-ink">New password</h1>
         {done ? (
-          <p className="text-sm text-muted">Furaha waa la beddelay. Hadda waad soo gali kartaa.</p>
+          <p className="text-sm text-muted">Your password has been changed. You can sign in now.</p>
         ) : (
           <>
             <Input
-              label="Furaha cusub"
+              label="New password"
               type="password"
               autoComplete="new-password"
               error={form.formState.errors.password?.message}
@@ -47,12 +47,12 @@ export function ResetPasswordPage(): ReactNode {
               isLoading={mutation.isPending}
               disabled={!token}
             >
-              Kaydi
+              Save
             </Button>
           </>
         )}
         <Link className="text-sm text-brand underline-offset-2 hover:underline" to="/login">
-          Ku noqo soo-galidda
+          Back to sign in
         </Link>
       </form>
     </main>

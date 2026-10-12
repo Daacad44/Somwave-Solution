@@ -66,7 +66,7 @@ export function RolePermissionsModal({
       close();
     } catch (err) {
       setServerError(
-        err instanceof ApiError ? err.message : 'Wax baa qaldamay. Fadlan mar kale isku day.',
+        err instanceof ApiError ? err.message : 'Something went wrong. Please try again.',
       );
     }
   };
@@ -78,15 +78,12 @@ export function RolePermissionsModal({
     <Modal open={open} onClose={close} title={`Rukhsadaha — ${role.name}`}>
       {isSuperAdmin ? (
         <p className="text-base text-muted">
-          SUPER_ADMIN wuxuu had iyo jeer haystaa dhammaan rukhsadaha, lamana beddeli karo.
+          SUPER_ADMIN always has all permissions and cannot be changed.
         </p>
       ) : loading ? (
-        <LoadingState rows={5} label="Waa la soo rarayaa" />
+        <LoadingState rows={5} label="Loading" />
       ) : failed ? (
-        <ErrorState
-          description="Rukhsadaha lama soo rari karin."
-          onRetry={() => roleQuery.refetch()}
-        />
+        <ErrorState description="Could not load permissions." onRetry={() => roleQuery.refetch()} />
       ) : (
         <div className="flex flex-col gap-4">
           <div className="max-h-80 overflow-y-auto pe-1">
@@ -120,11 +117,11 @@ export function RolePermissionsModal({
 
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={close}>
-              {editable ? 'Jooji' : 'Xir'}
+              {editable ? 'Cancel' : 'Close'}
             </Button>
             {editable ? (
               <Button isLoading={save.isPending} onClick={onSave}>
-                Kaydi
+                Save
               </Button>
             ) : null}
           </div>

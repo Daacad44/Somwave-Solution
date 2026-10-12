@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 // Public subscribe payload — just an email (§11).
 export const createSubscriberSchema = z.object({
-  email: z.string().trim().email('Fadlan geli iimayl sax ah').max(200),
+  email: z.string().trim().email('Enter a valid email address').max(200),
 });
 
 export type CreateSubscriberInput = z.infer<typeof createSubscriberSchema>;

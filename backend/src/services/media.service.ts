@@ -44,14 +44,14 @@ export async function getMediaFile(
   id: string,
 ): Promise<{ bytes: Buffer; mimeType: string; fileName: string }> {
   const row = await prisma.mediaAsset.findUnique({ where: { id } });
-  if (!row) throw new AppError('NOT_FOUND', 404, 'Sawirka lama helin');
+  if (!row) throw new AppError('NOT_FOUND', 404, 'Image not found');
   const bytes = getObject(row.storageKey);
-  if (!bytes) throw new AppError('NOT_FOUND', 404, 'Sawirka lama helin');
+  if (!bytes) throw new AppError('NOT_FOUND', 404, 'Image not found');
   return { bytes, mimeType: row.mimeType, fileName: row.fileName };
 }
 
 export async function deleteMedia(id: string): Promise<void> {
   const row = await prisma.mediaAsset.findUnique({ where: { id } });
-  if (!row) throw new AppError('NOT_FOUND', 404, 'Sawirka lama helin');
+  if (!row) throw new AppError('NOT_FOUND', 404, 'Image not found');
   await prisma.mediaAsset.delete({ where: { id } });
 }

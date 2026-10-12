@@ -36,15 +36,15 @@ export function TwoFactorSetupPage(): ReactNode {
       : confirm.error instanceof ApiError
         ? confirm.error.message
         : start.error || confirm.error
-          ? 'Wax baa qaldamay'
+          ? 'Something went wrong'
           : null;
 
   if (backupCodes) {
     return (
       <section>
-        <h1 className="text-2xl font-semibold text-ink">Koodhyada kaydka</h1>
+        <h1 className="text-2xl font-semibold text-ink">Backup codes</h1>
         <p className="mt-2 max-w-xl text-base text-muted">
-          Kaydi koodhyadan meel ammaan ah. Mid kasta hal mar ayaa la isticmaali karaa.
+          Store these codes securely. Each code can be used only once.
         </p>
         <ul className="mt-4 grid max-w-md grid-cols-2 gap-2 font-mono text-sm text-ink">
           {backupCodes.map((code) => (
@@ -54,7 +54,7 @@ export function TwoFactorSetupPage(): ReactNode {
           ))}
         </ul>
         <Button className="mt-6" onClick={() => navigate('/', { replace: true })}>
-          Waan kaydiyay
+          I have saved them
         </Button>
       </section>
     );
@@ -63,24 +63,24 @@ export function TwoFactorSetupPage(): ReactNode {
   if (user?.twoFactorEnabled) {
     return (
       <section>
-        <h1 className="text-2xl font-semibold text-ink">Laba-tallaabo (2FA)</h1>
-        <p className="mt-2 text-base text-muted">2FA waa shaqeynayaa akoonkaagan.</p>
+        <h1 className="text-2xl font-semibold text-ink">Two-factor authentication (2FA)</h1>
+        <p className="mt-2 text-base text-muted">2FA is enabled for your account.</p>
       </section>
     );
   }
 
   return (
     <section>
-      <h1 className="text-2xl font-semibold text-ink">Shid 2FA</h1>
+      <h1 className="text-2xl font-semibold text-ink">Enable 2FA</h1>
       <p className="mt-2 max-w-xl text-base text-muted">
-        Doorkaaga wuxuu u baahan yahay xaqiijin laba-tallaabo. Ku dar sirta app-ka Google
-        Authenticator ama mid la mid ah, kadib geli koodhka.
+        Your role requires two-factor authentication. Add the secret to Google Authenticator or a
+        similar app, then enter the code.
       </p>
       {!setup ? (
         <div className="mt-6">
           {error ? <p className="mb-3 text-sm text-error">{error}</p> : null}
           <Button onClick={onStart} isLoading={start.isPending}>
-            Bilow diiwaangelinta
+            Start setup
           </Button>
         </div>
       ) : (
@@ -89,10 +89,11 @@ export function TwoFactorSetupPage(): ReactNode {
             {setup.otpauthUrl}
           </p>
           <p className="text-sm text-muted">
-            Ama geli sirta gacanta: <span className="font-medium text-ink">{setup.secret}</span>
+            Or enter the secret manually:{' '}
+            <span className="font-medium text-ink">{setup.secret}</span>
           </p>
           <Input
-            label="Koodhka 6-lambar"
+            label="6-digit code"
             inputMode="numeric"
             autoComplete="one-time-code"
             error={form.formState.errors.code?.message}
@@ -100,7 +101,7 @@ export function TwoFactorSetupPage(): ReactNode {
           />
           {error ? <p className="text-sm text-error">{error}</p> : null}
           <Button type="submit" isLoading={form.formState.isSubmitting || confirm.isPending}>
-            Xaqiiji oo shid
+            Verify and enable
           </Button>
         </form>
       )}

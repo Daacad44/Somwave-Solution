@@ -21,27 +21,24 @@ export function ApplicationsPage(): ReactNode {
 
   return (
     <section>
-      <h1 className="text-2xl font-semibold text-ink">Codsiyada shaqada</h1>
-      <p className="mt-1 text-base text-muted">Codsiyada ka yimid `/fursado-shaqo`.</p>
+      <h1 className="text-2xl font-semibold text-ink">Job applications</h1>
+      <p className="mt-1 text-base text-muted">Applications from `/fursado-shaqo`.</p>
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {query.isLoading ? (
-          <LoadingState rows={6} label="Waa la soo rarayaa" />
+          <LoadingState rows={6} label="Loading" />
         ) : query.isError ? (
-          <ErrorState
-            description="Codsiyada lama soo rari karin."
-            onRetry={() => query.refetch()}
-          />
+          <ErrorState description="Could not load applications." onRetry={() => query.refetch()} />
         ) : rows.length === 0 ? (
-          <EmptyState title="Codsi cusub majiro" />
+          <EmptyState title="No new applications" />
         ) : (
           <Table>
             <THead>
               <Tr>
-                <Th>Magaca</Th>
-                <Th>Fursadda</Th>
-                <Th>Iimayl</Th>
-                <Th>Taariikh</Th>
-                <Th>Xaalad</Th>
+                <Th>Name</Th>
+                <Th>Opening</Th>
+                <Th>Email</Th>
+                <Th>Date</Th>
+                <Th>Status</Th>
               </Tr>
             </THead>
             <TBody>

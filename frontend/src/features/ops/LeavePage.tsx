@@ -46,7 +46,7 @@ export function LeavePage(): ReactNode {
       form.reset({ employeeId: '', type: 'ANNUAL', startDate: '', endDate: '', reason: '' });
       setOpen(false);
     } catch (err) {
-      setServerError(err instanceof ApiError ? err.message : 'Wax baa qaldamay.');
+      setServerError(err instanceof ApiError ? err.message : 'Something went wrong.');
     }
   });
 
@@ -54,34 +54,34 @@ export function LeavePage(): ReactNode {
     <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-ink">Fasaxyada</h1>
-          <p className="mt-1 text-base text-muted">Codsiyada fasaxa iyo oggolaanshaha.</p>
+          <h1 className="text-2xl font-semibold text-ink">Leave requests</h1>
+          <p className="mt-1 text-base text-muted">Leave requests and approvals.</p>
         </div>
-        {canCreate ? <Button onClick={() => setOpen(true)}>Codsi cusub</Button> : null}
+        {canCreate ? <Button onClick={() => setOpen(true)}>New request</Button> : null}
       </div>
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {query.isLoading ? (
-          <LoadingState rows={6} label="Waa la soo rarayaa" />
+          <LoadingState rows={6} label="Loading" />
         ) : query.isError ? (
           <ErrorState
-            description="Fasaxyada lama soo rari karin."
+            description="Could not load leave requests."
             onRetry={() => query.refetch()}
           />
         ) : rows.length === 0 ? (
           <EmptyState
-            title="Codsi fasax majiro"
-            action={canCreate ? <Button onClick={() => setOpen(true)}>Codsi cusub</Button> : null}
+            title="No leave requests"
+            action={canCreate ? <Button onClick={() => setOpen(true)}>New request</Button> : null}
           />
         ) : (
           <Table>
             <THead>
               <Tr>
                 <Th>Shaqaalaha</Th>
-                <Th>Nooca</Th>
+                <Th>Type</Th>
                 <Th>Bilow</Th>
                 <Th>Dhammaad</Th>
-                <Th>Xaalad</Th>
-                <Th className="text-end">Ficil</Th>
+                <Th>Status</Th>
+                <Th className="text-end">Actions</Th>
               </Tr>
             </THead>
             <TBody>
@@ -121,7 +121,7 @@ export function LeavePage(): ReactNode {
                           variant="danger"
                           onClick={() => setRejecting({ id: row.id, name: row.employee.user.name })}
                         >
-                          Diid
+                          Reject
                         </Button>
                       </div>
                     ) : (
@@ -134,12 +134,12 @@ export function LeavePage(): ReactNode {
           </Table>
         )}
       </div>
-      <Modal open={open} onClose={() => setOpen(false)} title="Codsi fasax">
+      <Modal open={open} onClose={() => setOpen(false)} title="Leave request">
         <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
           <Select
             label="Shaqaalaha"
             options={[
-              { value: '', label: 'Dooro shaqaale' },
+              { value: '', label: 'Select an employee' },
               ...(employees.data ?? []).map((row) => ({
                 value: row.id,
                 label: `${row.user.name} (${row.employeeNo})`,
@@ -149,7 +149,7 @@ export function LeavePage(): ReactNode {
             {...form.register('employeeId')}
           />
           <Select
-            label="Nooca"
+            label="Type"
             options={LEAVE_TYPES.map((type) => ({ value: type, label: LEAVE_TYPE_LABELS[type] }))}
             {...form.register('type')}
           />
@@ -167,7 +167,7 @@ export function LeavePage(): ReactNode {
           {serverError ? <p className="text-sm text-error">{serverError}</p> : null}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-              Jooji
+              Cancel
             </Button>
             <Button type="submit" isLoading={form.formState.isSubmitting || create.isPending}>
               Dir
@@ -175,9 +175,13 @@ export function LeavePage(): ReactNode {
           </div>
         </form>
       </Modal>
-      <Modal open={Boolean(rejecting)} onClose={() => setRejecting(null)} title="Diid fasaxa">
+      <Modal
+        open={Boolean(rejecting)}
+        onClose={() => setRejecting(null)}
+        title="Reject leave request"
+      >
         <p className="text-base text-ink">
-          Ma diidaysaa fasaxa <strong>{rejecting?.name}</strong>?
+          Reject leave request for <strong>{rejecting?.name}</strong>?
         </p>
         <div className="mt-4">
           <Input
@@ -188,7 +192,7 @@ export function LeavePage(): ReactNode {
         </div>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setRejecting(null)}>
-            Maya
+            Cancel
           </Button>
           <Button
             variant="danger"
@@ -197,13 +201,13 @@ export function LeavePage(): ReactNode {
               if (!rejecting) return;
               await update.mutateAsync({
                 id: rejecting.id,
-                input: { status: 'REJECTED', rejectionReason: reason || 'La diiday' },
+                input: { status: 'REJECTED', rejectionReason: reason || 'Rejected' },
               });
               setRejecting(null);
               setReason('');
             }}
           >
-            Haa, diid
+            Yes, reject
           </Button>
         </div>
       </Modal>

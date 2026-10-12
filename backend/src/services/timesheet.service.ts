@@ -60,7 +60,7 @@ export async function createTimesheet(
     const project = await prisma.project.findFirst({
       where: { id: input.projectId, deletedAt: null },
     });
-    if (!project) throw new AppError('VALIDATION_ERROR', 400, 'Mashruucan lama helin');
+    if (!project) throw new AppError('VALIDATION_ERROR', 400, 'Project not found');
   }
   const row = await prisma.timesheet.create({
     data: {
@@ -81,7 +81,7 @@ export async function updateTimesheetStatus(
   status: TimesheetStatus,
 ): Promise<AdminTimesheet> {
   const existing = await prisma.timesheet.findFirst({ where: { id, deletedAt: null } });
-  if (!existing) throw new AppError('NOT_FOUND', 404, 'Diiwaankan lama helin');
+  if (!existing) throw new AppError('NOT_FOUND', 404, 'Record not found');
   const row = await prisma.timesheet.update({ where: { id }, data: { status }, include });
   return toAdmin(row);
 }

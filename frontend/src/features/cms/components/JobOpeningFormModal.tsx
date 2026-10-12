@@ -73,7 +73,7 @@ export function JobOpeningFormModal({
       close();
     } catch (err) {
       setServerError(
-        err instanceof ApiError ? err.message : 'Wax baa qaldamay. Fadlan mar kale isku day.',
+        err instanceof ApiError ? err.message : 'Something went wrong. Please try again.',
       );
     }
   });
@@ -81,9 +81,9 @@ export function JobOpeningFormModal({
   const pending = isSubmitting || createMutation.isPending || updateMutation.isPending;
 
   return (
-    <Modal open={open} onClose={close} title={isEdit ? 'Wax ka beddel fursadda' : 'Fursad cusub'}>
+    <Modal open={open} onClose={close} title={isEdit ? 'Edit opening' : 'New opening'}>
       <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
-        <Input label="Cinwaanka" error={errors.title?.message} {...register('title')} />
+        <Input label="Title" error={errors.title?.message} {...register('title')} />
         <Input
           label="Slug (URL)"
           placeholder="horumariye-frontend"
@@ -93,7 +93,7 @@ export function JobOpeningFormModal({
         <div className="grid grid-cols-2 gap-3">
           <Input label="Goobta" error={errors.location?.message} {...register('location')} />
           <Select
-            label="Nooca shaqada"
+            label="Employment type"
             options={typeOptions}
             error={errors.employmentType?.message}
             {...register('employmentType')}
@@ -122,10 +122,10 @@ export function JobOpeningFormModal({
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={close}>
-            Jooji
+            Cancel
           </Button>
           <Button type="submit" isLoading={pending}>
-            {isEdit ? 'Kaydi' : 'Abuur'}
+            {isEdit ? 'Save' : 'Create'}
           </Button>
         </div>
       </form>

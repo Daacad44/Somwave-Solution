@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { AuthUser } from '@somwave/shared';
 
 vi.mock('../lib/prisma', () => ({
   prisma: {
@@ -39,6 +40,16 @@ const input = {
   title: 'Design sign-off',
   status: 'PENDING' as const,
   order: 0,
+};
+const engineer: AuthUser = {
+  id: 'engineer_1',
+  name: 'Engineer',
+  email: 'engineer@example.test',
+  roles: ['ENGINEER'],
+  permissions: [],
+  clientId: null,
+  twoFactorEnabled: false,
+  twoFactorRequired: false,
 };
 
 beforeEach(() => {
@@ -133,6 +144,23 @@ describe('deleteMilestone', () => {
 });
 
 describe('listMilestones', () => {
+  it('scopes milestones to the actor’s assigned projects', async () => {
+    vi.mocked(prisma.milestone.findMany).mockResolvedValue([] as never);
+    vi.mocked(prisma.milestone.count).mockResolvedValue(0 as never);
+    await listMilestones({ page: 1, pageSize: 20, actor: engineer });
+    expect(prisma.milestone.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          project: {
+            OR: [
+              { managerId: engineer.id },
+              { members: { some: { userId: engineer.id, removedAt: null } } },
+            ],
+          },
+        }),
+      }),
+    );
+  });
   it('clamps the page size and maps rows', async () => {
     vi.mocked(prisma.milestone.findMany).mockResolvedValue([row] as never);
     vi.mocked(prisma.milestone.count).mockResolvedValue(1 as never);
