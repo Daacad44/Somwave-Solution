@@ -39,10 +39,10 @@ export const adminLeaveRequestSchema = z.object({
 export type AdminLeaveRequest = z.infer<typeof adminLeaveRequestSchema>;
 
 export const createLeaveRequestSchema = z.object({
-  employeeId: z.string().min(1, 'Shaqaalaha waa waajib'),
+  employeeId: z.string().min(1, 'Employee is required'),
   type: leaveTypeSchema,
-  startDate: z.string().min(1, 'Bilowga waa waajib'),
-  endDate: z.string().min(1, 'Dhammaadka waa waajib'),
+  startDate: z.string().min(1, 'Start date is required'),
+  endDate: z.string().min(1, 'End date is required'),
   reason: z.string().trim().max(2000).optional(),
 });
 

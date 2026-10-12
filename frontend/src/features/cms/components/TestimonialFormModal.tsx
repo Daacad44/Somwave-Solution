@@ -89,7 +89,7 @@ export function TestimonialFormModal({
       close();
     } catch (err) {
       setServerError(
-        err instanceof ApiError ? err.message : 'Wax baa qaldamay. Fadlan mar kale isku day.',
+        err instanceof ApiError ? err.message : 'Something went wrong. Please try again.',
       );
     }
   });
@@ -97,11 +97,7 @@ export function TestimonialFormModal({
   const pending = isSubmitting || createMutation.isPending || updateMutation.isPending;
 
   return (
-    <Modal
-      open={open}
-      onClose={close}
-      title={isEdit ? 'Wax ka beddel marag-furka' : 'Marag-fur cusub'}
-    >
+    <Modal open={open} onClose={close} title={isEdit ? 'Edit testimonial' : 'New testimonial'}>
       <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
         <Input label="Qoraaga" error={errors.author?.message} {...register('author')} />
         <div className="grid grid-cols-2 gap-3">
@@ -120,7 +116,7 @@ export function TestimonialFormModal({
         </label>
 
         <Input
-          label="Sawirka (link, ikhtiyaari)"
+          label="Image URL (optional)"
           placeholder="https://"
           error={errors.avatarUrl?.message}
           {...register('avatarUrl')}
@@ -143,7 +139,7 @@ export function TestimonialFormModal({
             })}
           />
           <Input
-            label="Kala horreyn (order)"
+            label="Display order"
             type="number"
             min={0}
             error={errors.order?.message}
@@ -160,10 +156,10 @@ export function TestimonialFormModal({
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={close}>
-            Jooji
+            Cancel
           </Button>
           <Button type="submit" isLoading={pending}>
-            {isEdit ? 'Kaydi' : 'Abuur'}
+            {isEdit ? 'Save' : 'Create'}
           </Button>
         </div>
       </form>

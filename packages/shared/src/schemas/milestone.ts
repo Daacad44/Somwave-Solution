@@ -29,12 +29,12 @@ export type AdminMilestone = z.infer<typeof adminMilestoneSchema>;
 
 const isoDate = z
   .string()
-  .refine((v) => !Number.isNaN(Date.parse(v)), 'Taariikh aan sax ahayn')
+  .refine((v) => !Number.isNaN(Date.parse(v)), 'Invalid date')
   .optional();
 
 export const createMilestoneSchema = z.object({
-  projectId: z.string().min(1, 'Mashruuca waa waajib'),
-  title: z.string().trim().min(1, 'Cinwaanka waa waajib').max(200),
+  projectId: z.string().min(1, 'Project is required'),
+  title: z.string().trim().min(1, 'Title is required').max(200),
   description: z.string().trim().max(5000).optional(),
   status: milestoneStatusSchema.default('PENDING'),
   dueDate: isoDate,
@@ -46,14 +46,14 @@ export type CreateMilestoneInput = z.infer<typeof createMilestoneSchema>;
 // The project a milestone belongs to is fixed once created; everything else editable.
 export const updateMilestoneSchema = z
   .object({
-    title: z.string().trim().min(1, 'Cinwaanka waa waajib').max(200).optional(),
+    title: z.string().trim().min(1, 'Title is required').max(200).optional(),
     description: z.string().trim().max(5000).nullable().optional(),
     status: milestoneStatusSchema.optional(),
     dueDate: isoDate.nullable(),
     order: z.number().int().min(0).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
-    message: 'Ugu yaraan hal beddel ayaa loo baahan yahay',
+    message: 'At least one change is required',
   });
 
 export type UpdateMilestoneInput = z.infer<typeof updateMilestoneSchema>;

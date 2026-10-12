@@ -40,34 +40,31 @@ export function ServicesAdminPage(): ReactNode {
     <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-ink">Adeegyada (CMS)</h1>
-          <p className="mt-1 text-base text-muted">Maamul adeegyada ka muuqda websaydka guud.</p>
+          <h1 className="text-2xl font-semibold text-ink">Services (CMS)</h1>
+          <p className="mt-1 text-base text-muted">Manage services shown on the public website.</p>
         </div>
-        {canCreate ? <Button onClick={openCreate}>Adeeg cusub</Button> : null}
+        {canCreate ? <Button onClick={openCreate}>New service</Button> : null}
       </div>
 
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {query.isLoading ? (
-          <LoadingState rows={5} label="Waa la soo rarayaa" />
+          <LoadingState rows={5} label="Loading" />
         ) : query.isError ? (
-          <ErrorState
-            description="Adeegyada lama soo rari karin."
-            onRetry={() => query.refetch()}
-          />
+          <ErrorState description="Could not load services." onRetry={() => query.refetch()} />
         ) : services.length === 0 ? (
           <EmptyState
-            title="Weli adeeg ma jiro"
-            action={canCreate ? <Button onClick={openCreate}>Adeeg cusub</Button> : undefined}
+            title="No services yet"
+            action={canCreate ? <Button onClick={openCreate}>New service</Button> : undefined}
           />
         ) : (
           <Table>
             <THead>
               <Tr>
-                <Th>Cinwaan</Th>
+                <Th>Title</Th>
                 <Th>Slug</Th>
-                <Th>Kala horreyn</Th>
-                <Th>Xaalad</Th>
-                <Th className="text-end">Ficil</Th>
+                <Th>Order</Th>
+                <Th>Status</Th>
+                <Th className="text-end">Actions</Th>
               </Tr>
             </THead>
             <TBody>
@@ -85,12 +82,12 @@ export function ServicesAdminPage(): ReactNode {
                     <div className="flex justify-end gap-2">
                       {canUpdate ? (
                         <Button size="sm" variant="secondary" onClick={() => openEdit(service)}>
-                          Wax ka beddel
+                          Edit
                         </Button>
                       ) : null}
                       {canDelete ? (
                         <Button size="sm" variant="danger" onClick={() => setConfirming(service)}>
-                          Tirtir
+                          Delete
                         </Button>
                       ) : null}
                     </div>
@@ -111,14 +108,14 @@ export function ServicesAdminPage(): ReactNode {
         />
       ) : null}
 
-      <Modal open={Boolean(confirming)} onClose={() => setConfirming(null)} title="Tirtir adeegga">
+      <Modal open={Boolean(confirming)} onClose={() => setConfirming(null)} title="Delete service">
         <p className="text-base text-ink">
-          Ma hubtaa inaad tirtirayso <strong>{confirming?.title}</strong>? Tallaabadan lama soo
-          celin karo.
+          Are you sure you want to delete <strong>{confirming?.title}</strong>? This action cannot
+          be undone.
         </p>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setConfirming(null)}>
-            Maya
+            Cancel
           </Button>
           <Button
             variant="danger"
@@ -129,7 +126,7 @@ export function ServicesAdminPage(): ReactNode {
               setConfirming(null);
             }}
           >
-            Haa, tirtir
+            Yes, delete
           </Button>
         </div>
       </Modal>

@@ -19,7 +19,7 @@ function scopedClientId(req: Request): string | null {
 function requireScopedClient(req: Request): string | null {
   const roles = req.authUser?.roles ?? [];
   if (roles.includes(ROLES.CLIENT) && !req.authUser?.clientId) {
-    throw new AppError('NOT_FOUND', 404, 'Tikidh lama helin');
+    throw new AppError('NOT_FOUND', 404, 'Ticket not found');
   }
   return scopedClientId(req);
 }
@@ -35,7 +35,7 @@ export async function list(req: Request, res: Response, next: NextFunction): Pro
 export async function get(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Tikidhkan lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Ticket not found');
     sendData(res, await ticketService.getTicket(id, requireScopedClient(req)));
   } catch (err) {
     next(err);
@@ -45,7 +45,7 @@ export async function get(req: Request, res: Response, next: NextFunction): Prom
 export async function create(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const clientId = req.authUser?.clientId;
-    if (!clientId) throw new AppError('NOT_FOUND', 404, 'Tikidh lama helin');
+    if (!clientId) throw new AppError('NOT_FOUND', 404, 'Ticket not found');
     sendData(res, await ticketService.createTicket(clientId, req.body as CreateTicketInput), 201);
   } catch (err) {
     next(err);
@@ -55,7 +55,7 @@ export async function create(req: Request, res: Response, next: NextFunction): P
 export async function update(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Tikidhkan lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Ticket not found');
     sendData(
       res,
       await ticketService.updateTicket(id, req.body as UpdateTicketInput, requireScopedClient(req)),
@@ -81,7 +81,7 @@ export async function createReply(req: Request, res: Response, next: NextFunctio
   try {
     const { id } = req.params;
     const authorId = req.authUser?.id;
-    if (!id || !authorId) throw new AppError('NOT_FOUND', 404, 'Tikidhkan lama helin');
+    if (!id || !authorId) throw new AppError('NOT_FOUND', 404, 'Ticket not found');
     sendData(
       res,
       await ticketService.createReply(

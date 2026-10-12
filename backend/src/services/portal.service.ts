@@ -30,7 +30,7 @@ function toProject(row: {
 }
 
 export async function listPortalProjects(clientId: string | null): Promise<AdminProject[]> {
-  if (!clientId) throw new AppError('NOT_FOUND', 404, 'Mashruuc lama helin');
+  if (!clientId) throw new AppError('NOT_FOUND', 404, 'Project not found');
   const rows = await prisma.project.findMany({
     where: { clientId, deletedAt: null },
     orderBy: { createdAt: 'desc' },
@@ -55,7 +55,7 @@ export async function getPortalProject(
 }
 
 export async function listPortalMilestones(clientId: string | null): Promise<AdminMilestone[]> {
-  if (!clientId) throw new AppError('NOT_FOUND', 404, 'Marxalad lama helin');
+  if (!clientId) throw new AppError('NOT_FOUND', 404, 'Milestone not found');
   const rows = await prisma.milestone.findMany({
     where: { deletedAt: null, project: { clientId, deletedAt: null } },
     orderBy: [{ order: 'asc' }, { createdAt: 'desc' }],

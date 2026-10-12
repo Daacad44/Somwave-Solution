@@ -40,7 +40,7 @@ export function TimesheetsPage(): ReactNode {
       form.reset({ hours: '8', isBillable: true, date: '' });
       setOpen(false);
     } catch (err) {
-      setServerError(err instanceof ApiError ? err.message : 'Wax baa qaldamay.');
+      setServerError(err instanceof ApiError ? err.message : 'Something went wrong.');
     }
   });
 
@@ -48,29 +48,26 @@ export function TimesheetsPage(): ReactNode {
     <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-ink">Saacadaha shaqada</h1>
-          <p className="mt-1 text-base text-muted">Diiwaangeli saacadahaada.</p>
+          <h1 className="text-2xl font-semibold text-ink">Timesheets</h1>
+          <p className="mt-1 text-base text-muted">Record your work hours.</p>
         </div>
-        {canCreate ? <Button onClick={() => setOpen(true)}>Diiwaan cusub</Button> : null}
+        {canCreate ? <Button onClick={() => setOpen(true)}>New entry</Button> : null}
       </div>
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {query.isLoading ? (
-          <LoadingState rows={6} label="Waa la soo rarayaa" />
+          <LoadingState rows={6} label="Loading" />
         ) : query.isError ? (
-          <ErrorState
-            description="Saacadaha lama soo rari karin."
-            onRetry={() => query.refetch()}
-          />
+          <ErrorState description="Could not load time entries." onRetry={() => query.refetch()} />
         ) : rows.length === 0 ? (
-          <EmptyState title="Weli saacad lama diiwaangelin" />
+          <EmptyState title="No time entries yet" />
         ) : (
           <Table>
             <THead>
               <Tr>
-                <Th>Taariikh</Th>
-                <Th>Saacado</Th>
-                <Th>Mashruuc</Th>
-                <Th>Xaalad</Th>
+                <Th>Date</Th>
+                <Th>Hours</Th>
+                <Th>Project</Th>
+                <Th>Status</Th>
               </Tr>
             </THead>
             <TBody>
@@ -98,25 +95,25 @@ export function TimesheetsPage(): ReactNode {
           </Table>
         )}
       </div>
-      <Modal open={open} onClose={() => setOpen(false)} title="Saacad cusub">
+      <Modal open={open} onClose={() => setOpen(false)} title="New time entry">
         <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
           <DatePicker
-            label="Taariikhda"
+            label="Date"
             error={form.formState.errors.date?.message}
             {...form.register('date')}
           />
           <Input
-            label="Saacado"
+            label="Hours"
             error={form.formState.errors.hours?.message}
             {...form.register('hours')}
           />
           {serverError ? <p className="text-sm text-error">{serverError}</p> : null}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-              Jooji
+              Cancel
             </Button>
             <Button type="submit" isLoading={form.formState.isSubmitting || create.isPending}>
-              Kaydi
+              Save
             </Button>
           </div>
         </form>

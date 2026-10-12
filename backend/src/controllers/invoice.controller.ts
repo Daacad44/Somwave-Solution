@@ -20,7 +20,7 @@ function scopedClientId(req: Request): string | null {
 function requireScopedClient(req: Request): string | null {
   const roles = req.authUser?.roles ?? [];
   if (roles.includes(ROLES.CLIENT) && !req.authUser?.clientId) {
-    throw new AppError('NOT_FOUND', 404, 'Biil lama helin');
+    throw new AppError('NOT_FOUND', 404, 'Invoice not found');
   }
   return scopedClientId(req);
 }
@@ -36,7 +36,7 @@ export async function list(req: Request, res: Response, next: NextFunction): Pro
 export async function get(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Biilkan lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Invoice not found');
     sendData(res, await invoiceService.getInvoice(id, requireScopedClient(req)));
   } catch (err) {
     next(err);
@@ -54,7 +54,7 @@ export async function create(req: Request, res: Response, next: NextFunction): P
 export async function send(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Biilkan lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Invoice not found');
     const actorId = req.authUser?.id;
     if (!actorId) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
 
@@ -77,7 +77,7 @@ export async function send(req: Request, res: Response, next: NextFunction): Pro
 export async function voidInvoice(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Biilkan lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Invoice not found');
     sendData(res, await invoiceService.voidInvoice(id, requireScopedClient(req)));
   } catch (err) {
     next(err);

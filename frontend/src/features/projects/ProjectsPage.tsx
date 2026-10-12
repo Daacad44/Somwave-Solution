@@ -3,7 +3,8 @@
 import { type FormEvent, type ReactNode, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { AdminProject, ProjectStatus } from '@somwave/shared';
-import { PERMISSIONS, PROJECT_STATUSES, PROJECT_STATUS_LABELS } from '@somwave/shared';
+import { PERMISSIONS, PROJECT_STATUSES } from '@somwave/shared';
+import { INTERNAL_PROJECT_STATUS } from '../../lib/internalLabels';
 import { Table, THead, TBody, Tr, Th, Td } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -75,25 +76,25 @@ export function ProjectsPage(): ReactNode {
     <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-ink">Mashruucyada</h1>
-          <p className="mt-1 text-base text-muted">Maamul mashruucyada shirkadda.</p>
+          <h1 className="text-2xl font-semibold text-ink">Projects</h1>
+          <p className="mt-1 text-base text-muted">Manage company projects.</p>
         </div>
-        {canCreate ? <Button onClick={openCreate}>Mashruuc cusub</Button> : null}
+        {canCreate ? <Button onClick={openCreate}>New project</Button> : null}
       </div>
 
       <form onSubmit={submitSearch} className="mt-6 flex flex-wrap items-end gap-2">
         <Input
-          placeholder="Raadi magaca mashruuca…"
+          placeholder="Search project name…"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          aria-label="Raadi mashruucyada"
+          aria-label="Search projects"
           className="min-w-56 flex-1"
         />
         <Select
-          aria-label="Kala sooc xaalada"
+          aria-label="Filter by status"
           options={[
-            { value: '', label: 'Dhammaan xaaladaha' },
-            ...PROJECT_STATUSES.map((s) => ({ value: s, label: PROJECT_STATUS_LABELS[s] })),
+            { value: '', label: 'All statuses' },
+            ...PROJECT_STATUSES.map((s) => ({ value: s, label: INTERNAL_PROJECT_STATUS[s] })),
           ]}
           value={status}
           onChange={(e) => {
@@ -102,38 +103,35 @@ export function ProjectsPage(): ReactNode {
           }}
         />
         <Button type="submit" variant="secondary">
-          Raadi
+          Search
         </Button>
       </form>
 
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {query.isLoading ? (
-          <LoadingState rows={6} label="Waa la soo rarayaa" />
+          <LoadingState rows={6} label="Loading" />
         ) : query.isError ? (
-          <ErrorState
-            description="Mashruucyada lama soo rari karin."
-            onRetry={() => query.refetch()}
-          />
+          <ErrorState description="Could not load projects." onRetry={() => query.refetch()} />
         ) : projects.length === 0 ? (
           <EmptyState
-            title="Weli mashruuc ma jiro"
+            title="No projects yet"
             description={
               search || status
-                ? 'Raadintaadu waxba ma soo celin.'
-                : 'Abuur mashruucaaga koowaad si aad u raacdo shaqada, marxaladaha, iyo hawlaha.'
+                ? 'No results match your search.'
+                : 'Create your first project to track work, milestones, and tasks.'
             }
-            action={canCreate ? <Button onClick={openCreate}>Mashruuc cusub</Button> : undefined}
+            action={canCreate ? <Button onClick={openCreate}>New project</Button> : undefined}
           />
         ) : (
           <Table>
             <THead>
               <Tr>
-                <Th>Magaca</Th>
-                <Th>Xaalad</Th>
-                <Th>Maareeye</Th>
-                <Th>Miisaaniyad</Th>
-                <Th>Dhammaad</Th>
-                <Th className="text-end">Ficil</Th>
+                <Th>Name</Th>
+                <Th>Status</Th>
+                <Th>Manager</Th>
+                <Th>Budget</Th>
+                <Th>Due date</Th>
+                <Th className="text-end">Actions</Th>
               </Tr>
             </THead>
             <TBody>
@@ -149,7 +147,7 @@ export function ProjectsPage(): ReactNode {
                   </Td>
                   <Td>
                     <Badge tone={STATUS_TONE[project.status]}>
-                      {PROJECT_STATUS_LABELS[project.status]}
+                      {INTERNAL_PROJECT_STATUS[project.status]}
                     </Badge>
                   </Td>
                   <Td className="text-muted">{project.manager?.name ?? '—'}</Td>
@@ -159,12 +157,12 @@ export function ProjectsPage(): ReactNode {
                     <div className="flex justify-end gap-2">
                       {canUpdate ? (
                         <Button size="sm" variant="secondary" onClick={() => openEdit(project)}>
-                          Wax ka beddel
+                          Edit
                         </Button>
                       ) : null}
                       {canDelete ? (
                         <Button size="sm" variant="danger" onClick={() => setConfirming(project)}>
-                          Tirtir
+                          Delete
                         </Button>
                       ) : null}
                     </div>
@@ -179,7 +177,7 @@ export function ProjectsPage(): ReactNode {
       {total > PAGE_SIZE ? (
         <div className="mt-4 flex items-center justify-between text-sm text-muted">
           <span>
-            Bogga {page} / {totalPages} · {total} mashruuc
+            Page {page} / {totalPages} · {total} project
           </span>
           <div className="flex gap-2">
             <Button
@@ -188,7 +186,7 @@ export function ProjectsPage(): ReactNode {
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
-              Hore
+              Previous
             </Button>
             <Button
               size="sm"
@@ -196,7 +194,7 @@ export function ProjectsPage(): ReactNode {
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             >
-              Xiga
+              Next
             </Button>
           </div>
         </div>
@@ -211,17 +209,13 @@ export function ProjectsPage(): ReactNode {
         />
       ) : null}
 
-      <Modal
-        open={Boolean(confirming)}
-        onClose={() => setConfirming(null)}
-        title="Tirtir mashruuca"
-      >
+      <Modal open={Boolean(confirming)} onClose={() => setConfirming(null)} title="Delete project">
         <p className="text-base text-ink">
-          Ma hubtaa inaad tirtirayso <strong>{confirming?.name}</strong>?
+          Are you sure you want to delete <strong>{confirming?.name}</strong>?
         </p>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setConfirming(null)}>
-            Maya
+            Cancel
           </Button>
           <Button
             variant="danger"
@@ -232,7 +226,7 @@ export function ProjectsPage(): ReactNode {
               setConfirming(null);
             }}
           >
-            Haa, tirtir
+            Yes, delete
           </Button>
         </div>
       </Modal>

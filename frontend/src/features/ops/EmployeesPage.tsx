@@ -59,7 +59,7 @@ export function EmployeesPage(): ReactNode {
       form.reset({ userId: '', employeeNo: '', position: '', department: '', hiredAt: '' });
       setOpen(false);
     } catch (err) {
-      setServerError(err instanceof ApiError ? err.message : 'Wax baa qaldamay.');
+      setServerError(err instanceof ApiError ? err.message : 'Something went wrong.');
     }
   });
 
@@ -68,47 +68,42 @@ export function EmployeesPage(): ReactNode {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-ink">Shaqaalaha</h1>
-          <p className="mt-1 text-base text-muted">Diiwaanka shaqaalaha gudaha.</p>
+          <p className="mt-1 text-base text-muted">Internal employee records.</p>
         </div>
-        {canCreate ? <Button onClick={() => setOpen(true)}>Shaqaale cusub</Button> : null}
+        {canCreate ? <Button onClick={() => setOpen(true)}>New employee</Button> : null}
       </div>
       <form onSubmit={onSearch} className="mt-6 flex max-w-md gap-2">
         <Input
-          placeholder="Raadi magac, lambarka, ama waaxda…"
+          placeholder="Search name, number, or department…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          aria-label="Raadi shaqaalaha"
+          aria-label="Search employees"
           className="flex-1"
         />
         <Button type="submit" variant="secondary">
-          Raadi
+          Search
         </Button>
       </form>
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {query.isLoading ? (
-          <LoadingState rows={6} label="Waa la soo rarayaa" />
+          <LoadingState rows={6} label="Loading" />
         ) : query.isError ? (
-          <ErrorState
-            description="Shaqaalaha lama soo rari karin."
-            onRetry={() => query.refetch()}
-          />
+          <ErrorState description="Could not load employees." onRetry={() => query.refetch()} />
         ) : rows.length === 0 ? (
           <EmptyState
-            title="Shaqaale majiro"
-            action={
-              canCreate ? <Button onClick={() => setOpen(true)}>Shaqaale cusub</Button> : null
-            }
+            title="No employees"
+            action={canCreate ? <Button onClick={() => setOpen(true)}>New employee</Button> : null}
           />
         ) : (
           <Table>
             <THead>
               <Tr>
-                <Th>Magaca</Th>
+                <Th>Name</Th>
                 <Th>Lambarka</Th>
                 <Th>Jagada</Th>
-                <Th>Waaxda</Th>
+                <Th>Department</Th>
                 <Th>Shaqo-gal</Th>
-                <Th>Xaalad</Th>
+                <Th>Status</Th>
               </Tr>
             </THead>
             <TBody>
@@ -133,7 +128,7 @@ export function EmployeesPage(): ReactNode {
       {rows.length > PAGE_SIZE ? (
         <div className="mt-4 flex items-center justify-between text-sm text-muted">
           <span>
-            Bogga {page} / {totalPages} · {rows.length} shaqaale
+            Page {page} / {totalPages} · {rows.length} employees
           </span>
           <div className="flex gap-2">
             <Button
@@ -155,12 +150,12 @@ export function EmployeesPage(): ReactNode {
           </div>
         </div>
       ) : null}
-      <Modal open={open} onClose={() => setOpen(false)} title="Shaqaale cusub">
+      <Modal open={open} onClose={() => setOpen(false)} title="New employee">
         <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
           <Select
-            label="Isticmaalaha"
+            label="User"
             options={[
-              { value: '', label: 'Dooro isticmaale' },
+              { value: '', label: 'Select a user' },
               ...(candidates.data ?? []).map((user) => ({
                 value: user.id,
                 label: `${user.name} (${user.email})`,
@@ -170,20 +165,20 @@ export function EmployeesPage(): ReactNode {
             {...form.register('userId')}
           />
           <Input
-            label="Lambarka shaqaalaha"
+            label="Employee number"
             error={form.formState.errors.employeeNo?.message}
             {...form.register('employeeNo')}
           />
           <Input label="Jagada" {...form.register('position')} />
-          <Input label="Waaxda" {...form.register('department')} />
-          <DatePicker label="Taariikhda shaqo-galka" {...form.register('hiredAt')} />
+          <Input label="Department" {...form.register('department')} />
+          <DatePicker label="Hire date" {...form.register('hiredAt')} />
           {serverError ? <p className="text-sm text-error">{serverError}</p> : null}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-              Jooji
+              Cancel
             </Button>
             <Button type="submit" isLoading={form.formState.isSubmitting || create.isPending}>
-              Abuur
+              Create
             </Button>
           </div>
         </form>

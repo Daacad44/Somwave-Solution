@@ -99,7 +99,7 @@ export async function updateTestimonial(
   input: UpdateTestimonialInput,
 ): Promise<AdminTestimonial> {
   const testimonial = await prisma.testimonial.findUnique({ where: { id } });
-  if (!testimonial) throw new AppError('NOT_FOUND', 404, 'Marag-furkan lama helin');
+  if (!testimonial) throw new AppError('NOT_FOUND', 404, 'Testimonial not found');
 
   const row = await prisma.testimonial.update({
     where: { id },
@@ -121,7 +121,7 @@ export async function updateTestimonial(
 
 export async function deleteTestimonial(id: string): Promise<void> {
   const testimonial = await prisma.testimonial.findUnique({ where: { id } });
-  if (!testimonial) throw new AppError('NOT_FOUND', 404, 'Marag-furkan lama helin');
+  if (!testimonial) throw new AppError('NOT_FOUND', 404, 'Testimonial not found');
   await prisma.testimonial.delete({ where: { id } });
   await invalidateCache();
 }

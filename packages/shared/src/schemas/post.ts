@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { isStoredArticleImageUrl } from './articleImage';
 
-const COVER_IMAGE_MESSAGE = 'Fadlan soo geli sawir JPG, PNG ama WEBP ah.';
+const COVER_IMAGE_MESSAGE = 'Upload a JPG, PNG, or WebP image.';
 
 const coverImageInput = z
   .string()
@@ -68,11 +68,11 @@ export const createPostSchema = z.object({
   slug: z
     .string()
     .trim()
-    .min(1, 'Slug waa waajib')
-    .regex(/^[a-z0-9-]+$/, 'Slug waa inuu noqdaa kebab-case (a-z, 0-9, -)'),
-  title: z.string().trim().min(1, 'Cinwaanka waa waajib').max(200),
-  excerpt: z.string().trim().min(1, 'Kooban waa waajib').max(500),
-  body: z.string().trim().min(1, 'Qoraalka waa waajib'),
+    .min(1, 'Slug is required')
+    .regex(/^[a-z0-9-]+$/, 'Slug must use kebab-case (a-z, 0-9, -)'),
+  title: z.string().trim().min(1, 'Title is required').max(200),
+  excerpt: z.string().trim().min(1, 'Summary is required').max(500),
+  body: z.string().trim().min(1, 'Body is required'),
   coverImage: coverImageInput.optional(),
   // Blank is allowed — the CMS treats it as “no author”.
   authorName: z.string().trim().max(120, 'Magaca qoraaga aad buu u dheer yahay').optional(),
@@ -89,7 +89,7 @@ export const updatePostSchema = z
       .string()
       .trim()
       .min(1)
-      .regex(/^[a-z0-9-]+$/, 'Slug waa inuu noqdaa kebab-case (a-z, 0-9, -)')
+      .regex(/^[a-z0-9-]+$/, 'Slug must use kebab-case (a-z, 0-9, -)')
       .optional(),
     title: z.string().trim().min(1).max(200).optional(),
     excerpt: z.string().trim().min(1).max(500).optional(),
@@ -107,7 +107,7 @@ export const updatePostSchema = z
     isPublished: z.boolean().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
-    message: 'Ugu yaraan hal beddel ayaa loo baahan yahay',
+    message: 'At least one change is required',
   });
 
 export type UpdatePostInput = z.infer<typeof updatePostSchema>;

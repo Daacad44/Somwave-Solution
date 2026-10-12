@@ -9,8 +9,8 @@ export type ArticleImageMimeType = (typeof ARTICLE_IMAGE_MIME_TYPES)[number];
 
 const ARTICLE_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'] as const;
 
-const INVALID_IMAGE = 'Fadlan soo geli sawir JPG, PNG ama WEBP ah.';
-const TOO_LARGE = 'Sawirku waa inuu ka yaraadaa 5MB.';
+const INVALID_IMAGE = 'Upload a JPG, PNG, or WebP image.';
+const TOO_LARGE = 'The image must be smaller than 5 MB.';
 
 const ARTICLE_IMAGE_PATH = /^\/api\/v1\/public\/article-images\/([a-z0-9]+)$/i;
 
@@ -46,7 +46,7 @@ export function articleImageFileError(file: {
   const mimeOk = (ARTICLE_IMAGE_MIME_TYPES as readonly string[]).includes(mime);
   const extensionOk = (ARTICLE_IMAGE_EXTENSIONS as readonly string[]).includes(extension);
   if (!mimeOk || !extensionOk) return INVALID_IMAGE;
-  if (file.size <= 0) return 'Fadlan soo geli sawir sax ah.';
+  if (file.size <= 0) return 'Upload a valid image.';
   if (file.size > ARTICLE_IMAGE_MAX_BYTES) return TOO_LARGE;
   return null;
 }
@@ -54,7 +54,7 @@ export function articleImageFileError(file: {
 export const uploadArticleImageSchema = z.object({
   fileName: z.string().trim().min(1).max(200),
   mimeType: z.enum(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']),
-  contentBase64: z.string().min(1, 'Fadlan soo geli sawir sax ah.').max(7_000_000, TOO_LARGE),
+  contentBase64: z.string().min(1, 'Upload a valid image.').max(7_000_000, TOO_LARGE),
 });
 
 export type UploadArticleImageInput = z.infer<typeof uploadArticleImageSchema>;

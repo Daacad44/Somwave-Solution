@@ -44,34 +44,31 @@ export function PostsAdminPage(): ReactNode {
     <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-ink">Maqaallada (CMS)</h1>
-          <p className="mt-1 text-base text-muted">Maamul maqaallada bloogga websaydka.</p>
+          <h1 className="text-2xl font-semibold text-ink">Posts (CMS)</h1>
+          <p className="mt-1 text-base text-muted">Manage website blog posts.</p>
         </div>
-        {canCreate ? <Button onClick={openCreate}>Maqaal cusub</Button> : null}
+        {canCreate ? <Button onClick={openCreate}>New post</Button> : null}
       </div>
 
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {query.isLoading ? (
-          <LoadingState rows={5} label="Waa la soo rarayaa" />
+          <LoadingState rows={5} label="Loading" />
         ) : query.isError ? (
-          <ErrorState
-            description="Maqaallada lama soo rari karin."
-            onRetry={() => query.refetch()}
-          />
+          <ErrorState description="Could not load posts." onRetry={() => query.refetch()} />
         ) : posts.length === 0 ? (
           <EmptyState
-            title="Weli maqaal ma jiro"
-            action={canCreate ? <Button onClick={openCreate}>Maqaal cusub</Button> : undefined}
+            title="No posts yet"
+            action={canCreate ? <Button onClick={openCreate}>New post</Button> : undefined}
           />
         ) : (
           <Table>
             <THead>
               <Tr>
-                <Th>Cinwaan</Th>
-                <Th>Qayb</Th>
-                <Th>Xaalad</Th>
-                <Th>Taariikh</Th>
-                <Th className="text-end">Ficil</Th>
+                <Th>Title</Th>
+                <Th>Category</Th>
+                <Th>Status</Th>
+                <Th>Date</Th>
+                <Th className="text-end">Actions</Th>
               </Tr>
             </THead>
             <TBody>
@@ -89,12 +86,12 @@ export function PostsAdminPage(): ReactNode {
                     <div className="flex justify-end gap-2">
                       {canUpdate ? (
                         <Button size="sm" variant="secondary" onClick={() => openEdit(post)}>
-                          Wax ka beddel
+                          Edit
                         </Button>
                       ) : null}
                       {canDelete ? (
                         <Button size="sm" variant="danger" onClick={() => setConfirming(post)}>
-                          Tirtir
+                          Delete
                         </Button>
                       ) : null}
                     </div>
@@ -116,14 +113,14 @@ export function PostsAdminPage(): ReactNode {
         />
       ) : null}
 
-      <Modal open={Boolean(confirming)} onClose={() => setConfirming(null)} title="Tirtir maqaalka">
+      <Modal open={Boolean(confirming)} onClose={() => setConfirming(null)} title="Delete post">
         <p className="text-base text-ink">
-          Ma hubtaa inaad tirtirayso <strong>{confirming?.title}</strong>? Tallaabadan lama soo
-          celin karo.
+          Are you sure you want to delete <strong>{confirming?.title}</strong>? This action cannot
+          be undone.
         </p>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setConfirming(null)}>
-            Maya
+            Cancel
           </Button>
           <Button
             variant="danger"
@@ -134,7 +131,7 @@ export function PostsAdminPage(): ReactNode {
               setConfirming(null);
             }}
           >
-            Haa, tirtir
+            Yes, delete
           </Button>
         </div>
       </Modal>

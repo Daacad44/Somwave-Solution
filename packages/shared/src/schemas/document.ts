@@ -12,10 +12,10 @@ export const adminDocumentSchema = z.object({
 export type AdminDocument = z.infer<typeof adminDocumentSchema>;
 
 export const createDocumentSchema = z.object({
-  title: z.string().trim().min(1, 'Cinwaanka waa waajib').max(200),
+  title: z.string().trim().min(1, 'Title is required').max(200),
   fileName: z.string().trim().min(1).max(200),
   mimeType: z.string().trim().min(1).max(120),
-  contentBase64: z.string().min(1, 'Faylka waa waajib'),
+  contentBase64: z.string().min(1, 'File is required'),
   clientId: z.string().optional(),
 });
 

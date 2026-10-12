@@ -1,24 +1,34 @@
 export const INVOICE_SENT_V1 = 'invoice-sent.v1' as const;
 export const ENQUIRY_NOTIFY_V1 = 'enquiry-notify.v1' as const;
 export const PASSWORD_RESET_V1 = 'password-reset.v1' as const;
+export const ENGINEERING_NOTIFICATION_V1 = 'engineering-notification.v1' as const;
 
 export type MailTemplateId =
-  typeof INVOICE_SENT_V1 | typeof ENQUIRY_NOTIFY_V1 | typeof PASSWORD_RESET_V1;
+  | typeof INVOICE_SENT_V1
+  | typeof ENQUIRY_NOTIFY_V1
+  | typeof PASSWORD_RESET_V1
+  | typeof ENGINEERING_NOTIFICATION_V1;
 
 export function renderMail(
   template: MailTemplateId,
   vars: Record<string, string>,
 ): { subject: string; text: string } {
+  if (template === ENGINEERING_NOTIFICATION_V1) {
+    return {
+      subject: vars.subject ?? 'Somwave engineering notification',
+      text: [vars.message ?? '', ...(vars.url ? ['', vars.url] : []), '', 'Somwave'].join('\n'),
+    };
+  }
   if (template === PASSWORD_RESET_V1) {
     return {
-      subject: 'Dib-u-dejinta furaha — Somwave',
+      subject: 'Reset your password — Somwave',
       text: [
-        'As-salaamu calaykum,',
+        'Hello,',
         '',
-        'Waxaan helnay codsi dib-u-dejin furaha akoonkaaga.',
-        `Fur xiriirkan saacad gudeheed: ${vars.resetUrl ?? ''}`,
+        'We received a request to reset your account password.',
+        `Open this link within one hour: ${vars.resetUrl ?? ''}`,
         '',
-        'Haddii aadan codsan, iska indho-tir fariintan.',
+        'If you did not request this, you can ignore this email.',
         '',
         'Somwave',
       ].join('\n'),
@@ -26,25 +36,25 @@ export function renderMail(
   }
   if (template === INVOICE_SENT_V1) {
     return {
-      subject: `Biil ${vars.number ?? ''} — Somwave`,
+      subject: `Invoice ${vars.number ?? ''} — Somwave`,
       text: [
-        `As-salaamu calaykum,`,
+        'Hello,',
         '',
-        `Waxaa laguu diray biil ${vars.number ?? ''} oo dhan $${vars.total ?? '0.00'}.`,
-        `Dhicitaanka: ${vars.dueDate ?? '—'}.`,
+        `Invoice ${vars.number ?? ''} for $${vars.total ?? '0.00'} is ready.`,
+        `Due date: ${vars.dueDate ?? '—'}.`,
         '',
-        'Mahadsanid,',
+        'Thank you,',
         'Somwave',
       ].join('\n'),
     };
   }
   return {
-    subject: 'Codsi cusub — Somwave',
+    subject: 'New enquiry — Somwave',
     text: [
-      'Codsi cusub ayaa ka yimid websaydka.',
+      'A new enquiry was submitted through the website.',
       '',
-      `Magaca: ${vars.name ?? '—'}`,
-      `Iimayl: ${vars.email ?? '—'}`,
+      `Name: ${vars.name ?? '—'}`,
+      `Email: ${vars.email ?? '—'}`,
       '',
       vars.message ?? '',
     ].join('\n'),

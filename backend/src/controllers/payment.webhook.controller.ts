@@ -26,7 +26,7 @@ export async function evcPlusWebhook(
 
     const result = await paymentService.applyEvcWebhook(parsed.data);
     if (!result) {
-      throw new AppError('NOT_FOUND', 404, 'Lacag bixintan lama helin');
+      throw new AppError('NOT_FOUND', 404, 'Payment not found');
     }
     sendData(res, result);
   } catch (err) {

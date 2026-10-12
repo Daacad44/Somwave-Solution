@@ -26,6 +26,29 @@ const WEBSITE_ITEMS: NavItem[] = [
 
 const OPERATIONS_ITEMS: NavItem[] = [
   { to: '/projects', label: 'Projects', permission: PERMISSIONS.PROJECTS_READ },
+  { to: '/engineering', label: 'Engineering Workspace', permission: PERMISSIONS.ENGINEERING_READ },
+  {
+    to: '/engineering/documentation',
+    label: 'Project Documentation',
+    permission: PERMISSIONS.ENGINEERING_READ,
+  },
+  { to: '/engineering/planning', label: 'Task Planning', permission: PERMISSIONS.ENGINEERING_READ },
+  {
+    to: '/engineering/operations',
+    label: 'Engineering Operations',
+    permission: PERMISSIONS.ENGINEERING_READ,
+  },
+  {
+    to: '/engineering/engineers',
+    label: 'Engineer Management',
+    permission: PERMISSIONS.ENGINEERING_READ,
+  },
+  {
+    to: '/engineering/analytics',
+    label: 'Engineering Analytics',
+    permission: PERMISSIONS.ENGINEERING_READ,
+  },
+  { to: '/github', label: 'GitHub', permission: PERMISSIONS.GITHUB_READ },
   { to: '/tasks', label: 'Tasks', permission: PERMISSIONS.TASKS_READ },
   { to: '/clients', label: 'Clients', permission: PERMISSIONS.CLIENTS_READ },
   { to: '/leads', label: 'Leads', permission: PERMISSIONS.LEADS_READ },
@@ -69,6 +92,8 @@ const PORTAL_ITEMS: NavItem[] = [
 const INTERNAL_SURFACE_PERMISSIONS: PermissionKey[] = [
   PERMISSIONS.CONTENT_READ,
   PERMISSIONS.PROJECTS_READ,
+  PERMISSIONS.ENGINEERING_READ,
+  PERMISSIONS.GITHUB_READ,
   PERMISSIONS.TASKS_READ,
   PERMISSIONS.MILESTONES_READ,
   PERMISSIONS.TIMESHEETS_READ,

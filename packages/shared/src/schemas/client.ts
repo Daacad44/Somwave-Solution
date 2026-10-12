@@ -21,8 +21,8 @@ export const adminClientSchema = z.object({
 export type AdminClient = z.infer<typeof adminClientSchema>;
 
 export const createClientSchema = z.object({
-  companyName: z.string().trim().min(1, 'Magaca shirkadda waa waajib').max(200),
-  email: z.string().trim().email('Fadlan geli iimayl sax ah').optional(),
+  companyName: z.string().trim().min(1, 'Company name is required').max(200),
+  email: z.string().trim().email('Enter a valid email address').optional(),
   phone: z.string().trim().max(40).optional(),
   status: clientStatusSchema.default('ACTIVE'),
 });
@@ -37,7 +37,7 @@ export const updateClientSchema = z
     status: clientStatusSchema.optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
-    message: 'Ugu yaraan hal beddel ayaa loo baahan yahay',
+    message: 'At least one change is required',
   });
 
 export type UpdateClientInput = z.infer<typeof updateClientSchema>;

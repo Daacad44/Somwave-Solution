@@ -13,16 +13,16 @@ const ALLOWED_PREFIXES: ReadonlyArray<{ mime: string; magic: number[] }> = [
 
 export function decodeUpload(contentBase64: string, claimedMime: string): Buffer {
   const bytes = Buffer.from(contentBase64, 'base64');
-  if (bytes.length === 0) throw new AppError('VALIDATION_ERROR', 400, 'Faylka waa madhan');
+  if (bytes.length === 0) throw new AppError('VALIDATION_ERROR', 400, 'File is empty');
   if (bytes.length > UPLOAD_MAX_BYTES) {
-    throw new AppError('VALIDATION_ERROR', 400, 'Faylka wuu ka weyn yahay 25MB');
+    throw new AppError('VALIDATION_ERROR', 400, 'File exceeds 25 MB');
   }
   const match = ALLOWED_PREFIXES.find((rule) => rule.mime === claimedMime);
   if (!match) {
-    throw new AppError('VALIDATION_ERROR', 400, 'Nooca faylka lama oggola');
+    throw new AppError('VALIDATION_ERROR', 400, 'File type is not allowed');
   }
   if (!match.magic.every((value, index) => bytes[index] === value)) {
-    throw new AppError('VALIDATION_ERROR', 400, 'Faylka ma ahan nooca la sheegay');
+    throw new AppError('VALIDATION_ERROR', 400, 'File content does not match its type');
   }
   return bytes;
 }
@@ -51,7 +51,7 @@ async function s3Client() {
 
 async function storeBytes(key: string, bytes: Buffer, mimeType: string): Promise<void> {
   if (!isSafeStorageKey(key)) {
-    throw new AppError('VALIDATION_ERROR', 400, 'Magaca faylka waa khalad');
+    throw new AppError('VALIDATION_ERROR', 400, 'Invalid storage key');
   }
   if (s3Configured()) {
     const { PutObjectCommand } = await import('@aws-sdk/client-s3');
@@ -67,7 +67,7 @@ async function storeBytes(key: string, bytes: Buffer, mimeType: string): Promise
     return;
   }
   if (env.NODE_ENV === 'production') {
-    throw new AppError('INTERNAL_ERROR', 503, 'Kaynta faylalka lama diyaarin');
+    throw new AppError('INTERNAL_ERROR', 503, 'File storage is unavailable');
   }
   memory.set(key, bytes);
 }
@@ -125,14 +125,14 @@ export function decodeArticleImage(
   const normalized = claimedMime === 'image/jpg' ? 'image/jpeg' : claimedMime;
   const bytes = Buffer.from(contentBase64, 'base64');
   if (bytes.length === 0) {
-    throw new AppError('VALIDATION_ERROR', 400, 'Fadlan soo geli sawir sax ah.');
+    throw new AppError('VALIDATION_ERROR', 400, 'Please upload a valid image.');
   }
   if (bytes.length > ARTICLE_IMAGE_MAX_BYTES) {
-    throw new AppError('VALIDATION_ERROR', 400, 'Sawirku waa inuu ka yaraadaa 5MB.');
+    throw new AppError('VALIDATION_ERROR', 400, 'The image must be smaller than 5 MB.');
   }
   const detected = ARTICLE_IMAGE_TYPES.find((rule) => rule.matches(bytes));
   if (!detected || detected.mime !== normalized) {
-    throw new AppError('VALIDATION_ERROR', 400, 'Fadlan soo geli sawir JPG, PNG ama WEBP ah.');
+    throw new AppError('VALIDATION_ERROR', 400, 'Please upload a JPG, PNG, or WebP image.');
   }
   return { bytes, mimeType: detected.mime, extension: detected.extension };
 }
@@ -159,7 +159,7 @@ export async function readObject(key: string): Promise<Buffer | null> {
     } catch (err) {
       const name = err && typeof err === 'object' && 'name' in err ? String(err.name) : '';
       if (name === 'NoSuchKey' || name === 'NotFound') return null;
-      throw new AppError('INTERNAL_ERROR', 503, 'Kaynta faylalka lama diyaarin');
+      throw new AppError('INTERNAL_ERROR', 503, 'File storage is unavailable');
     }
   }
   return memory.get(key) ?? null;

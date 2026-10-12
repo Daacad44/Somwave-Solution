@@ -10,10 +10,14 @@ export const PROJECT_STATUS_LABELS_EN: Record<ProjectStatus, string> = {
 };
 
 export const TASK_STATUS_LABELS_EN: Record<TaskStatus, string> = {
+  BACKLOG: 'Backlog',
   TODO: 'To do',
   IN_PROGRESS: 'In progress',
+  BLOCKED: 'Blocked',
   IN_REVIEW: 'In review',
+  TESTING: 'Testing',
   DONE: 'Done',
+  CANCELLED: 'Cancelled',
 };
 
 export const TICKET_STATUS_LABELS_EN = {

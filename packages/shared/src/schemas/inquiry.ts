@@ -2,12 +2,12 @@ import { z } from 'zod';
 import { adminClientSchema } from './client';
 
 // Website enquiry form (SYSTEM_PROMPT §11). The same schema drives the form on
-// the client and validate() on the server. User-facing messages are Somali (§15).
+// the client and validate() on the server.
 export const createInquirySchema = z.object({
-  name: z.string().trim().min(1, 'Magaca waa waajib').max(120),
-  email: z.string().trim().email('Fadlan geli iimayl sax ah'),
+  name: z.string().trim().min(1, 'Name is required').max(120),
+  email: z.string().trim().email('Enter a valid email address'),
   phone: z.string().trim().max(40).optional(),
-  message: z.string().trim().min(10, 'Fariintu waa inay ka badan tahay 10 xaraf').max(4000),
+  message: z.string().trim().min(10, 'Message must be at least 10 characters').max(4000),
   // Honeypot — browsers leave this empty; bots often fill it.
   website: z.string().trim().max(200).optional(),
 });
@@ -19,9 +19,9 @@ export const inquiryStatusSchema = z.enum(INQUIRY_STATUSES);
 export type InquiryStatus = z.infer<typeof inquiryStatusSchema>;
 
 export const INQUIRY_STATUS_LABELS: Record<InquiryStatus, string> = {
-  NEW: 'Cusub',
-  READ: 'La akhriyay',
-  ARCHIVED: 'Kaydsan',
+  NEW: 'New',
+  READ: 'Read',
+  ARCHIVED: 'Archived',
 };
 
 export const adminInquirySchema = z.object({

@@ -29,16 +29,16 @@ export function ResetPasswordPage(): ReactNode {
   const error = mutation.error instanceof ApiError ? mutation.error.message : null;
 
   return (
-    <AuthLayout title="Furaha cusub" subtitle="Dooro furaha aad isticmaali doonto marka xigta.">
+    <AuthLayout title="New password" subtitle="Choose the password you will use next.">
       <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
         {done ? (
           <p className="text-sm text-muted" role="status">
-            Furaha waa la beddelay. Hadda waad soo gali kartaa.
+            Your password has been changed. You can sign in now.
           </p>
         ) : (
           <>
             <Input
-              label="Furaha cusub"
+              label="New password"
               type={showPassword ? 'text' : 'password'}
               autoComplete="new-password"
               error={form.formState.errors.password?.message}
@@ -46,7 +46,7 @@ export function ResetPasswordPage(): ReactNode {
                 <button
                   type="button"
                   className="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                  aria-label={showPassword ? 'Qari furaha' : 'Muuji furaha'}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                   onClick={() => setShowPassword((current) => !current)}
                 >
                   {showPassword ? (
@@ -59,7 +59,7 @@ export function ResetPasswordPage(): ReactNode {
               {...form.register('password')}
             />
             {!token ? (
-              <p className="text-sm text-error">Xiriirka dib-u-dejinta ma dhammaystirna.</p>
+              <p className="text-sm text-error">The reset link is incomplete.</p>
             ) : null}
             {error ? <p className="text-sm text-error">{error}</p> : null}
             <Button
@@ -68,12 +68,12 @@ export function ResetPasswordPage(): ReactNode {
               isLoading={mutation.isPending}
               disabled={!token}
             >
-              Kaydi
+              Save
             </Button>
           </>
         )}
         <Link className="text-sm text-brand underline-offset-2 hover:underline" to="/login">
-          Ku noqo soo-galidda
+          Back to sign in
         </Link>
       </form>
     </AuthLayout>

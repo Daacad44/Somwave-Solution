@@ -96,7 +96,7 @@ export async function getTicket(id: string, clientId?: string | null): Promise<T
     where: ownerWhere(id, clientId),
     include: detailInclude,
   });
-  if (!row) throw new AppError('NOT_FOUND', 404, 'Tikidhkan lama helin');
+  if (!row) throw new AppError('NOT_FOUND', 404, 'Ticket not found');
   return toDetail(row);
 }
 
@@ -105,12 +105,12 @@ export async function createTicket(
   input: CreateTicketInput,
 ): Promise<AdminTicket> {
   const client = await prisma.client.findFirst({ where: { id: clientId, deletedAt: null } });
-  if (!client) throw new AppError('NOT_FOUND', 404, 'Macmiilkan lama helin');
+  if (!client) throw new AppError('NOT_FOUND', 404, 'Client not found');
   if (input.projectId) {
     const project = await prisma.project.findFirst({
       where: { id: input.projectId, deletedAt: null, clientId },
     });
-    if (!project) throw new AppError('VALIDATION_ERROR', 400, 'Mashruucan lama helin');
+    if (!project) throw new AppError('VALIDATION_ERROR', 400, 'Project not found');
   }
   const year = new Date().getUTCFullYear();
   const count = await prisma.supportTicket.count();
@@ -155,7 +155,7 @@ export async function updateTicket(
   clientId?: string | null,
 ): Promise<AdminTicket> {
   const existing = await prisma.supportTicket.findFirst({ where: ownerWhere(id, clientId) });
-  if (!existing) throw new AppError('NOT_FOUND', 404, 'Tikidhkan lama helin');
+  if (!existing) throw new AppError('NOT_FOUND', 404, 'Ticket not found');
 
   if (input.assigneeId) {
     const assignee = await prisma.user.findFirst({
@@ -167,7 +167,7 @@ export async function updateTicket(
       },
       select: { id: true },
     });
-    if (!assignee) throw new AppError('VALIDATION_ERROR', 400, 'Shaqaalahan lama helin');
+    if (!assignee) throw new AppError('VALIDATION_ERROR', 400, 'Employee not found');
   }
 
   const row = await prisma.supportTicket.update({
@@ -191,7 +191,7 @@ export async function createReply(
   const ticket = await prisma.supportTicket.findFirst({
     where: ownerWhere(ticketId, clientId),
   });
-  if (!ticket) throw new AppError('NOT_FOUND', 404, 'Tikidhkan lama helin');
+  if (!ticket) throw new AppError('NOT_FOUND', 404, 'Ticket not found');
 
   const row = await prisma.ticketReply.create({
     data: { ticketId: ticket.id, authorId, body: input.body },

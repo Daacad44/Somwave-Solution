@@ -119,6 +119,13 @@ describe('visibleNavGroups', () => {
     ]);
     expect(paths('Operations', groups)).toEqual([
       '/projects',
+      '/engineering',
+      '/engineering/documentation',
+      '/engineering/planning',
+      '/engineering/operations',
+      '/engineering/engineers',
+      '/engineering/analytics',
+      '/github',
       '/tasks',
       '/clients',
       '/leads',

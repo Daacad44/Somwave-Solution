@@ -82,7 +82,7 @@ export function PortfolioFormModal({ open, onClose, item }: PortfolioFormModalPr
       close();
     } catch (err) {
       setServerError(
-        err instanceof ApiError ? err.message : 'Wax baa qaldamay. Fadlan mar kale isku day.',
+        err instanceof ApiError ? err.message : 'Something went wrong. Please try again.',
       );
     }
   });
@@ -90,9 +90,13 @@ export function PortfolioFormModal({ open, onClose, item }: PortfolioFormModalPr
   const pending = isSubmitting || createMutation.isPending || updateMutation.isPending;
 
   return (
-    <Modal open={open} onClose={close} title={isEdit ? 'Wax ka beddel shaqada' : 'Shaqo cusub'}>
+    <Modal
+      open={open}
+      onClose={close}
+      title={isEdit ? 'Edit portfolio item' : 'New portfolio item'}
+    >
       <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
-        <Input label="Cinwaanka" error={errors.title?.message} {...register('title')} />
+        <Input label="Title" error={errors.title?.message} {...register('title')} />
         <Input
           label="Slug (URL)"
           placeholder="nidaamka-maamulka-iskuulka"
@@ -102,7 +106,7 @@ export function PortfolioFormModal({ open, onClose, item }: PortfolioFormModalPr
         <Input label="Kooban" error={errors.summary?.message} {...register('summary')} />
 
         <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-ink">Sharaxaad</span>
+          <span className="text-sm font-medium text-ink">Description</span>
           <textarea
             className="min-h-24 rounded-md border border-border bg-surface px-3 py-2 text-base text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             rows={4}
@@ -111,9 +115,9 @@ export function PortfolioFormModal({ open, onClose, item }: PortfolioFormModalPr
         </label>
 
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Macmiilka" error={errors.client?.message} {...register('client')} />
+          <Input label="Client" error={errors.client?.message} {...register('client')} />
           <Input
-            label="Kala horreyn (order)"
+            label="Display order"
             type="number"
             min={0}
             error={errors.order?.message}
@@ -122,7 +126,7 @@ export function PortfolioFormModal({ open, onClose, item }: PortfolioFormModalPr
         </div>
 
         <Input
-          label="Sawirka (link, ikhtiyaari)"
+          label="Image URL (optional)"
           placeholder="https://"
           error={errors.coverImage?.message}
           {...register('coverImage')}
@@ -137,10 +141,10 @@ export function PortfolioFormModal({ open, onClose, item }: PortfolioFormModalPr
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={close}>
-            Jooji
+            Cancel
           </Button>
           <Button type="submit" isLoading={pending}>
-            {isEdit ? 'Kaydi' : 'Abuur'}
+            {isEdit ? 'Save' : 'Create'}
           </Button>
         </div>
       </form>

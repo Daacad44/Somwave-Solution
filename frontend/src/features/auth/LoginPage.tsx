@@ -55,21 +55,21 @@ export function LoginPage(): ReactNode {
     (loginMutation.error instanceof ApiError
       ? loginMutation.error.message
       : loginMutation.error
-        ? 'Wax baa qaldamay'
+        ? 'Something went wrong'
         : null) ??
     (verifyMutation.error instanceof ApiError
       ? verifyMutation.error.message
       : verifyMutation.error
-        ? 'Wax baa qaldamay'
+        ? 'Something went wrong'
         : null);
 
   if (challengeToken) {
     return (
-      <AuthLayout title="Xaqiiji" subtitle="Geli koodhka 2FA ee app-kaaga.">
+      <AuthLayout title="Verify your sign-in" subtitle="Enter the 2FA code from your authenticator app.">
         <form className="flex flex-col gap-4" onSubmit={onVerify} noValidate>
           <input type="hidden" {...codeForm.register('challengeToken')} />
           <Input
-            label="Koodhka 2FA"
+            label="2FA code"
             inputMode="numeric"
             autoComplete="one-time-code"
             error={codeForm.formState.errors.code?.message}
@@ -81,7 +81,7 @@ export function LoginPage(): ReactNode {
             className="w-full"
             isLoading={codeForm.formState.isSubmitting || verifyMutation.isPending}
           >
-            Xaqiiji
+            Verify
           </Button>
         </form>
       </AuthLayout>
@@ -89,17 +89,17 @@ export function LoginPage(): ReactNode {
   }
 
   return (
-    <AuthLayout title="Soo gal" subtitle="Soo gal akoonkaaga si aad u sii wadato shaqada.">
+    <AuthLayout title="Sign in" subtitle="Sign in to your account to continue.">
       <form className="flex flex-col gap-4" onSubmit={onLogin} noValidate>
         <Input
-          label="Iimayl"
+          label="Email"
           type="email"
           autoComplete="email"
           error={loginForm.formState.errors.email?.message}
           {...loginForm.register('email')}
         />
         <Input
-          label="Furaha"
+          label="Password"
           type={showPassword ? 'text' : 'password'}
           autoComplete="current-password"
           error={loginForm.formState.errors.password?.message}
@@ -107,7 +107,7 @@ export function LoginPage(): ReactNode {
             <button
               type="button"
               className="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              aria-label={showPassword ? 'Qari furaha' : 'Muuji furaha'}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
               onClick={() => setShowPassword((current) => !current)}
             >
               {showPassword ? (
@@ -125,11 +125,11 @@ export function LoginPage(): ReactNode {
           className="w-full"
           isLoading={loginForm.formState.isSubmitting || loginMutation.isPending}
         >
-          Soo gal
+          Sign in
         </Button>
         <p className="text-sm text-muted">
           <Link className="text-brand underline-offset-2 hover:underline" to="/forgot-password">
-            Ma hilmaamtay furaha?
+            Forgot your password?
           </Link>
         </p>
       </form>

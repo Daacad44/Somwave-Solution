@@ -19,7 +19,13 @@ export async function listAuditLogs(): Promise<AdminAuditLog[]> {
 
 export async function listNotifications(userId: string): Promise<AdminNotification[]> {
   const rows = await prisma.notification.findMany({
-    where: { userId },
+    where: {
+      userId,
+      OR: [
+        { deliveries: { none: {} } },
+        { deliveries: { some: { channel: 'IN_APP', status: 'SENT' } } },
+      ],
+    },
     orderBy: { createdAt: 'desc' },
     take: 50,
   });
@@ -33,8 +39,17 @@ export async function listNotifications(userId: string): Promise<AdminNotificati
 }
 
 export async function markNotificationRead(id: string, userId: string): Promise<AdminNotification> {
-  const existing = await prisma.notification.findFirst({ where: { id, userId } });
-  if (!existing) throw new AppError('NOT_FOUND', 404, 'Ogeysiiska lama helin');
+  const existing = await prisma.notification.findFirst({
+    where: {
+      id,
+      userId,
+      OR: [
+        { deliveries: { none: {} } },
+        { deliveries: { some: { channel: 'IN_APP', status: 'SENT' } } },
+      ],
+    },
+  });
+  if (!existing) throw new AppError('NOT_FOUND', 404, 'Notification not found');
   const row = await prisma.notification.update({
     where: { id },
     data: { readAt: existing.readAt ?? new Date() },

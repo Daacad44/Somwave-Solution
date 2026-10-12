@@ -23,10 +23,14 @@ import { TaskKanban } from './TaskKanban';
 const PAGE_SIZE = 20;
 
 const STATUS_TONE: Record<TaskStatus, 'neutral' | 'info' | 'success' | 'warning' | 'error'> = {
+  BACKLOG: 'neutral',
   TODO: 'neutral',
   IN_PROGRESS: 'info',
+  BLOCKED: 'error',
   IN_REVIEW: 'warning',
+  TESTING: 'info',
   DONE: 'success',
+  CANCELLED: 'neutral',
 };
 const PRIORITY_TONE: Record<TaskPriority, 'neutral' | 'info' | 'success' | 'warning' | 'error'> = {
   LOW: 'neutral',
@@ -82,15 +86,15 @@ export function TasksPage(): ReactNode {
     <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-ink">Hawlaha</h1>
-          <p className="mt-1 text-base text-muted">Maamul hawlaha mashruucyada.</p>
+          <h1 className="text-2xl font-semibold text-ink">Tasks</h1>
+          <p className="mt-1 text-base text-muted">Manage project tasks.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button
             variant={view === 'list' ? 'primary' : 'secondary'}
             onClick={() => setView('list')}
           >
-            Liis
+            List
           </Button>
           <Button
             variant={view === 'kanban' ? 'primary' : 'secondary'}
@@ -98,15 +102,15 @@ export function TasksPage(): ReactNode {
           >
             Kanban
           </Button>
-          {canCreate ? <Button onClick={openCreate}>Hawl cusub</Button> : null}
+          {canCreate ? <Button onClick={openCreate}>New task</Button> : null}
         </div>
       </div>
 
       <div className="mt-6 flex flex-wrap items-end gap-2">
         <Select
-          aria-label="Kala sooc mashruuca"
+          aria-label="Filter by project"
           options={[
-            { value: '', label: 'Dhammaan mashruucyada' },
+            { value: '', label: 'All projects' },
             ...projects.map((p) => ({ value: p.id, label: p.name })),
           ]}
           value={projectId}
@@ -117,9 +121,9 @@ export function TasksPage(): ReactNode {
         />
         {view === 'list' ? (
           <Select
-            aria-label="Kala sooc xaalada"
+            aria-label="Filter by status"
             options={[
-              { value: '', label: 'Dhammaan xaaladaha' },
+              { value: '', label: 'All statuses' },
               ...TASK_STATUSES.map((s) => ({ value: s, label: TASK_STATUS_LABELS[s] })),
             ]}
             value={status}
@@ -133,14 +137,14 @@ export function TasksPage(): ReactNode {
 
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {query.isLoading ? (
-          <LoadingState rows={6} label="Waa la soo rarayaa" />
+          <LoadingState rows={6} label="Loading" />
         ) : query.isError ? (
-          <ErrorState description="Hawlaha lama soo rari karin." onRetry={() => query.refetch()} />
+          <ErrorState description="Could not load tasks." onRetry={() => query.refetch()} />
         ) : tasks.length === 0 ? (
           <EmptyState
-            title="Weli hawl ma jirto"
-            description={projectId || status ? 'Kala-soocdu waxba ma soo celin.' : undefined}
-            action={canCreate ? <Button onClick={openCreate}>Hawl cusub</Button> : undefined}
+            title="No tasks yet"
+            description={projectId || status ? 'No results match your filters.' : undefined}
+            action={canCreate ? <Button onClick={openCreate}>New task</Button> : undefined}
           />
         ) : view === 'kanban' ? (
           <div className="p-4">
@@ -150,12 +154,12 @@ export function TasksPage(): ReactNode {
           <Table>
             <THead>
               <Tr>
-                <Th>Cinwaan</Th>
-                <Th>Mashruuc</Th>
-                <Th>Xaalad</Th>
-                <Th>Mudnaan</Th>
-                <Th>Dhammaad</Th>
-                <Th className="text-end">Ficil</Th>
+                <Th>Title</Th>
+                <Th>Project</Th>
+                <Th>Status</Th>
+                <Th>Priority</Th>
+                <Th>Due date</Th>
+                <Th className="text-end">Actions</Th>
               </Tr>
             </THead>
             <TBody>
@@ -176,12 +180,12 @@ export function TasksPage(): ReactNode {
                     <div className="flex justify-end gap-2">
                       {canUpdate ? (
                         <Button size="sm" variant="secondary" onClick={() => openEdit(task)}>
-                          Wax ka beddel
+                          Edit
                         </Button>
                       ) : null}
                       {canDelete ? (
                         <Button size="sm" variant="danger" onClick={() => setConfirming(task)}>
-                          Tirtir
+                          Delete
                         </Button>
                       ) : null}
                     </div>
@@ -196,7 +200,7 @@ export function TasksPage(): ReactNode {
       {view === 'list' && total > PAGE_SIZE ? (
         <div className="mt-4 flex items-center justify-between text-sm text-muted">
           <span>
-            Bogga {page} / {totalPages} · {total} hawl
+            Page {page} / {totalPages} · {total} task
           </span>
           <div className="flex gap-2">
             <Button
@@ -205,7 +209,7 @@ export function TasksPage(): ReactNode {
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
-              Hore
+              Previous
             </Button>
             <Button
               size="sm"
@@ -213,7 +217,7 @@ export function TasksPage(): ReactNode {
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             >
-              Xiga
+              Next
             </Button>
           </div>
         </div>
@@ -229,13 +233,13 @@ export function TasksPage(): ReactNode {
         />
       ) : null}
 
-      <Modal open={Boolean(confirming)} onClose={() => setConfirming(null)} title="Tirtir hawsha">
+      <Modal open={Boolean(confirming)} onClose={() => setConfirming(null)} title="Delete task">
         <p className="text-base text-ink">
-          Ma hubtaa inaad tirtirayso <strong>{confirming?.title}</strong>?
+          Are you sure you want to delete <strong>{confirming?.title}</strong>?
         </p>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setConfirming(null)}>
-            Maya
+            Cancel
           </Button>
           <Button
             variant="danger"
@@ -246,7 +250,7 @@ export function TasksPage(): ReactNode {
               setConfirming(null);
             }}
           >
-            Haa, tirtir
+            Yes, delete
           </Button>
         </div>
       </Modal>

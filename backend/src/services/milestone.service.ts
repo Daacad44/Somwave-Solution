@@ -6,11 +6,13 @@ import type {
   CreateMilestoneInput,
   UpdateMilestoneInput,
   MilestoneStatus,
+  AuthUser,
 } from '@somwave/shared';
 import { MAX_PAGE_SIZE } from '@somwave/shared';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
+import { projectScope } from './project.service';
 
 const adminMilestoneSelect = {
   id: true,
@@ -55,6 +57,7 @@ export interface ListMilestonesParams {
   pageSize: number;
   projectId?: string;
   status?: MilestoneStatus;
+  actor?: AuthUser;
 }
 
 export interface PagedMilestones {
@@ -69,6 +72,7 @@ export async function listMilestones({
   pageSize,
   projectId,
   status,
+  actor,
 }: ListMilestonesParams): Promise<PagedMilestones> {
   const take = Math.min(Math.max(pageSize, 1), MAX_PAGE_SIZE);
   const skip = (Math.max(page, 1) - 1) * take;
@@ -77,6 +81,7 @@ export async function listMilestones({
     deletedAt: null,
     ...(projectId ? { projectId } : {}),
     ...(status ? { status } : {}),
+    ...(actor ? { project: projectScope(actor) } : {}),
   };
 
   const [rows, total] = await prisma.$transaction([
@@ -93,20 +98,20 @@ export async function listMilestones({
   return { items: rows.map(toAdminMilestone), page: Math.max(page, 1), pageSize: take, total };
 }
 
-export async function getMilestone(id: string): Promise<AdminMilestone | null> {
+export async function getMilestone(id: string, actor?: AuthUser): Promise<AdminMilestone | null> {
   const row = await prisma.milestone.findFirst({
-    where: { id, deletedAt: null },
+    where: { id, deletedAt: null, ...(actor ? { project: projectScope(actor) } : {}) },
     select: adminMilestoneSelect,
   });
   return row ? toAdminMilestone(row) : null;
 }
 
-async function assertProjectExists(projectId: string): Promise<void> {
+async function assertProjectExists(projectId: string, actor?: AuthUser): Promise<void> {
   const project = await prisma.project.findFirst({
-    where: { id: projectId, deletedAt: null },
+    where: { id: projectId, deletedAt: null, ...projectScope(actor) },
     select: { id: true },
   });
-  if (!project) throw new AppError('VALIDATION_ERROR', 400, 'Mashruuca lama helin');
+  if (!project) throw new AppError('VALIDATION_ERROR', 400, 'Project not found');
 }
 
 // completedAt tracks the COMPLETED status: set on reaching it, cleared on leaving.
@@ -119,8 +124,11 @@ function completionStamp(
   return wasCompleted ? null : undefined;
 }
 
-export async function createMilestone(input: CreateMilestoneInput): Promise<AdminMilestone> {
-  await assertProjectExists(input.projectId);
+export async function createMilestone(
+  input: CreateMilestoneInput,
+  actor?: AuthUser,
+): Promise<AdminMilestone> {
+  await assertProjectExists(input.projectId, actor);
 
   const row = await prisma.milestone.create({
     data: {
@@ -140,12 +148,13 @@ export async function createMilestone(input: CreateMilestoneInput): Promise<Admi
 export async function updateMilestone(
   id: string,
   input: UpdateMilestoneInput,
+  actor?: AuthUser,
 ): Promise<AdminMilestone> {
   const milestone = await prisma.milestone.findFirst({
-    where: { id, deletedAt: null },
+    where: { id, deletedAt: null, ...(actor ? { project: projectScope(actor) } : {}) },
     select: { id: true, status: true },
   });
-  if (!milestone) throw new AppError('NOT_FOUND', 404, 'Marxaladdan lama helin');
+  if (!milestone) throw new AppError('NOT_FOUND', 404, 'Milestone not found');
 
   const stamp = completionStamp(input.status, milestone.status === 'COMPLETED');
 
@@ -167,8 +176,10 @@ export async function updateMilestone(
 }
 
 // Soft delete — milestone history is preserved (§7).
-export async function deleteMilestone(id: string): Promise<void> {
-  const milestone = await prisma.milestone.findFirst({ where: { id, deletedAt: null } });
-  if (!milestone) throw new AppError('NOT_FOUND', 404, 'Marxaladdan lama helin');
+export async function deleteMilestone(id: string, actor?: AuthUser): Promise<void> {
+  const milestone = await prisma.milestone.findFirst({
+    where: { id, deletedAt: null, ...(actor ? { project: projectScope(actor) } : {}) },
+  });
+  if (!milestone) throw new AppError('NOT_FOUND', 404, 'Milestone not found');
   await prisma.milestone.update({ where: { id }, data: { deletedAt: new Date() } });
 }

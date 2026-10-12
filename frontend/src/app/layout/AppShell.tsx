@@ -23,7 +23,9 @@ import {
   Mail,
   Menu,
   MessageSquare,
+  Moon,
   Receipt,
+  Sun,
   Settings,
   Shield,
   UserRound,
@@ -102,7 +104,16 @@ export function AppShell(): ReactNode {
   const navigate = useNavigate();
   const [open, setOpen] = useState(() => window.matchMedia('(min-width: 1024px)').matches);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [dark, setDark] = useState(() => {
+    const saved = window.localStorage.getItem('somwave-theme');
+    return saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    window.localStorage.setItem('somwave-theme', dark ? 'dark' : 'light');
+  }, [dark]);
 
   useEffect(() => {
     const onPointer = (event: MouseEvent): void => {
@@ -199,6 +210,7 @@ export function AppShell(): ReactNode {
                     <NavLink
                       key={`${group.heading}-${item.to}`}
                       to={item.to}
+                      end={item.to === '/engineering'}
                       className={linkClass}
                       onClick={closeDrawer}
                     >
@@ -235,6 +247,18 @@ export function AppShell(): ReactNode {
           </button>
           <GlobalSearch />
           <div className="ms-auto flex items-center gap-2">
+            <button
+              type="button"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-ink hover:bg-canvas"
+              aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+              onClick={() => setDark((value) => !value)}
+            >
+              {dark ? (
+                <Sun className="h-5 w-5" aria-hidden="true" />
+              ) : (
+                <Moon className="h-5 w-5" aria-hidden="true" />
+              )}
+            </button>
             {hasPermission(user, PERMISSIONS.NOTIFICATIONS_READ) ? (
               <NavLink
                 to="/notifications"

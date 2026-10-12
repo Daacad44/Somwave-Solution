@@ -113,18 +113,18 @@ export async function getInvoice(id: string, clientId?: string | null): Promise<
     where: ownerWhere(id, clientId),
     include: detailInclude,
   });
-  if (!row) throw new AppError('NOT_FOUND', 404, 'Biilkan lama helin');
+  if (!row) throw new AppError('NOT_FOUND', 404, 'Invoice not found');
   return toDetail(row);
 }
 
 export async function createInvoice(input: CreateInvoiceInput): Promise<InvoiceDetail> {
   const client = await prisma.client.findFirst({ where: { id: input.clientId, deletedAt: null } });
-  if (!client) throw new AppError('VALIDATION_ERROR', 400, 'Macmiilkan lama helin');
+  if (!client) throw new AppError('VALIDATION_ERROR', 400, 'Client not found');
   if (input.projectId) {
     const project = await prisma.project.findFirst({
       where: { id: input.projectId, deletedAt: null, clientId: input.clientId },
     });
-    if (!project) throw new AppError('VALIDATION_ERROR', 400, 'Mashruucan lama helin');
+    if (!project) throw new AppError('VALIDATION_ERROR', 400, 'Project not found');
   }
 
   const items = input.items.map((item) => {
@@ -176,14 +176,14 @@ export async function sendInvoice(id: string, clientId?: string | null): Promise
     where: ownerWhere(id, clientId),
     include: detailInclude,
   });
-  if (!existing) throw new AppError('NOT_FOUND', 404, 'Biilkan lama helin');
+  if (!existing) throw new AppError('NOT_FOUND', 404, 'Invoice not found');
 
   const status = effectiveStatus(existing);
   if (ALREADY_SENT.has(status) || ALREADY_SENT.has(existing.status)) {
     return toDetail({ ...existing, status });
   }
   if (!SENDABLE.has(existing.status)) {
-    throw new AppError('CONFLICT', 409, 'Biilkan lama diri karo');
+    throw new AppError('CONFLICT', 409, 'This invoice cannot be sent');
   }
 
   const nextStatus: InvoiceStatus = existing.dueDate.getTime() < Date.now() ? 'OVERDUE' : 'SENT';
@@ -216,10 +216,10 @@ export async function voidInvoice(id: string, clientId?: string | null): Promise
     where: ownerWhere(id, clientId),
     include: detailInclude,
   });
-  if (!existing) throw new AppError('NOT_FOUND', 404, 'Biilkan lama helin');
+  if (!existing) throw new AppError('NOT_FOUND', 404, 'Invoice not found');
   if (existing.status === 'VOID') return toDetail(existing);
   if (existing.status === 'PAID' || !VOIDABLE.has(existing.status)) {
-    throw new AppError('CONFLICT', 409, 'Biilkan lama burin karo');
+    throw new AppError('CONFLICT', 409, 'This invoice cannot be voided');
   }
 
   const row = await prisma.invoice.update({

@@ -100,7 +100,7 @@ async function assertRolesExist(roleIds: string[]): Promise<void> {
   if (roleIds.length === 0) return;
   const found = await prisma.role.count({ where: { id: { in: roleIds } } });
   if (found !== new Set(roleIds).size) {
-    throw new AppError('VALIDATION_ERROR', 400, 'Hal ama in ka badan door lama helin');
+    throw new AppError('VALIDATION_ERROR', 400, 'One or more roles were not found');
   }
 }
 
@@ -109,7 +109,7 @@ export async function createUser(input: CreateUserInput): Promise<AdminUser> {
 
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
   if (existing) {
-    throw new AppError('CONFLICT', 409, 'Iimaylkan horey ayaa loo isticmaalay');
+    throw new AppError('CONFLICT', 409, 'This email address is already in use');
   }
 
   const row = await prisma.user.create({
@@ -126,7 +126,7 @@ export async function createUser(input: CreateUserInput): Promise<AdminUser> {
 
 export async function updateUser(id: string, input: UpdateUserInput): Promise<AdminUser> {
   const user = await prisma.user.findFirst({ where: { id, deletedAt: null } });
-  if (!user) throw new AppError('NOT_FOUND', 404, 'Isticmaalahan lama helin');
+  if (!user) throw new AppError('NOT_FOUND', 404, 'User not found');
 
   if (input.roleIds) await assertRolesExist(input.roleIds);
 
@@ -156,10 +156,10 @@ export async function updateUser(id: string, input: UpdateUserInput): Promise<Ad
 // Soft delete — users are never hard-deleted (§7). Also revokes live sessions.
 export async function deactivateUser(id: string, actingUserId: string): Promise<void> {
   if (id === actingUserId) {
-    throw new AppError('VALIDATION_ERROR', 400, 'Iskama saari kartid akoonkaaga');
+    throw new AppError('VALIDATION_ERROR', 400, 'You cannot remove your own account');
   }
   const user = await prisma.user.findFirst({ where: { id, deletedAt: null } });
-  if (!user) throw new AppError('NOT_FOUND', 404, 'Isticmaalahan lama helin');
+  if (!user) throw new AppError('NOT_FOUND', 404, 'User not found');
 
   await prisma.$transaction([
     prisma.user.update({

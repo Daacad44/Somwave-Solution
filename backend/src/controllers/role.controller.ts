@@ -9,7 +9,7 @@ export async function get(req: Request, res: Response, next: NextFunction): Prom
   try {
     const { id } = req.params;
     const role = id ? await roleService.getRole(id) : null;
-    if (!role) throw new AppError('NOT_FOUND', 404, 'Doorkan lama helin');
+    if (!role) throw new AppError('NOT_FOUND', 404, 'Role not found');
     sendData(res, role);
   } catch (err) {
     next(err);
@@ -35,7 +35,7 @@ export async function setPermissions(
 ): Promise<void> {
   try {
     const { id } = req.params;
-    if (!id) throw new AppError('NOT_FOUND', 404, 'Doorkan lama helin');
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Role not found');
     const { permissionKeys } = req.body as UpdateRolePermissionsInput;
     sendData(res, await roleService.setRolePermissions(id, permissionKeys));
   } catch (err) {

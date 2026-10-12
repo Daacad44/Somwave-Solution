@@ -15,7 +15,7 @@ export const adminAttendanceSchema = z.object({
 export type AdminAttendance = z.infer<typeof adminAttendanceSchema>;
 
 export const checkInSchema = z.object({
-  employeeId: z.string().min(1, 'Shaqaalaha waa waajib'),
+  employeeId: z.string().min(1, 'Employee is required'),
 });
 
 export type CheckInInput = z.infer<typeof checkInSchema>;

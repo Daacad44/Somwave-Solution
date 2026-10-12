@@ -62,7 +62,7 @@ export async function listPayments(
     where: { id: invoiceId, deletedAt: null, ...(clientId ? { clientId } : {}) },
     select: { id: true },
   });
-  if (!invoice) throw new AppError('NOT_FOUND', 404, 'Biilkan lama helin');
+  if (!invoice) throw new AppError('NOT_FOUND', 404, 'Invoice not found');
   const rows = await prisma.payment.findMany({
     where: { invoiceId, deletedAt: null },
     orderBy: { createdAt: 'desc' },
@@ -90,11 +90,11 @@ export async function applyEvcWebhook(payload: EvcWebhookPayload): Promise<Payme
   const invoice = await prisma.invoice.findFirst({
     where: { id: payment.invoiceId, deletedAt: null },
   });
-  if (!invoice) throw new AppError('NOT_FOUND', 404, 'Biilkan lama helin');
+  if (!invoice) throw new AppError('NOT_FOUND', 404, 'Invoice not found');
 
   const nextPaid = invoice.paidAmount.add(payment.amount);
   if (nextPaid.gt(invoice.total)) {
-    throw new AppError('PAYMENT_FAILED', 409, 'Lacagtu way ka badan tahay hadhaaga');
+    throw new AppError('PAYMENT_FAILED', 409, 'Payment exceeds the outstanding balance');
   }
 
   const completed = await prisma.$transaction(async (tx) => {

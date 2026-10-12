@@ -69,7 +69,7 @@ export function UserFormModal({ open, onClose, roles, user }: UserFormModalProps
       close();
     } catch (err) {
       setServerError(
-        err instanceof ApiError ? err.message : 'Wax baa qaldamay. Fadlan mar kale isku day.',
+        err instanceof ApiError ? err.message : 'Something went wrong. Please try again.',
       );
     }
   });
@@ -77,14 +77,10 @@ export function UserFormModal({ open, onClose, roles, user }: UserFormModalProps
   const pending = isSubmitting || createMutation.isPending || updateMutation.isPending;
 
   return (
-    <Modal
-      open={open}
-      onClose={close}
-      title={isEdit ? 'Wax ka beddel isticmaalaha' : 'Isticmaale cusub'}
-    >
+    <Modal open={open} onClose={close} title={isEdit ? 'Edit user' : 'New user'}>
       <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
         <Input
-          label="Iimayl"
+          label="Email"
           type="email"
           autoComplete="off"
           disabled={isEdit}
@@ -94,7 +90,7 @@ export function UserFormModal({ open, onClose, roles, user }: UserFormModalProps
         <Input label="Magaca" error={errors.name?.message} {...register('name')} />
         {!isEdit ? (
           <Input
-            label="Furaha sirta"
+            label="Password"
             type="password"
             autoComplete="new-password"
             error={errors.password?.message}
@@ -103,9 +99,9 @@ export function UserFormModal({ open, onClose, roles, user }: UserFormModalProps
         ) : null}
 
         <fieldset className="flex flex-col gap-2">
-          <legend className="text-sm font-medium text-ink">Doorarka</legend>
+          <legend className="text-sm font-medium text-ink">Roles</legend>
           {roles.length === 0 ? (
-            <p className="text-sm text-muted">Wali door lama helin.</p>
+            <p className="text-sm text-muted">No roles available yet.</p>
           ) : (
             roles.map((role) => (
               <label key={role.id} className="flex items-center gap-2 text-base text-ink">
@@ -129,7 +125,7 @@ export function UserFormModal({ open, onClose, roles, user }: UserFormModalProps
               checked={isActive}
               onChange={(e) => setIsActive(e.target.checked)}
             />
-            Firfircoon (active)
+            Active (active)
           </label>
         ) : null}
 
@@ -137,10 +133,10 @@ export function UserFormModal({ open, onClose, roles, user }: UserFormModalProps
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={close}>
-            Jooji
+            Cancel
           </Button>
           <Button type="submit" isLoading={pending}>
-            {isEdit ? 'Kaydi' : 'Abuur'}
+            {isEdit ? 'Save' : 'Create'}
           </Button>
         </div>
       </form>
