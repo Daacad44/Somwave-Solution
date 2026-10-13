@@ -2,11 +2,13 @@ import { logger } from './lib/logger';
 import { processPendingNotificationEmails } from './services/notification-delivery.service';
 import { scanSlaBreaches } from './services/sla-escalation.service';
 import { scanSystemHealth } from './services/system-health.service';
+import { scanEngineeringReminders } from './services/engineering-reminders.service';
 
 export function startBackgroundJobs(unref = true): () => void {
   let notificationActive = false;
   let slaActive = false;
   let healthActive = false;
+  let reminderActive = false;
   async function notification(): Promise<void> {
     if (notificationActive) return;
     notificationActive = true;
@@ -40,14 +42,27 @@ export function startBackgroundJobs(unref = true): () => void {
       healthActive = false;
     }
   }
+  async function reminders(): Promise<void> {
+    if (reminderActive) return;
+    reminderActive = true;
+    try {
+      await scanEngineeringReminders();
+    } catch (error) {
+      logger.error({ err: error }, 'Engineering reminder scan failed');
+    } finally {
+      reminderActive = false;
+    }
+  }
   const timers = [
     setInterval(() => void notification(), 30_000),
     setInterval(() => void sla(), 15 * 60_000),
     setInterval(() => void health(), 5 * 60_000),
+    setInterval(() => void reminders(), 60 * 60_000),
   ];
   if (unref) timers.forEach((timer) => timer.unref());
   void notification();
   void sla();
   void health();
+  void reminders();
   return () => timers.forEach(clearInterval);
 }

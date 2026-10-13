@@ -78,7 +78,7 @@ export async function listAllServices(): Promise<AdminService[]> {
 
 export async function createService(input: CreateServiceInput): Promise<AdminService> {
   const existing = await prisma.service.findUnique({ where: { slug: input.slug } });
-  if (existing) throw new AppError('CONFLICT', 409, 'Slug-kan horey ayaa loo isticmaalay');
+  if (existing) throw new AppError('CONFLICT', 409, 'This slug is already in use');
 
   const row = await prisma.service.create({
     data: {
@@ -102,7 +102,7 @@ export async function updateService(id: string, input: UpdateServiceInput): Prom
   // A new slug must stay unique.
   if (input.slug && input.slug !== service.slug) {
     const clash = await prisma.service.findUnique({ where: { slug: input.slug } });
-    if (clash) throw new AppError('CONFLICT', 409, 'Slug-kan horey ayaa loo isticmaalay');
+    if (clash) throw new AppError('CONFLICT', 409, 'This slug is already in use');
   }
 
   const row = await prisma.service.update({

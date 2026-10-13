@@ -1,7 +1,12 @@
 // Projects routes (I2.1, §10). Every route authenticates, then re-checks the
 // required permission on the server (§13). Mounted under /api/v1/projects.
 import { Router } from 'express';
-import { createProjectSchema, updateProjectSchema, PERMISSIONS } from '@somwave/shared';
+import {
+  createProjectSchema,
+  updateProjectSchema,
+  updateProjectHealthNoteSchema,
+  PERMISSIONS,
+} from '@somwave/shared';
 import { requireAuth } from '../middleware/auth';
 import { rbac } from '../middleware/rbac';
 import { validate } from '../middleware/validate';
@@ -20,6 +25,12 @@ projectsRouter.post(
 );
 projectsRouter.get('/:id/workspace', rbac(PERMISSIONS.PROJECTS_READ), projectController.workspace);
 projectsRouter.get('/:id', rbac(PERMISSIONS.PROJECTS_READ), projectController.get);
+projectsRouter.patch(
+  '/:id/health-note',
+  rbac(PERMISSIONS.PROJECTS_UPDATE),
+  validate(updateProjectHealthNoteSchema),
+  projectController.updateHealthNote,
+);
 projectsRouter.patch(
   '/:id',
   rbac(PERMISSIONS.PROJECTS_UPDATE),

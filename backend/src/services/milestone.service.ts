@@ -12,7 +12,7 @@ import { MAX_PAGE_SIZE } from '@somwave/shared';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
-import { projectScope } from './project.service';
+import { projectManageScope, projectScope } from './project.service';
 
 const adminMilestoneSelect = {
   id: true,
@@ -106,12 +106,12 @@ export async function getMilestone(id: string, actor?: AuthUser): Promise<AdminM
   return row ? toAdminMilestone(row) : null;
 }
 
-async function assertProjectExists(projectId: string, actor?: AuthUser): Promise<void> {
+async function assertManageableProject(projectId: string, actor: AuthUser): Promise<void> {
   const project = await prisma.project.findFirst({
-    where: { id: projectId, deletedAt: null, ...projectScope(actor) },
+    where: { id: projectId, deletedAt: null, ...projectManageScope(actor) },
     select: { id: true },
   });
-  if (!project) throw new AppError('VALIDATION_ERROR', 400, 'Project not found');
+  if (!project) throw new AppError('NOT_FOUND', 404, 'Project not found');
 }
 
 // completedAt tracks the COMPLETED status: set on reaching it, cleared on leaving.
@@ -128,7 +128,8 @@ export async function createMilestone(
   input: CreateMilestoneInput,
   actor?: AuthUser,
 ): Promise<AdminMilestone> {
-  await assertProjectExists(input.projectId, actor);
+  if (!actor) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+  await assertManageableProject(input.projectId, actor);
 
   const row = await prisma.milestone.create({
     data: {
@@ -150,8 +151,9 @@ export async function updateMilestone(
   input: UpdateMilestoneInput,
   actor?: AuthUser,
 ): Promise<AdminMilestone> {
+  if (!actor) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
   const milestone = await prisma.milestone.findFirst({
-    where: { id, deletedAt: null, ...(actor ? { project: projectScope(actor) } : {}) },
+    where: { id, deletedAt: null, project: projectManageScope(actor) },
     select: { id: true, status: true },
   });
   if (!milestone) throw new AppError('NOT_FOUND', 404, 'Milestone not found');
@@ -177,8 +179,9 @@ export async function updateMilestone(
 
 // Soft delete — milestone history is preserved (§7).
 export async function deleteMilestone(id: string, actor?: AuthUser): Promise<void> {
+  if (!actor) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
   const milestone = await prisma.milestone.findFirst({
-    where: { id, deletedAt: null, ...(actor ? { project: projectScope(actor) } : {}) },
+    where: { id, deletedAt: null, project: projectManageScope(actor) },
   });
   if (!milestone) throw new AppError('NOT_FOUND', 404, 'Milestone not found');
   await prisma.milestone.update({ where: { id }, data: { deletedAt: new Date() } });

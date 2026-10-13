@@ -120,7 +120,7 @@ async function assertAssigneeExists(
 ): Promise<void> {
   if (!assigneeId) return;
   const user = await prisma.user.findFirst({
-    where: { id: assigneeId, deletedAt: null },
+    where: { id: assigneeId, isActive: true, deletedAt: null },
     select: { id: true },
   });
   if (!user) throw new AppError('VALIDATION_ERROR', 400, 'Assignee not found');

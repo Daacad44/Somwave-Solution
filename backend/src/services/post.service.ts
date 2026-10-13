@@ -205,7 +205,7 @@ export async function createPost(
   actorName?: string | null,
 ): Promise<AdminPost> {
   const existing = await prisma.post.findUnique({ where: { slug: input.slug } });
-  if (existing) throw new AppError('CONFLICT', 409, 'Slug-kan horey ayaa loo isticmaalay');
+  if (existing) throw new AppError('CONFLICT', 409, 'This slug is already in use');
   await assertCategoryExists(input.categoryId);
   const coverImage = await resolveArticleCover(input.coverImage);
 
@@ -233,7 +233,7 @@ export async function updatePost(id: string, input: UpdatePostInput): Promise<Ad
 
   if (input.slug && input.slug !== post.slug) {
     const clash = await prisma.post.findUnique({ where: { slug: input.slug } });
-    if (clash) throw new AppError('CONFLICT', 409, 'Slug-kan horey ayaa loo isticmaalay');
+    if (clash) throw new AppError('CONFLICT', 409, 'This slug is already in use');
   }
   if (input.categoryId) await assertCategoryExists(input.categoryId);
   const nextCover =

@@ -95,6 +95,18 @@ describe('createTask', () => {
     expect(prisma.task.create).not.toHaveBeenCalled();
   });
 
+  it('rejects a suspended task assignee', async () => {
+    vi.mocked(prisma.project.findFirst).mockResolvedValue({ id: 'prj_1' } as never);
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(null as never);
+    await expect(createTask({ ...input, assigneeId: 'suspended' }, admin)).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+    });
+    expect(prisma.user.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'suspended', isActive: true, deletedAt: null } }),
+    );
+    expect(prisma.task.create).not.toHaveBeenCalled();
+  });
+
   it('does not let a staff viewer bypass independent task review', async () => {
     vi.mocked(prisma.project.findFirst)
       .mockResolvedValueOnce({ id: input.projectId } as never)

@@ -98,14 +98,35 @@ export interface ProjectInvitation {
   projectId: string;
   role: string;
   responsibilities: string | null;
+  description: string | null;
+  startDate: string | null;
+  expectedEndDate: string | null;
+  estimatedHours: number | string | null;
+  priority: string;
+  managerNotes: string | null;
+  expiresAt: string | null;
+  status: string;
   invitedAt: string;
-  project: { name: string };
+  project: {
+    name: string;
+    description: string | null;
+    dueDate: string | null;
+    manager: { id: string; name: string } | null;
+  };
 }
 
 export interface PendingProjectInvitation {
   id: string;
   role: string;
   responsibilities: string | null;
+  description: string | null;
+  startDate: string | null;
+  expectedEndDate: string | null;
+  estimatedHours: number | string | null;
+  priority: string;
+  managerNotes: string | null;
+  expiresAt: string | null;
+  status: string;
   invitedAt: string;
   user: { id: string; name: string; email: string };
 }
@@ -114,6 +135,12 @@ export interface EligibleEngineer {
   id: string;
   name: string;
   email: string;
+  weeklyCapacityHours: number;
+  availableHoursThisWeek: number;
+  estimatedHoursThisWeek: number;
+  estimatedOpenHours: number;
+  overCapacity: boolean;
+  nearCapacity: boolean;
 }
 
 export interface ManagedSystem {
@@ -258,14 +285,22 @@ export const engineeringApi = {
     apiFetch<PendingProjectInvitation[]>(`/engineering/projects/${projectId}/invitations`),
   inviteEngineer: (
     projectId: string,
-    email: string,
-    name: string,
-    role: string,
-    responsibilities: string,
+    input: {
+      email: string;
+      name?: string;
+      role: string;
+      description: string;
+      responsibilities?: string;
+      startDate: string;
+      expectedEndDate: string;
+      estimatedHours: number;
+      priority: string;
+      managerNotes?: string;
+    },
   ) =>
     apiFetch<{ id: string; status: string }>(`/engineering/projects/${projectId}/invitations`, {
       method: 'POST',
-      body: JSON.stringify({ email, ...(name ? { name } : {}), role, responsibilities }),
+      body: JSON.stringify(input),
     }),
   cancelInvitation: (projectId: string, invitationId: string) =>
     apiFetch<{ success: boolean }>(

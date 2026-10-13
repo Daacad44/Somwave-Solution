@@ -6,10 +6,13 @@ import { sendMail } from '../lib/mailer';
 import { ENGINEERING_NOTIFICATION_V1 } from '../mail/templates';
 
 export const NOTIFICATION_EVENTS = [
+  'engineer.account.activated',
   'project.assignment',
   'task.assignment',
   'task.review',
   'task.deadline',
+  'progress.report',
+  'progress.reminder',
   'bug.assignment',
   'bug.critical',
   'github.pr',

@@ -26,12 +26,30 @@ export const PROJECT_HEALTH_LABELS: Record<ProjectHealth, string> = {
   NO_DATE: 'Taariikh ma leh',
 };
 
+export const projectHealthReasonSchema = z.object({
+  code: z.enum([
+    'PROJECT_OVERDUE',
+    'MILESTONES_OVERDUE',
+    'TASKS_OVERDUE',
+    'TASKS_BLOCKED',
+    'DEPENDENCIES_BLOCKED',
+    'CAPACITY_CONSTRAINED',
+    'DEADLINE_NEAR',
+    'ON_HOLD',
+  ]),
+  count: z.number().int().nonnegative(),
+});
+export type ProjectHealthReason = z.infer<typeof projectHealthReasonSchema>;
+
 export const projectWorkspaceSchema = z.object({
   project: adminProjectSchema.extend({
     clientName: z.string().nullable(),
   }),
   progress: z.number().int().min(0).max(100).nullable(),
   health: projectHealthSchema,
+  healthReasons: z.array(projectHealthReasonSchema),
+  healthNote: z.string().nullable(),
+  canEditHealthNote: z.boolean(),
   taskCounts: z.object({
     total: z.number().int(),
     done: z.number().int(),
@@ -42,6 +60,11 @@ export const projectWorkspaceSchema = z.object({
 });
 
 export type ProjectWorkspace = z.infer<typeof projectWorkspaceSchema>;
+
+export const updateProjectHealthNoteSchema = z.object({
+  note: z.string().trim().max(2000).nullable(),
+});
+export type UpdateProjectHealthNoteInput = z.infer<typeof updateProjectHealthNoteSchema>;
 
 export const clientProjectSummarySchema = z.object({
   id: z.string(),

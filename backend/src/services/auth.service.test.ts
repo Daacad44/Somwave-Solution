@@ -72,6 +72,13 @@ describe('login', () => {
     vi.mocked(verifyPassword).mockResolvedValue(true);
     vi.mocked(prisma.refreshToken.create).mockResolvedValue({} as never);
     const result = await login('a@b.com', 'secret');
+    expect(prisma.user.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          NOT: { engineerProfile: { is: { status: 'SUSPENDED' } } },
+        }),
+      }),
+    );
     expect(result.kind).toBe('session');
     if (result.kind === 'session') {
       expect(result.session.user.twoFactorRequired).toBe(true);

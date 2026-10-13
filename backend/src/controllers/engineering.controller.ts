@@ -10,10 +10,13 @@ import type {
   InviteProjectEngineerInput,
   RespondProjectInvitationInput,
   ReassignProjectTasksInput,
+  CreateProjectHandoverInput,
 } from '@somwave/shared';
 import { AppError, sendData } from '../lib/http';
 import * as engineering from '../services/engineering.service';
 import { getEngineeringAnalytics } from '../services/engineering-analytics.service';
+import { getEngineeringTeamOverview } from '../services/engineering-team.service';
+import { getEngineerOperationalOverview } from '../services/engineer-overview.service';
 
 function actor(req: Request): Express.AuthUserContext {
   if (!req.authUser) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
@@ -43,6 +46,28 @@ export async function myProjects(req: Request, res: Response, next: NextFunction
 export async function metrics(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     sendData(res, await engineering.getEngineeringMetrics(actor(req)));
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function teamOverview(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    sendData(res, await getEngineeringTeamOverview(actor(req)));
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function engineerOverview(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const id = req.params.userId;
+    if (!id) throw new AppError('VALIDATION_ERROR', 400, 'Engineer ID is required');
+    sendData(res, await getEngineerOperationalOverview(id, actor(req)));
   } catch (error) {
     next(error);
   }
@@ -181,6 +206,23 @@ export const createPhase = handle(
 );
 export const assignmentHistory = handle((req) =>
   engineering.listAssignmentHistory(projectId(req), actor(req)),
+);
+export const engineerAssignments = handle((req) => {
+  const id = req.params.userId;
+  if (!id) throw new AppError('VALIDATION_ERROR', 400, 'Engineer ID is required');
+  return engineering.listEngineerAssignments(id, actor(req));
+});
+export const handovers = handle((req) =>
+  engineering.listProjectHandovers(projectId(req), actor(req)),
+);
+export const createHandover = handle(
+  (req) =>
+    engineering.createProjectHandover(
+      projectId(req),
+      actor(req),
+      req.body as CreateProjectHandoverInput,
+    ),
+  201,
 );
 export const myInvitations = handle((req) => engineering.listMyProjectInvitations(actor(req)));
 export const projectInvitations = handle((req) =>

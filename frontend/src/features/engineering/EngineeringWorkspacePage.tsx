@@ -7,6 +7,7 @@ import { LoadingState, EmptyState, ErrorState } from '../../components/states';
 import { useHasPermission } from '../../lib/rbac';
 import { engineeringApi } from './api';
 import { useCurrentUser } from '../auth/hooks';
+import { EngineerWorklog } from './EngineerWorklog';
 
 const DOCUMENT_CATEGORIES = [
   'Project Overview',
@@ -44,9 +45,18 @@ function MyInvitations(): ReactNode {
       void client.invalidateQueries({ queryKey: ['my-project-invitations'] });
       void client.invalidateQueries({ queryKey: ['engineering-projects'] });
       void client.invalidateQueries({ queryKey: ['engineering-metrics'] });
+      void client.invalidateQueries({ queryKey: ['engineering-team-overview'] });
     },
     onError: (error: Error) => setMessage(error.message),
   });
+  if (invitations.isLoading) return <LoadingState rows={1} />;
+  if (invitations.isError)
+    return (
+      <ErrorState
+        description="Could not load project invitations."
+        onRetry={() => void invitations.refetch()}
+      />
+    );
   if (!invitations.data?.length && !message) return null;
   return (
     <section
@@ -67,7 +77,36 @@ function MyInvitations(): ReactNode {
           >
             <span>
               <strong>{invitation.project.name}</strong> · {invitation.role.replaceAll('_', ' ')}
-              {invitation.responsibilities ? ` · ${invitation.responsibilities}` : ''}
+              <span className="mt-1 block text-sm text-muted">
+                {invitation.project.description || 'No project summary provided.'}
+              </span>
+              <span className="mt-1 block text-sm">
+                Assignment: {invitation.description || '—'}
+              </span>
+              <span className="mt-1 block text-sm">
+                Responsibilities: {invitation.responsibilities || '—'}
+              </span>
+              <span className="mt-1 block text-sm">
+                Manager: {invitation.project.manager?.name || 'Not assigned'} · Deadline:{' '}
+                {invitation.project.dueDate
+                  ? new Date(invitation.project.dueDate).toLocaleDateString()
+                  : 'Not set'}
+              </span>
+              <span className="mt-1 block text-sm">
+                Expected workload:{' '}
+                {invitation.estimatedHours == null
+                  ? 'Not set'
+                  : `${Number(invitation.estimatedHours)} hours`}{' '}
+                · Priority: {invitation.priority?.replaceAll('_', ' ') || 'Medium'}
+              </span>
+              {invitation.managerNotes ? (
+                <span className="mt-1 block text-sm">Manager notes: {invitation.managerNotes}</span>
+              ) : null}
+              {invitation.expiresAt ? (
+                <span className="mt-1 block text-xs text-muted">
+                  Respond by {new Date(invitation.expiresAt).toLocaleString()}
+                </span>
+              ) : null}
             </span>
             <span className="flex gap-2">
               <Button
@@ -120,6 +159,12 @@ export function EngineeringWorkspacePage(): ReactNode {
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberRole, setNewMemberRole] = useState('ENGINEER');
   const [newMemberResponsibilities, setNewMemberResponsibilities] = useState('');
+  const [newMemberDescription, setNewMemberDescription] = useState('');
+  const [newMemberStartDate, setNewMemberStartDate] = useState('');
+  const [newMemberEndDate, setNewMemberEndDate] = useState('');
+  const [newMemberHours, setNewMemberHours] = useState(40);
+  const [newMemberPriority, setNewMemberPriority] = useState('MEDIUM');
+  const [newMemberNotes, setNewMemberNotes] = useState('');
   const [bugTitle, setBugTitle] = useState('');
   const [bugDescription, setBugDescription] = useState('');
   const [bugRootCauses, setBugRootCauses] = useState<Record<string, string>>({});
@@ -151,6 +196,9 @@ export function EngineeringWorkspacePage(): ReactNode {
     queryFn: () => engineeringApi.eligibleEngineers(selectedId),
     enabled: Boolean(selectedId && canManage),
   });
+  const selectedCandidate = eligibleEngineers.data?.find(
+    (engineer) => engineer.email.toLowerCase() === newMemberEmail.trim().toLowerCase(),
+  );
   const pendingInvitations = useQuery({
     queryKey: ['engineering-invitations', selectedId],
     queryFn: () => engineeringApi.projectInvitations(selectedId),
@@ -298,19 +346,29 @@ export function EngineeringWorkspacePage(): ReactNode {
   });
   const inviteAction = useMutation({
     mutationFn: () =>
-      engineeringApi.inviteEngineer(
-        selectedId,
-        newMemberEmail,
-        newMemberName,
-        newMemberRole,
-        newMemberResponsibilities,
-      ),
+      engineeringApi.inviteEngineer(selectedId, {
+        email: newMemberEmail,
+        ...(newMemberName ? { name: newMemberName } : {}),
+        role: newMemberRole,
+        description: newMemberDescription,
+        responsibilities: newMemberResponsibilities,
+        startDate: new Date(newMemberStartDate).toISOString(),
+        expectedEndDate: new Date(newMemberEndDate).toISOString(),
+        estimatedHours: newMemberHours,
+        priority: newMemberPriority,
+        managerNotes: newMemberNotes,
+      }),
     onSuccess: () => {
       setNewMemberEmail('');
       setNewMemberName('');
       setNewMemberResponsibilities('');
+      setNewMemberDescription('');
+      setNewMemberStartDate('');
+      setNewMemberEndDate('');
+      setNewMemberNotes('');
       setMessage('Invitation queued for email. Project access begins after acceptance.');
       void client.invalidateQueries({ queryKey: ['engineering-invitations', selectedId] });
+      void client.invalidateQueries({ queryKey: ['engineering-team-overview'] });
     },
     onError: (error: Error) => setMessage(error.message),
   });
@@ -381,6 +439,40 @@ export function EngineeringWorkspacePage(): ReactNode {
         category: documentCategory,
       });
   };
+  const myTasks = (tasks.data ?? []).filter((task) => task.assigneeId === currentUser?.id);
+  const today = new Date().toISOString().slice(0, 10);
+  const engineerKpis: Array<[string, number]> = [
+    ['My projects', projects.data.length],
+    ['My tasks in this project', myTasks.length],
+    [
+      'Due today',
+      myTasks.filter((task) => task.dueDate?.slice(0, 10) === today && task.status !== 'DONE')
+        .length,
+    ],
+    ['In progress', myTasks.filter((task) => task.status === 'IN_PROGRESS').length],
+    [
+      'Overdue',
+      myTasks.filter(
+        (task) =>
+          task.dueDate &&
+          task.dueDate.slice(0, 10) < today &&
+          !['DONE', 'CANCELLED'].includes(task.status),
+      ).length,
+    ],
+    ['Completed', myTasks.filter((task) => task.status === 'DONE').length],
+    [
+      'Pending review',
+      myTasks.filter(
+        (task) =>
+          ['SUBMITTED', 'UNDER_REVIEW'].includes(task.approvalStatus) ||
+          task.status === 'IN_REVIEW',
+      ).length,
+    ],
+    [
+      'Reported blockers',
+      myTasks.filter((task) => task.status === 'BLOCKED' || Boolean(task.blockedReason)).length,
+    ],
+  ];
 
   return (
     <section className="space-y-8">
@@ -413,6 +505,21 @@ export function EngineeringWorkspacePage(): ReactNode {
         <p role="status" className="text-sm text-ink">
           {message}
         </p>
+      ) : null}
+      {currentUser?.roles.some((role) =>
+        ['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER'].includes(role),
+      ) && tasks.data ? (
+        <section aria-label="My engineering overview" className="space-y-3">
+          <h2 className="text-xl font-semibold">My engineering overview</h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {engineerKpis.map(([name, count]) => (
+              <div key={name} className="rounded-md border border-border bg-surface p-3">
+                <p className="text-sm text-muted">{name}</p>
+                <p className="text-2xl font-semibold">{count}</p>
+              </div>
+            ))}
+          </div>
+        </section>
       ) : null}
 
       {metrics.data ? (
@@ -489,32 +596,44 @@ export function EngineeringWorkspacePage(): ReactNode {
         ) : (
           <p className="mt-2 text-sm text-muted">No team members assigned.</p>
         )}
+        {canManage && pendingInvitations.isError ? (
+          <ErrorState
+            description="Could not load pending invitations."
+            onRetry={() => void pendingInvitations.refetch()}
+          />
+        ) : null}
         {canManage && pendingInvitations.data?.length ? (
           <div className="mt-4">
-            <h3 className="font-medium">Pending invitations</h3>
+            <h3 className="font-medium">Assignment invitations</h3>
             <ul className="mt-2 space-y-2 text-sm">
               {pendingInvitations.data.map((invitation) => (
                 <li key={invitation.id} className="flex items-center justify-between gap-2">
                   <span>
                     {invitation.user.name} · {invitation.user.email} ·{' '}
-                    {invitation.role.replaceAll('_', ' ')}
+                    {invitation.role.replaceAll('_', ' ')} ·{' '}
+                    {invitation.status.replaceAll('_', ' ')}
+                    {invitation.expiresAt
+                      ? ` · Expires ${new Date(invitation.expiresAt).toLocaleDateString()}`
+                      : ''}
                   </span>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => {
-                      void engineeringApi
-                        .cancelInvitation(selectedId, invitation.id)
-                        .then(() => {
-                          void client.invalidateQueries({
-                            queryKey: ['engineering-invitations', selectedId],
-                          });
-                        })
-                        .catch((error: Error) => setMessage(error.message));
-                    }}
-                  >
-                    Cancel
-                  </Button>
+                  {invitation.status === 'PENDING' ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => {
+                        void engineeringApi
+                          .cancelInvitation(selectedId, invitation.id)
+                          .then(() => {
+                            void client.invalidateQueries({
+                              queryKey: ['engineering-invitations', selectedId],
+                            });
+                          })
+                          .catch((error: Error) => setMessage(error.message));
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -528,6 +647,14 @@ export function EngineeringWorkspacePage(): ReactNode {
               if (newMemberEmail) inviteAction.mutate();
             }}
           >
+            {eligibleEngineers.isError ? (
+              <div className="sm:col-span-2">
+                <ErrorState
+                  description="Could not load eligible engineers."
+                  onRetry={() => void eligibleEngineers.refetch()}
+                />
+              </div>
+            ) : null}
             <div>
               <Input
                 label="Engineer email"
@@ -546,6 +673,26 @@ export function EngineeringWorkspacePage(): ReactNode {
                     </option>
                   ))}
               </datalist>
+              {selectedCandidate ? (
+                <p
+                  className={`mt-2 text-sm ${selectedCandidate.overCapacity || selectedCandidate.nearCapacity ? 'text-warning' : 'text-muted'}`}
+                  role={
+                    selectedCandidate.overCapacity || selectedCandidate.nearCapacity
+                      ? 'status'
+                      : undefined
+                  }
+                >
+                  {selectedCandidate.overCapacity
+                    ? 'Capacity warning: this engineer is already over capacity this week.'
+                    : selectedCandidate.nearCapacity
+                      ? 'Capacity warning: this engineer is near capacity this week.'
+                      : 'Current week capacity:'}{' '}
+                  {Number(selectedCandidate.estimatedHoursThisWeek).toFixed(1)} of{' '}
+                  {Number(selectedCandidate.availableHoursThisWeek).toFixed(1)} available hours
+                  committed. Review the workload before sending; managers may still make an informed
+                  assignment.
+                </p>
+              ) : null}
             </div>
             <Input
               label="Engineer name (required for a new account)"
@@ -559,17 +706,70 @@ export function EngineeringWorkspacePage(): ReactNode {
                 value={newMemberRole}
                 onChange={(event) => setNewMemberRole(event.target.value)}
               >
-                {['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER'].map((role) => (
-                  <option key={role} value={role}>
-                    {role.replaceAll('_', ' ')}
-                  </option>
-                ))}
+                {['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER', 'REVIEWER', 'CONTRIBUTOR'].map(
+                  (role) => (
+                    <option key={role} value={role}>
+                      {role.replaceAll('_', ' ')}
+                    </option>
+                  ),
+                )}
               </select>
             </label>
             <Input
               label="Responsibilities"
               value={newMemberResponsibilities}
               onChange={(event) => setNewMemberResponsibilities(event.target.value)}
+            />
+            <Input
+              label="Assignment description"
+              required
+              maxLength={2000}
+              value={newMemberDescription}
+              onChange={(event) => setNewMemberDescription(event.target.value)}
+            />
+            <Input
+              label="Start date"
+              type="date"
+              required
+              value={newMemberStartDate}
+              onChange={(event) => setNewMemberStartDate(event.target.value)}
+            />
+            <Input
+              label="Expected end date"
+              type="date"
+              required
+              min={newMemberStartDate}
+              value={newMemberEndDate}
+              onChange={(event) => setNewMemberEndDate(event.target.value)}
+            />
+            <Input
+              label="Estimated workload (hours)"
+              type="number"
+              min={0.5}
+              max={10000}
+              step={0.5}
+              required
+              value={newMemberHours}
+              onChange={(event) => setNewMemberHours(Number(event.target.value))}
+            />
+            <label className="text-sm font-medium">
+              Priority
+              <select
+                className="mt-1 h-11 w-full rounded-md border border-border bg-surface px-3"
+                value={newMemberPriority}
+                onChange={(event) => setNewMemberPriority(event.target.value)}
+              >
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
+                <option value="URGENT">Urgent</option>
+              </select>
+            </label>
+            <Input
+              label="Manager notes (optional)"
+              maxLength={2000}
+              value={newMemberNotes}
+              onChange={(event) => setNewMemberNotes(event.target.value)}
             />
             <div className="flex items-end">
               <Button type="submit" disabled={inviteAction.isPending || !newMemberEmail}>
@@ -936,7 +1136,9 @@ export function EngineeringWorkspacePage(): ReactNode {
                           <option value="">Assign engineer</option>
                           {(members.data ?? [])
                             .filter((member) =>
-                              ['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER'].includes(member.role),
+                              ['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER', 'CONTRIBUTOR'].includes(
+                                member.role,
+                              ),
                             )
                             .map((member) => (
                               <option key={member.id} value={member.user.id}>
@@ -1050,6 +1252,19 @@ export function EngineeringWorkspacePage(): ReactNode {
           </form>
         ) : null}
       </div>
+      <EngineerWorklog
+        projectId={selectedId}
+        tasks={tasks.data ?? []}
+        userId={currentUser?.id}
+        canManage={canManage}
+        isEngineer={
+          members.data?.some(
+            (member) =>
+              member.user.id === currentUser?.id &&
+              ['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER', 'CONTRIBUTOR'].includes(member.role),
+          ) ?? false
+        }
+      />
     </section>
   );
 }

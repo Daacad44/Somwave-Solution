@@ -6,7 +6,9 @@ export const PROJECT_MEMBER_ROLES = [
   'MANAGER',
   'LEAD_ENGINEER',
   'ENGINEER',
+  'REVIEWER',
   'QA_ENGINEER',
+  'CONTRIBUTOR',
   'VIEWER',
 ] as const;
 export const projectMemberRoleSchema = z.enum(PROJECT_MEMBER_ROLES);
@@ -19,17 +21,30 @@ export const addProjectMemberSchema = z.object({
 });
 export type AddProjectMemberInput = z.infer<typeof addProjectMemberSchema>;
 
-export const inviteProjectEngineerSchema = z.object({
-  email: z
-    .string()
-    .trim()
-    .email()
-    .max(255)
-    .transform((value) => value.toLowerCase()),
-  name: z.string().trim().min(1).max(120).optional(),
-  role: z.enum(['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER']).default('ENGINEER'),
-  responsibilities: z.string().trim().max(2000).nullable().optional(),
-});
+export const inviteProjectEngineerSchema = z
+  .object({
+    email: z
+      .string()
+      .trim()
+      .email()
+      .max(255)
+      .transform((value) => value.toLowerCase()),
+    name: z.string().trim().min(1).max(120).optional(),
+    role: z
+      .enum(['ENGINEER', 'LEAD_ENGINEER', 'REVIEWER', 'QA_ENGINEER', 'CONTRIBUTOR'])
+      .default('ENGINEER'),
+    description: z.string().trim().min(1).max(2000),
+    responsibilities: z.string().trim().max(2000).nullable().optional(),
+    startDate: z.string().datetime({ offset: true }),
+    expectedEndDate: z.string().datetime({ offset: true }),
+    estimatedHours: z.number().positive().max(10000),
+    priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).default('MEDIUM'),
+    managerNotes: z.string().trim().max(2000).nullable().optional(),
+  })
+  .refine((input) => new Date(input.expectedEndDate) >= new Date(input.startDate), {
+    path: ['expectedEndDate'],
+    message: 'Expected end date must follow start date',
+  });
 export type InviteProjectEngineerInput = z.infer<typeof inviteProjectEngineerSchema>;
 
 export const respondProjectInvitationSchema = z.object({
@@ -47,6 +62,23 @@ export const reassignProjectTasksSchema = z
     message: 'Choose a different engineer',
   });
 export type ReassignProjectTasksInput = z.infer<typeof reassignProjectTasksSchema>;
+
+export const createProjectHandoverSchema = z
+  .object({
+    fromUserId: z.string().min(1),
+    toUserId: z.string().min(1),
+    removeSource: z.boolean().default(false),
+    transferBugs: z.boolean().default(false),
+    transferMaintenance: z.boolean().default(false),
+    transferDocuments: z.boolean().default(false),
+    transferReleases: z.boolean().default(false),
+    notes: z.string().trim().min(1).max(5000),
+  })
+  .refine((input) => input.fromUserId !== input.toUserId, {
+    path: ['toUserId'],
+    message: 'Choose a different engineer',
+  });
+export type CreateProjectHandoverInput = z.infer<typeof createProjectHandoverSchema>;
 
 export const updateProjectMemberSchema = z
   .object({

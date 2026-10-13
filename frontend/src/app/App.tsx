@@ -4,6 +4,7 @@ import { PERMISSIONS, type PermissionKey } from '@somwave/shared';
 import { LoginPage } from '../features/auth/LoginPage';
 import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '../features/auth/ResetPasswordPage';
+import { EngineerActivationPage } from '../features/auth/EngineerActivationPage';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { RequirePermission } from '../features/auth/RequirePermission';
 import { AppShell } from './layout/AppShell';
@@ -46,6 +47,11 @@ const EngineeringOperationsPage = lazy(() =>
 const EngineerManagementPage = lazy(() =>
   import('../features/engineering/EngineerManagementPage').then((m) => ({
     default: m.EngineerManagementPage,
+  })),
+);
+const EngineerDetailPage = lazy(() =>
+  import('../features/engineering/EngineerDetailPage').then((m) => ({
+    default: m.EngineerDetailPage,
   })),
 );
 const EngineeringAnalyticsPage = lazy(() =>
@@ -180,6 +186,7 @@ export function App(): ReactNode {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/activate-engineer" element={<EngineerActivationPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
           <Route path="/settings/2fa" element={<Navigate to="/profile?tab=security" replace />} />
@@ -276,6 +283,14 @@ export function App(): ReactNode {
             element={
               <Guarded permission={PERMISSIONS.ENGINEERING_READ}>
                 <EngineerManagementPage />
+              </Guarded>
+            }
+          />
+          <Route
+            path="/engineering/engineers/:id"
+            element={
+              <Guarded permission={PERMISSIONS.ENGINEERING_MANAGE}>
+                <EngineerDetailPage />
               </Guarded>
             }
           />

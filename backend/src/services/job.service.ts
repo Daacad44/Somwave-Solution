@@ -157,7 +157,7 @@ export async function listAllOpenings(): Promise<AdminJobOpening[]> {
 
 export async function createOpening(input: CreateJobOpeningInput): Promise<AdminJobOpening> {
   const existing = await prisma.jobOpening.findUnique({ where: { slug: input.slug } });
-  if (existing) throw new AppError('CONFLICT', 409, 'Slug-kan horey ayaa loo isticmaalay');
+  if (existing) throw new AppError('CONFLICT', 409, 'This slug is already in use');
 
   const row = await prisma.jobOpening.create({
     data: {
@@ -185,7 +185,7 @@ export async function updateOpening(
 
   if (input.slug && input.slug !== opening.slug) {
     const clash = await prisma.jobOpening.findUnique({ where: { slug: input.slug } });
-    if (clash) throw new AppError('CONFLICT', 409, 'Slug-kan horey ayaa loo isticmaalay');
+    if (clash) throw new AppError('CONFLICT', 409, 'This slug is already in use');
   }
 
   const publishing = input.isPublished === true && !opening.isPublished;

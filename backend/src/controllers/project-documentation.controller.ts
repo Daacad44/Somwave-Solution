@@ -141,6 +141,53 @@ export async function file(req: Request, res: Response, next: NextFunction): Pro
   }
 }
 
+export async function attachments(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { projectId, actor } = routeContext(req);
+    sendData(res, await service.listDocumentationAttachments(projectId, documentId(req), actor));
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function addAttachment(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { projectId, actor } = routeContext(req);
+    sendData(
+      res,
+      await service.addDocumentationAttachment(
+        projectId,
+        documentId(req),
+        req.body.fileDocumentId,
+        actor,
+      ),
+      201,
+    );
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function removeAttachment(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { projectId, actor } = routeContext(req);
+    const fileDocumentId = req.params.fileDocumentId;
+    if (!fileDocumentId) throw new AppError('NOT_FOUND', 404, 'Document attachment not found');
+    await service.removeDocumentationAttachment(projectId, documentId(req), fileDocumentId, actor);
+    sendData(res, { success: true });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function remove(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { projectId, actor } = routeContext(req);

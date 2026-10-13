@@ -1,5 +1,4 @@
 import { Prisma } from '@prisma/client';
-import { randomBytes } from 'node:crypto';
 import type {
   AddProjectMemberInput,
   CreateEngineeringTaskInput,
@@ -11,6 +10,7 @@ import type {
   InviteProjectEngineerInput,
   RespondProjectInvitationInput,
   ReassignProjectTasksInput,
+  CreateProjectHandoverInput,
 } from '@somwave/shared';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
@@ -20,10 +20,7 @@ import { decodeProjectFile } from './project-documentation.service';
 import { putObject, readObject } from '../lib/storage';
 import { env } from '../lib/env';
 import { calculateWeeklyCapacity } from './engineering-capacity.service';
-import { hashPassword } from '../lib/password';
-import { generateRefreshToken, hashRefreshToken } from '../lib/tokens';
-import { sendMail } from '../lib/mailer';
-import { ENGINEER_ACCOUNT_INVITE_V1 } from '../mail/templates';
+import { ensureEngineerAccountForProjectInvite } from './engineer-account.service';
 
 async function notifyAfterWrite(input: NotificationInput): Promise<void> {
   try {
@@ -39,7 +36,8 @@ async function notifyAfterWrite(input: NotificationInput): Promise<void> {
 export type EngineeringActor = Pick<Express.AuthUserContext, 'id' | 'roles'>;
 
 const ADMIN_ROLES = new Set(['SUPER_ADMIN', 'ADMIN']);
-const ENGINEER_ROLES = new Set(['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER']);
+const ENGINEER_ROLES = new Set(['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER', 'CONTRIBUTOR']);
+const ASSIGNMENT_ROLES = new Set([...ENGINEER_ROLES, 'REVIEWER']);
 
 function isAdmin(actor: EngineeringActor): boolean {
   return actor.roles.some((role) => ADMIN_ROLES.has(role));
@@ -48,14 +46,39 @@ function isAdmin(actor: EngineeringActor): boolean {
 async function access(projectId: string, actor: EngineeringActor) {
   const project = await prisma.project.findFirst({
     where: { id: projectId, deletedAt: null },
-    select: { id: true, name: true, managerId: true },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      dueDate: true,
+      managerId: true,
+      status: true,
+    },
   });
   if (!project) throw new AppError('NOT_FOUND', 404, 'Project not found');
   const membership = await prisma.projectMember.findUnique({
     where: { projectId_userId: { projectId, userId: actor.id } },
-    select: { role: true, removedAt: true },
+    select: {
+      role: true,
+      removedAt: true,
+      user: {
+        select: {
+          isActive: true,
+          deletedAt: true,
+          engineerProfile: { select: { status: true } },
+        },
+      },
+    },
   });
-  const role = membership?.removedAt ? null : (membership?.role ?? null);
+  const profileStatus = membership?.user?.engineerProfile?.status;
+  const role =
+    membership?.removedAt ||
+    membership?.user?.isActive === false ||
+    membership?.user?.deletedAt ||
+    profileStatus === 'SUSPENDED' ||
+    profileStatus === 'DEACTIVATED'
+      ? null
+      : (membership?.role ?? null);
   const manage = isAdmin(actor) || project.managerId === actor.id || role === 'MANAGER';
   return { project, role, manage, view: manage || role !== null };
 }
@@ -78,6 +101,13 @@ async function requireEngineer(projectId: string, actor: EngineeringActor) {
   if (!result.role || !ENGINEER_ROLES.has(result.role)) {
     throw new AppError('FORBIDDEN', 403, 'Active engineering membership required');
   }
+  return result;
+}
+
+async function requireReviewer(projectId: string, actor: EngineeringActor) {
+  const result = await requireView(projectId, actor);
+  if (!result.manage && result.role !== 'REVIEWER' && result.role !== 'LEAD_ENGINEER')
+    throw new AppError('FORBIDDEN', 403, 'Project reviewer access required');
   return result;
 }
 
@@ -136,7 +166,7 @@ export async function getEngineeringMetrics(actor: EngineeringActor) {
     prisma.projectMember.findMany({
       where: {
         removedAt: null,
-        role: { in: ['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER'] },
+        role: { in: ['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER', 'REVIEWER', 'CONTRIBUTOR'] },
         ...projectRelation,
       },
       distinct: ['userId'],
@@ -208,43 +238,166 @@ export async function listProjectMembers(projectId: string, actor: EngineeringAc
   });
 }
 
+export async function listEngineerAssignments(userId: string, actor: EngineeringActor) {
+  const visibleProject = isAdmin(actor)
+    ? { deletedAt: null }
+    : {
+        deletedAt: null,
+        OR: [
+          { managerId: actor.id },
+          { members: { some: { userId: actor.id, role: 'MANAGER' as const, removedAt: null } } },
+        ],
+      };
+  const [memberships, invitations] = await Promise.all([
+    prisma.projectMember.findMany({
+      where: { userId, removedAt: null, project: visibleProject },
+      select: {
+        id: true,
+        role: true,
+        responsibilities: true,
+        description: true,
+        startDate: true,
+        expectedEndDate: true,
+        estimatedHours: true,
+        priority: true,
+        managerNotes: true,
+        assignedAt: true,
+        project: { select: { id: true, name: true, status: true, dueDate: true } },
+      },
+      orderBy: { assignedAt: 'desc' },
+    }),
+    prisma.projectInvitation.findMany({
+      where: { userId, project: visibleProject },
+      select: {
+        id: true,
+        role: true,
+        responsibilities: true,
+        description: true,
+        startDate: true,
+        expectedEndDate: true,
+        estimatedHours: true,
+        priority: true,
+        managerNotes: true,
+        status: true,
+        invitedAt: true,
+        expiresAt: true,
+        respondedAt: true,
+        project: { select: { id: true, name: true, status: true, dueDate: true } },
+      },
+      orderBy: { invitedAt: 'desc' },
+    }),
+  ]);
+  return { memberships, invitations };
+}
+
 export async function listEligibleEngineers(
   projectId: string,
   actor: EngineeringActor,
   search?: string,
 ) {
   await requireManager(projectId, actor);
-  return prisma.user.findMany({
+  const now = new Date();
+  const candidates = await prisma.user.findMany({
     where: {
       isActive: true,
       deletedAt: null,
+      AND: [
+        { OR: [{ engineerProfile: { is: null } }, { engineerProfile: { status: 'ACTIVE' } }] },
+        ...(search
+          ? [
+              {
+                OR: [
+                  { name: { contains: search, mode: 'insensitive' as const } },
+                  { email: { contains: search, mode: 'insensitive' as const } },
+                ],
+              },
+            ]
+          : []),
+      ],
       roles: { some: { role: { name: { in: ['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER'] } } } },
-      ...(search
-        ? {
-            OR: [
-              { name: { contains: search, mode: 'insensitive' } },
-              { email: { contains: search, mode: 'insensitive' } },
-            ],
-          }
-        : {}),
     },
-    select: { id: true, name: true, email: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      engineerProfile: { select: { weeklyCapacityHours: true, availability: true } },
+      assignedTasks: {
+        where: {
+          deletedAt: null,
+          approvalStatus: 'APPROVED',
+          status: { notIn: ['DONE', 'CANCELLED'] },
+          project: { deletedAt: null, status: { notIn: ['COMPLETED', 'CANCELLED'] } },
+        },
+        select: { startDate: true, dueDate: true, estimatedHours: true },
+      },
+      availabilitySlots: {
+        where: { endAt: { gt: now } },
+        select: { startAt: true, endAt: true, kind: true },
+      },
+    },
     orderBy: { name: 'asc' },
     take: 50,
+  });
+  return candidates.map(({ engineerProfile, assignedTasks, availabilitySlots, ...candidate }) => {
+    const weeklyCapacityHours = Number(engineerProfile?.weeklyCapacityHours ?? 40);
+    const currentWeek = calculateWeeklyCapacity(
+      assignedTasks.map((task) => ({
+        startDate: task.startDate,
+        dueDate: task.dueDate,
+        estimatedHours: Number(task.estimatedHours ?? 0),
+      })),
+      availabilitySlots,
+      weeklyCapacityHours,
+      engineerProfile?.availability ?? 'AVAILABLE',
+      now,
+    )[0]!;
+    const estimatedOpenHours = assignedTasks.reduce(
+      (total, task) => total + Number(task.estimatedHours ?? 0),
+      0,
+    );
+    return {
+      ...candidate,
+      weeklyCapacityHours,
+      availableHoursThisWeek: currentWeek.availableHours,
+      estimatedHoursThisWeek: currentWeek.estimatedHours,
+      estimatedOpenHours: Math.round(estimatedOpenHours * 10) / 10,
+      overCapacity: currentWeek.estimatedHours >= currentWeek.availableHours,
+      nearCapacity: currentWeek.estimatedHours >= currentWeek.availableHours * 0.8,
+    };
   });
 }
 
 export async function listMyProjectInvitations(actor: EngineeringActor) {
+  const now = new Date();
   return prisma.projectInvitation.findMany({
-    where: { userId: actor.id, status: 'PENDING', project: { deletedAt: null } },
+    where: {
+      userId: actor.id,
+      status: 'PENDING',
+      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      project: { deletedAt: null, status: { not: 'CANCELLED' } },
+    },
     select: {
       id: true,
       projectId: true,
       role: true,
       responsibilities: true,
+      description: true,
+      startDate: true,
+      expectedEndDate: true,
+      estimatedHours: true,
+      priority: true,
+      managerNotes: true,
       status: true,
       invitedAt: true,
-      project: { select: { name: true } },
+      expiresAt: true,
+      project: {
+        select: {
+          name: true,
+          description: true,
+          dueDate: true,
+          manager: { select: { id: true, name: true } },
+        },
+      },
     },
     orderBy: { invitedAt: 'desc' },
   });
@@ -253,50 +406,25 @@ export async function listMyProjectInvitations(actor: EngineeringActor) {
 export async function listProjectInvitations(projectId: string, actor: EngineeringActor) {
   await requireManager(projectId, actor);
   return prisma.projectInvitation.findMany({
-    where: { projectId, status: 'PENDING' },
+    where: { projectId },
     select: {
       id: true,
       role: true,
       responsibilities: true,
+      description: true,
+      startDate: true,
+      expectedEndDate: true,
+      estimatedHours: true,
+      priority: true,
+      managerNotes: true,
+      status: true,
       invitedAt: true,
+      expiresAt: true,
+      respondedAt: true,
       user: { select: { id: true, name: true, email: true } },
     },
     orderBy: { invitedAt: 'desc' },
   });
-}
-
-async function createEngineerAccount(email: string, name: string) {
-  if (!env.SMTP_HOST || !env.SMTP_FROM || !env.APP_PUBLIC_URL)
-    throw new AppError(
-      'SERVICE_UNAVAILABLE',
-      503,
-      'SMTP and APP_PUBLIC_URL must be configured before inviting a new engineer account',
-    );
-  const engineerRole = await prisma.role.findUnique({
-    where: { name: 'ENGINEER' },
-    select: { id: true },
-  });
-  if (!engineerRole)
-    throw new AppError('SERVICE_UNAVAILABLE', 503, 'ENGINEER role is not configured');
-  const token = generateRefreshToken();
-  const user = await prisma.user.create({
-    data: {
-      email,
-      name,
-      passwordHash: await hashPassword(randomBytes(32).toString('hex')),
-      roles: { create: { roleId: engineerRole.id } },
-      passwordResets: {
-        create: {
-          tokenHash: hashRefreshToken(token),
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        },
-      },
-    },
-    select: { id: true, name: true, email: true },
-  });
-  const setupUrl = new URL('/reset-password', env.APP_PUBLIC_URL);
-  setupUrl.searchParams.set('token', token);
-  return { user, setupUrl: setupUrl.toString() };
 }
 
 export async function inviteProjectEngineer(
@@ -305,114 +433,112 @@ export async function inviteProjectEngineer(
   input: InviteProjectEngineerInput,
 ) {
   const { project } = await requireManager(projectId, actor);
-  let setupUrl: string | null = null;
-  let newAccountId: string | null = null;
-  let user = await prisma.user.findFirst({
-    where: {
-      email: { equals: input.email, mode: 'insensitive' },
-      isActive: true,
-      deletedAt: null,
-      roles: { some: { role: { name: { in: ['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER'] } } } },
-    },
-    select: { id: true, name: true, email: true },
+  if (project.status === 'CANCELLED' || project.status === 'COMPLETED')
+    throw new AppError('CONFLICT', 409, 'Project does not accept new assignments');
+  const user = await ensureEngineerAccountForProjectInvite({
+    email: input.email,
+    name: input.name,
+    actorId: actor.id,
   });
-  if (!user) {
-    const anyAccount = await prisma.user.findFirst({
-      where: { email: { equals: input.email, mode: 'insensitive' } },
-      select: { id: true },
-    });
-    if (anyAccount)
-      throw new AppError('CONFLICT', 409, 'Email belongs to an inactive or non-engineer account');
-    if (!input.name)
-      throw new AppError('VALIDATION_ERROR', 400, 'Name is required for a new engineer account');
-    const created = await createEngineerAccount(input.email, input.name);
-    user = created.user;
-    setupUrl = created.setupUrl;
-    newAccountId = user.id;
-  }
   const existing = await prisma.projectMember.findUnique({
     where: { projectId_userId: { projectId, userId: user.id } },
     select: { removedAt: true, role: true },
   });
-  if (existing && !existing.removedAt && ENGINEER_ROLES.has(existing.role))
+  if (existing && !existing.removedAt && ASSIGNMENT_ROLES.has(existing.role))
     throw new AppError('CONFLICT', 409, 'Engineer is already assigned to this project');
 
-  let invitation: { id: string; invitedAt: Date };
-  try {
-    invitation = await prisma.$transaction(async (tx) => {
-      const row = await tx.projectInvitation.upsert({
-        where: { projectId_userId: { projectId, userId: user.id } },
-        create: {
-          projectId,
-          userId: user.id,
-          role: input.role,
-          responsibilities: input.responsibilities ?? null,
-        },
-        update: {
-          role: input.role,
-          responsibilities: input.responsibilities ?? null,
-          status: 'PENDING',
-          invitedAt: new Date(),
-          respondedAt: null,
-        },
-      });
-      await tx.auditLog.create({
-        data: {
-          actorId: actor.id,
-          action: 'project.invitation.send',
-          subjectType: 'ProjectInvitation',
-          subjectId: row.id,
-        },
-      });
-      await tx.projectAssignmentEvent.create({
-        data: {
-          projectId,
-          userId: user.id,
-          actorId: actor.id,
-          action: 'INVITED',
-          role: input.role,
-        },
-      });
-      return row;
+  const pending = await prisma.projectInvitation.findUnique({
+    where: { projectId_userId: { projectId, userId: user.id } },
+    select: { id: true, status: true, expiresAt: true, invitedAt: true },
+  });
+  if (pending?.status === 'PENDING' && (!pending.expiresAt || pending.expiresAt > new Date()))
+    return {
+      id: pending.id,
+      projectId,
+      userId: user.id,
+      email: user.email,
+      status: 'PENDING' as const,
+      duplicate: true,
+    };
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const assignmentData = {
+    role: input.role,
+    description: input.description,
+    responsibilities: input.responsibilities ?? null,
+    startDate: new Date(input.startDate),
+    expectedEndDate: new Date(input.expectedEndDate),
+    estimatedHours: input.estimatedHours,
+    priority: input.priority,
+    managerNotes: input.managerNotes ?? null,
+    expiresAt,
+  };
+  const invitation = await prisma.$transaction(async (tx) => {
+    const row = await tx.projectInvitation.upsert({
+      where: { projectId_userId: { projectId, userId: user.id } },
+      create: {
+        projectId,
+        userId: user.id,
+        ...assignmentData,
+      },
+      update: {
+        ...assignmentData,
+        status: 'PENDING',
+        invitedAt: now,
+        respondedAt: null,
+      },
     });
-  } catch (error) {
-    if (newAccountId) await prisma.user.delete({ where: { id: newAccountId } });
-    throw error;
-  }
-  if (setupUrl) {
-    try {
-      const result = await sendMail({
-        to: user.email,
-        template: ENGINEER_ACCOUNT_INVITE_V1,
-        vars: { setupUrl, projectName: project.name },
-      });
-      if (!result.sent) throw new Error('Setup email was not sent');
-    } catch (error) {
-      logger.error({ err: error }, 'Engineer account setup email failed');
-      if (newAccountId) await prisma.user.delete({ where: { id: newAccountId } });
-      throw new AppError('SERVICE_UNAVAILABLE', 503, 'Could not send engineer account setup email');
-    }
-  }
+    await tx.auditLog.create({
+      data: {
+        actorId: actor.id,
+        action: 'project.invitation.send',
+        subjectType: 'ProjectInvitation',
+        subjectId: row.id,
+      },
+    });
+    await tx.projectAssignmentEvent.create({
+      data: {
+        projectId,
+        userId: user.id,
+        actorId: actor.id,
+        action: 'INVITED',
+        role: input.role,
+      },
+    });
+    return row;
+  });
   const appLink = env.APP_PUBLIC_URL
     ? ` Open ${new URL('/engineering', env.APP_PUBLIC_URL).toString()} to accept or decline.`
     : ' Sign in to Somwave and open Engineering to accept or decline.';
-  try {
-    await emitNotification({
-      eventKey: 'project.assignment',
-      userId: user.id,
-      title: `Project invitation: ${project.name}`,
-      body: `You have been invited to join ${project.name} as ${input.role.replaceAll('_', ' ').toLowerCase()}.${appLink}`,
-      dedupeKey: `project-invitation:${invitation.id}:${invitation.invitedAt.toISOString()}`,
-      requiredEmail: true,
-    });
-  } catch (error) {
-    if (!setupUrl) throw error;
-    logger.error(
-      { err: error, invitationId: invitation.id },
-      'Additional invitation notification enqueue failed',
-    );
+  const active = await prisma.user.findFirst({
+    where: { id: user.id, isActive: true, deletedAt: null },
+    select: { id: true },
+  });
+  if (active) {
+    try {
+      await emitNotification({
+        eventKey: 'project.assignment',
+        userId: user.id,
+        title: `Project invitation: ${project.name}`,
+        body: `You have been invited to join ${project.name} as ${input.role.replaceAll('_', ' ').toLowerCase()}. ${input.description} Start: ${input.startDate}. Expected end: ${input.expectedEndDate}. Workload: ${input.estimatedHours} hours. Invitation expires ${expiresAt.toISOString()}.${appLink}`,
+        dedupeKey: `project-invitation:${invitation.id}:${invitation.invitedAt.toISOString()}`,
+        requiredEmail: true,
+      });
+    } catch (error) {
+      logger.error(
+        { err: error, invitationId: invitation.id },
+        'Project invitation notification failed',
+      );
+    }
   }
-  return { id: invitation.id, projectId, userId: user.id, email: user.email, status: 'PENDING' };
+  return {
+    id: invitation.id,
+    projectId,
+    userId: user.id,
+    email: user.email,
+    status: 'PENDING' as const,
+    expiresAt,
+  };
 }
 
 export async function respondToProjectInvitation(
@@ -421,18 +547,51 @@ export async function respondToProjectInvitation(
   input: RespondProjectInvitationInput,
 ) {
   const invitation = await prisma.projectInvitation.findFirst({
-    where: {
-      id: invitationId,
-      userId: actor.id,
-      status: 'PENDING',
-      project: { deletedAt: null },
-    },
+    where: { id: invitationId, userId: actor.id, project: { deletedAt: null } },
   });
-  if (!invitation) throw new AppError('NOT_FOUND', 404, 'Pending invitation not found');
+  if (!invitation) throw new AppError('NOT_FOUND', 404, 'Invitation not found');
   const status = input.decision === 'ACCEPT' ? 'ACCEPTED' : 'DECLINED';
-  return prisma.$transaction(async (tx) => {
+  if (invitation.status === status)
+    return { id: invitation.id, projectId: invitation.projectId, status };
+  if (invitation.status !== 'PENDING')
+    throw new AppError('CONFLICT', 409, 'Invitation is no longer pending');
+  if (invitation.expiresAt && invitation.expiresAt <= new Date()) {
+    await prisma.projectInvitation.updateMany({
+      where: { id: invitation.id, status: 'PENDING' },
+      data: { status: 'EXPIRED', respondedAt: new Date() },
+    });
+    throw new AppError('CONFLICT', 409, 'Invitation has expired');
+  }
+  if (
+    status === 'ACCEPTED' &&
+    !actor.roles.some((role) => ['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER'].includes(role))
+  )
+    throw new AppError('FORBIDDEN', 403, 'Active engineer account required');
+  const response = await prisma.$transaction(async (tx) => {
+    const [currentProject, currentUser] = await Promise.all([
+      tx.project.findFirst({
+        where: { id: invitation.projectId, deletedAt: null, status: { not: 'CANCELLED' } },
+        select: { id: true, managerId: true, name: true },
+      }),
+      tx.user.findFirst({
+        where: {
+          id: actor.id,
+          isActive: true,
+          deletedAt: null,
+          OR: [{ engineerProfile: { is: null } }, { engineerProfile: { status: 'ACTIVE' } }],
+        },
+        select: { id: true },
+      }),
+    ]);
+    if (!currentProject || !currentUser)
+      throw new AppError('CONFLICT', 409, 'Project or engineer is no longer eligible');
     const claimed = await tx.projectInvitation.updateMany({
-      where: { id: invitation.id, userId: actor.id, status: 'PENDING' },
+      where: {
+        id: invitation.id,
+        userId: actor.id,
+        status: 'PENDING',
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
       data: { status, respondedAt: new Date() },
     });
     if (!claimed.count) throw new AppError('CONFLICT', 409, 'Invitation was already answered');
@@ -452,10 +611,22 @@ export async function respondToProjectInvitation(
           userId: actor.id,
           role: invitation.role,
           responsibilities: invitation.responsibilities,
+          description: invitation.description,
+          startDate: invitation.startDate,
+          expectedEndDate: invitation.expectedEndDate,
+          estimatedHours: invitation.estimatedHours,
+          priority: invitation.priority,
+          managerNotes: invitation.managerNotes,
         },
         update: {
           role: invitation.role,
           responsibilities: invitation.responsibilities,
+          description: invitation.description,
+          startDate: invitation.startDate,
+          expectedEndDate: invitation.expectedEndDate,
+          estimatedHours: invitation.estimatedHours,
+          priority: invitation.priority,
+          managerNotes: invitation.managerNotes,
           removedAt: null,
           assignedAt: new Date(),
         },
@@ -478,8 +649,23 @@ export async function respondToProjectInvitation(
         role: invitation.role,
       },
     });
-    return { id: invitation.id, projectId: invitation.projectId, status };
+    return {
+      id: invitation.id,
+      projectId: invitation.projectId,
+      status,
+      managerId: currentProject.managerId,
+      projectName: currentProject.name,
+    };
   });
+  if (response.managerId && response.managerId !== actor.id)
+    await notifyAfterWrite({
+      eventKey: 'project.assignment',
+      userId: response.managerId,
+      title: `Project invitation ${status.toLowerCase()}: ${response.projectName}`,
+      body: `An engineer ${status.toLowerCase()} the invitation for ${response.projectName}.`,
+      dedupeKey: `project-invitation-response:${invitation.id}:${status}`,
+    });
+  return { id: response.id, projectId: response.projectId, status };
 }
 
 export async function cancelProjectInvitation(
@@ -515,12 +701,12 @@ export async function addProjectMember(
     select: { id: true, email: true },
   });
   if (!user) throw new AppError('VALIDATION_ERROR', 400, 'Active user not found');
-  if (ENGINEER_ROLES.has(input.role)) {
-    return inviteProjectEngineer(projectId, actor, {
-      email: user.email,
-      role: input.role as 'ENGINEER' | 'LEAD_ENGINEER' | 'QA_ENGINEER',
-      responsibilities: input.responsibilities,
-    });
+  if (ASSIGNMENT_ROLES.has(input.role)) {
+    throw new AppError(
+      'VALIDATION_ERROR',
+      400,
+      'Use project invitation with assignment details for engineers',
+    );
   }
   const member = await prisma.$transaction(async (tx) => {
     if (input.role === 'LEAD_ENGINEER') {
@@ -593,8 +779,10 @@ export async function updateProjectMember(
   });
   if (!existing || existing.removedAt)
     throw new AppError('NOT_FOUND', 404, 'Project member not found');
-  if (input.role && ENGINEER_ROLES.has(input.role) && !ENGINEER_ROLES.has(existing.role))
+  if (input.role && ASSIGNMENT_ROLES.has(input.role) && !ASSIGNMENT_ROLES.has(existing.role))
     throw new AppError('CONFLICT', 409, 'Invite this engineer and wait for acceptance');
+  if (input.role && !ASSIGNMENT_ROLES.has(input.role) && ASSIGNMENT_ROLES.has(existing.role))
+    await requireNoOpenResponsibilities(projectId, userId);
   return prisma.$transaction(async (tx) => {
     if (input.role === 'LEAD_ENGINEER') {
       await tx.projectMember.updateMany({
@@ -647,6 +835,7 @@ export async function removeProjectMember(
   if (member.role === 'MANAGER' && !isAdmin(actor)) {
     throw new AppError('FORBIDDEN', 403, 'Only an administrator can remove a project manager');
   }
+  if (ASSIGNMENT_ROLES.has(member.role)) await requireNoOpenResponsibilities(projectId, userId);
   await prisma.$transaction(async (tx) => {
     await tx.projectMember.update({ where: { id: member.id }, data: { removedAt: new Date() } });
     await tx.auditLog.create({
@@ -661,6 +850,39 @@ export async function removeProjectMember(
       data: { projectId, userId, actorId: actor.id, action: 'REMOVED', role: member.role },
     });
   });
+}
+
+async function requireNoOpenResponsibilities(projectId: string, userId: string) {
+  const [tasks, bugs, maintenance, documents, releases] = await Promise.all([
+    prisma.task.count({
+      where: {
+        projectId,
+        assigneeId: userId,
+        deletedAt: null,
+        status: { notIn: ['DONE', 'CANCELLED'] },
+      },
+    }),
+    prisma.bugReport.count({
+      where: { projectId, assigneeId: userId, status: { notIn: ['RESOLVED', 'CLOSED'] } },
+    }),
+    prisma.maintenanceRequest.count({
+      where: { projectId, assigneeId: userId, status: { notIn: ['COMPLETED', 'CANCELLED'] } },
+    }),
+    prisma.projectDocumentation.count({ where: { projectId, ownerId: userId, deletedAt: null } }),
+    prisma.release.count({
+      where: {
+        projectId,
+        ownerId: userId,
+        status: { notIn: ['VERIFIED', 'ROLLED_BACK', 'CANCELLED'] },
+      },
+    }),
+  ]);
+  if (tasks + bugs + maintenance + documents + releases > 0)
+    throw new AppError(
+      'CONFLICT',
+      409,
+      'Complete a project handover or resolve open responsibilities first',
+    );
 }
 
 export async function listAssignmentHistory(projectId: string, actor: EngineeringActor) {
@@ -764,7 +986,7 @@ export async function listProjectEngineerProfiles(projectId: string, actor: Engi
     where: {
       projectId,
       removedAt: null,
-      role: { in: ['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER'] },
+      role: { in: ['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER', 'REVIEWER', 'CONTRIBUTOR'] },
     },
     select: {
       role: true,
@@ -843,7 +1065,7 @@ export async function reassignProjectTasks(
       projectId,
       userId: { in: [input.fromUserId, input.toUserId] },
       removedAt: null,
-      role: { in: ['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER'] },
+      role: { in: ['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER', 'CONTRIBUTOR'] },
       user: { isActive: true, deletedAt: null },
     },
     select: { userId: true },
@@ -898,6 +1120,211 @@ export async function reassignProjectTasks(
     });
   }
   return { reassignedCount: updated };
+}
+
+export async function listProjectHandovers(projectId: string, actor: EngineeringActor) {
+  await requireManager(projectId, actor);
+  const rows = await prisma.projectHandover.findMany({
+    where: { projectId },
+    orderBy: { createdAt: 'desc' },
+    take: 100,
+  });
+  const users = await prisma.user.findMany({
+    where: { id: { in: [...new Set(rows.flatMap((row) => [row.fromUserId, row.toUserId]))] } },
+    select: { id: true, name: true, email: true },
+  });
+  const byId = new Map(users.map((user) => [user.id, user]));
+  return rows.map((row) => ({
+    ...row,
+    fromUser: byId.get(row.fromUserId) ?? null,
+    toUser: byId.get(row.toUserId) ?? null,
+  }));
+}
+
+export async function createProjectHandover(
+  projectId: string,
+  actor: EngineeringActor,
+  input: CreateProjectHandoverInput,
+) {
+  const { project } = await requireManager(projectId, actor);
+  if (project.status === 'CANCELLED')
+    throw new AppError('CONFLICT', 409, 'Cancelled projects cannot be reassigned');
+  const handover = await prisma.$transaction(
+    async (tx) => {
+      const members = await tx.projectMember.findMany({
+        where: {
+          projectId,
+          userId: { in: [input.fromUserId, input.toUserId] },
+          removedAt: null,
+          role: { in: ['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER', 'REVIEWER', 'CONTRIBUTOR'] },
+          user: { isActive: true, deletedAt: null },
+        },
+        select: { id: true, userId: true, role: true },
+      });
+      if (members.length !== 2)
+        throw new AppError(
+          'VALIDATION_ERROR',
+          400,
+          'Both engineers must have accepted active project assignments',
+        );
+      const source = members.find((member) => member.userId === input.fromUserId)!;
+      const [tasks, bugs, maintenance, documents, releases] = await Promise.all([
+        tx.task.findMany({
+          where: {
+            projectId,
+            assigneeId: input.fromUserId,
+            deletedAt: null,
+            status: { notIn: ['DONE', 'CANCELLED'] },
+          },
+          select: { id: true, approvalStatus: true },
+        }),
+        tx.bugReport.findMany({
+          where: {
+            projectId,
+            assigneeId: input.fromUserId,
+            status: { notIn: ['RESOLVED', 'CLOSED'] },
+          },
+          select: { id: true },
+        }),
+        tx.maintenanceRequest.findMany({
+          where: {
+            projectId,
+            assigneeId: input.fromUserId,
+            status: { notIn: ['COMPLETED', 'CANCELLED'] },
+          },
+          select: { id: true },
+        }),
+        tx.projectDocumentation.findMany({
+          where: { projectId, ownerId: input.fromUserId, deletedAt: null },
+          select: { id: true },
+        }),
+        tx.release.findMany({
+          where: {
+            projectId,
+            ownerId: input.fromUserId,
+            status: { notIn: ['VERIFIED', 'ROLLED_BACK', 'CANCELLED'] },
+          },
+          select: { id: true },
+        }),
+      ]);
+      if (
+        input.removeSource &&
+        ((bugs.length && !input.transferBugs) ||
+          (maintenance.length && !input.transferMaintenance) ||
+          (documents.length && !input.transferDocuments) ||
+          (releases.length && !input.transferReleases))
+      )
+        throw new AppError(
+          'CONFLICT',
+          409,
+          'Transfer or resolve all open responsibilities before removing the engineer',
+        );
+      const checklist = {
+        incompleteTaskIds: tasks.map(({ id }) => id),
+        pendingReviewTaskIds: tasks
+          .filter((task) => ['SUBMITTED', 'UNDER_REVIEW'].includes(task.approvalStatus))
+          .map(({ id }) => id),
+        openBugIds: bugs.map(({ id }) => id),
+        openMaintenanceIds: maintenance.map(({ id }) => id),
+        documentIds: documents.map(({ id }) => id),
+        activeReleaseIds: releases.map(({ id }) => id),
+      };
+      const transferredTasks = await tx.task.updateMany({
+        where: { id: { in: checklist.incompleteTaskIds }, projectId, assigneeId: input.fromUserId },
+        data: { assigneeId: input.toUserId },
+      });
+      const transferredBugs = input.transferBugs
+        ? await tx.bugReport.updateMany({
+            where: { id: { in: checklist.openBugIds }, projectId, assigneeId: input.fromUserId },
+            data: { assigneeId: input.toUserId },
+          })
+        : { count: 0 };
+      const transferredMaintenance = input.transferMaintenance
+        ? await tx.maintenanceRequest.updateMany({
+            where: {
+              id: { in: checklist.openMaintenanceIds },
+              projectId,
+              assigneeId: input.fromUserId,
+            },
+            data: { assigneeId: input.toUserId },
+          })
+        : { count: 0 };
+      const transferredDocuments = input.transferDocuments
+        ? await tx.projectDocumentation.updateMany({
+            where: { id: { in: checklist.documentIds }, projectId, ownerId: input.fromUserId },
+            data: { ownerId: input.toUserId },
+          })
+        : { count: 0 };
+      const transferredReleases = input.transferReleases
+        ? await tx.release.updateMany({
+            where: { id: { in: checklist.activeReleaseIds }, projectId, ownerId: input.fromUserId },
+            data: { ownerId: input.toUserId },
+          })
+        : { count: 0 };
+      if (input.removeSource) {
+        await tx.projectMember.update({
+          where: { id: source.id },
+          data: { removedAt: new Date() },
+        });
+        await tx.projectInvitation.updateMany({
+          where: { projectId, userId: input.fromUserId, status: 'PENDING' },
+          data: { status: 'CANCELLED', respondedAt: new Date() },
+        });
+      }
+      const row = await tx.projectHandover.create({
+        data: {
+          projectId,
+          fromUserId: input.fromUserId,
+          toUserId: input.toUserId,
+          actorId: actor.id,
+          notes: input.notes,
+          checklist,
+          transferredTaskCount: transferredTasks.count,
+          transferredBugCount: transferredBugs.count,
+          transferredMaintenanceCount: transferredMaintenance.count,
+          transferredDocumentCount: transferredDocuments.count,
+          transferredReleaseCount: transferredReleases.count,
+          sourceRemoved: input.removeSource,
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorId: actor.id,
+          action: 'project.handover.create',
+          subjectType: 'ProjectHandover',
+          subjectId: row.id,
+        },
+      });
+      await tx.projectAssignmentEvent.create({
+        data: {
+          projectId,
+          userId: input.fromUserId,
+          actorId: actor.id,
+          action: input.removeSource ? 'HANDED_OVER_REMOVED' : 'HANDED_OVER',
+          role: source.role,
+        },
+      });
+      return row;
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+  );
+  await Promise.all([
+    notifyAfterWrite({
+      eventKey: 'project.assignment',
+      userId: input.fromUserId,
+      title: `Project handover: ${project.name}`,
+      body: `A manager recorded a handover for ${project.name}.`,
+      dedupeKey: `handover:${handover.id}:from`,
+    }),
+    notifyAfterWrite({
+      eventKey: 'project.assignment',
+      userId: input.toUserId,
+      title: `Project handover: ${project.name}`,
+      body: `You received transferred responsibilities in ${project.name}.`,
+      dedupeKey: `handover:${handover.id}:to`,
+    }),
+  ]);
+  return handover;
 }
 
 export async function listProjectEngineeringTasks(projectId: string, actor: EngineeringActor) {
@@ -1125,7 +1552,7 @@ export async function reviewEngineeringTask(
   input: ReviewEngineeringTaskInput,
 ) {
   const task = await taskForAction(taskId);
-  await requireManager(task.projectId, actor);
+  await requireReviewer(task.projectId, actor);
   if (task.reviewRequired && task.reporterId === actor.id) {
     throw new AppError('FORBIDDEN', 403, 'An independent reviewer is required');
   }

@@ -4,6 +4,7 @@
 import rateLimit, { type Options } from 'express-rate-limit';
 import type { Request } from 'express';
 import { sendError } from '../lib/http';
+import { env } from '../lib/env';
 
 const rateLimitedHandler: Options['handler'] = (_req, res) => {
   sendError(res, 'RATE_LIMITED', 429, 'Too many requests, please try again later');
@@ -18,7 +19,14 @@ const shared = {
   skip: skipPreflight,
 } as const;
 
-export const apiRateLimiter = rateLimit({ windowMs: 60_000, limit: 100, ...shared });
+// Browser suites intentionally visit many API-backed screens from one local IP.
+// Keep production/development protection unchanged while preventing test-only
+// navigation from exhausting the shared budget before assertions run.
+export const apiRateLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: env.NODE_ENV === 'test' ? 1000 : 100,
+  ...shared,
+});
 
 // Public website endpoints (unauthenticated) get their own, tighter budget.
 export const publicRateLimiter = rateLimit({ windowMs: 60_000, limit: 60, ...shared });

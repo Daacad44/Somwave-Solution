@@ -12,14 +12,70 @@ import {
   transitionReleaseSchema,
   recordDeploymentSchema,
   PERMISSIONS,
+  stopEngineerTimerSchema,
+  discardEngineerTimerSchema,
+  correctTaskTimeEntrySchema,
+  createEngineerProgressReportSchema,
+  reviewEngineerProgressReportSchema,
 } from '@somwave/shared';
 import { requireAuth } from '../middleware/auth';
 import { rbac, rbacAny } from '../middleware/rbac';
 import { validate } from '../middleware/validate';
 import * as controller from '../controllers/engineering-operations.controller';
+import * as worklog from '../controllers/engineering-worklog.controller';
 
 export const engineeringOperationsRouter: Router = Router();
 engineeringOperationsRouter.use(requireAuth);
+engineeringOperationsRouter.get(
+  '/timers/active',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  worklog.activeTimer,
+);
+engineeringOperationsRouter.post(
+  '/tasks/:taskId/timer/start',
+  rbac(PERMISSIONS.ENGINEERING_TASK_CREATE),
+  worklog.startTimer,
+);
+engineeringOperationsRouter.post(
+  '/timers/active/stop',
+  rbac(PERMISSIONS.ENGINEERING_TASK_CREATE),
+  validate(stopEngineerTimerSchema),
+  worklog.stopTimer,
+);
+engineeringOperationsRouter.post(
+  '/timers/active/discard',
+  rbac(PERMISSIONS.ENGINEERING_TASK_CREATE),
+  validate(discardEngineerTimerSchema),
+  worklog.discardTimer,
+);
+engineeringOperationsRouter.patch(
+  '/tasks/:taskId/hours/:entryId',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  validate(correctTaskTimeEntrySchema),
+  worklog.correctHours,
+);
+engineeringOperationsRouter.get(
+  '/tasks/:taskId/hours/:entryId/revisions',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  worklog.hourRevisions,
+);
+engineeringOperationsRouter.get(
+  '/projects/:projectId/progress-reports',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  worklog.reports,
+);
+engineeringOperationsRouter.post(
+  '/projects/:projectId/progress-reports',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  validate(createEngineerProgressReportSchema),
+  worklog.createReport,
+);
+engineeringOperationsRouter.patch(
+  '/progress-reports/:reportId/review',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  validate(reviewEngineerProgressReportSchema),
+  worklog.reviewReport,
+);
 engineeringOperationsRouter.get(
   '/projects/:projectId/systems',
   rbac(PERMISSIONS.ENGINEERING_READ),

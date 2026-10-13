@@ -25,15 +25,16 @@ export function renderMail(
     return {
       subject: `Set up your Somwave engineer account`,
       text: [
-        'Hello,',
+        `Hello ${vars.name ?? 'engineer'},`,
         '',
-        `You have been invited to work on ${vars.projectName ?? 'a Somwave project'}.`,
-        `Set your password within 24 hours: ${vars.setupUrl ?? ''}`,
-        'Then sign in and accept your project invitation in Engineering.',
+        'Somwave Solution has invited you to join the engineering workspace.',
+        `Verify your email address and activate your account within 48 hours: ${vars.setupUrl ?? ''}`,
+        'The link can be used once. You will set a password, or confirm your existing account password, during activation.',
+        'After activation, sign in to review any pending project assignments.',
         '',
-        'If you did not expect this invitation, you can ignore this email.',
+        'If you did not expect this invitation, ignore this message and do not share the link.',
         '',
-        'Somwave',
+        'Somwave Solution',
       ].join('\n'),
     };
   }

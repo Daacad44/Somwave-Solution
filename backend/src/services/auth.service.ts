@@ -81,7 +81,12 @@ async function loadActiveUser(where: {
   email?: string;
 }): Promise<UserWithRoles | null> {
   return prisma.user.findFirst({
-    where: { ...where, isActive: true, deletedAt: null },
+    where: {
+      ...where,
+      isActive: true,
+      deletedAt: null,
+      NOT: { engineerProfile: { is: { status: 'SUSPENDED' } } },
+    },
     include: userWithRolesInclude,
   });
 }
@@ -180,7 +185,11 @@ export async function confirmTwoFactorEnrolment(
 
 async function assertCurrentTwoFactorCode(user: UserWithRoles, code: string): Promise<void> {
   if (!user.twoFactorEnabled || !user.twoFactorSecret) {
-    throw new AppError('VALIDATION_ERROR', 400, '2FA kuma shaqeynayo akoonkaagan');
+    throw new AppError(
+      'VALIDATION_ERROR',
+      400,
+      'Two-factor authentication is not enabled on your account',
+    );
   }
   const totpOk = await verifyTotp(user.twoFactorSecret, code);
   if (totpOk) return;

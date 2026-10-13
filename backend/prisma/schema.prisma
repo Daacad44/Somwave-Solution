@@ -57,6 +57,10 @@ model User {
   reviewedTasks                 Task[]                   @relation("TaskReviewer")
   taskComments                  TaskComment[]
   taskTimeEntries               TaskTimeEntry[]
+  activeTaskTimers               EngineerTaskTimer[]
+  timeEntryCorrections           TaskTimeEntryRevision[]
+  engineerProgressReports        EngineerProgressReport[] @relation("EngineerProgressReportAuthor")
+  reviewedEngineerReports        EngineerProgressReport[] @relation("EngineerProgressReportReviewer")
   taskReviewsAuthored           TaskReview[]             @relation("TaskReviewAuthor")
   taskReviewsGiven              TaskReview[]             @relation("TaskReviewReviewer")
   taskProgressReports           TaskProgressReport[]
@@ -70,6 +74,7 @@ model User {
   ownedReleases                 Release[]                @relation("ReleaseOwner")
   approvedReleases              Release[]                @relation("ReleaseApprover")
   engineerProfile               EngineerProfile?
+  engineerAccountInvitation      EngineerAccountInvitation?
   availabilitySlots             EngineerAvailability[]
   client                        Client?                  @relation(fields: [clientId], references: [id], onDelete: SetNull)
   employee                      Employee?
@@ -665,10 +670,14 @@ model AuditLog {
   subjectType String   @map("subject_type")
   subjectId   String?  @map("subject_id")
   actorId     String?  @map("actor_id")
+  correlationId String? @map("correlation_id")
+  before      Json?
+  after       Json?
   createdAt   DateTime @default(now()) @map("created_at")
 
   @@index([subjectType, subjectId])
   @@index([actorId])
+  @@index([correlationId])
   @@map("audit_logs")
 }
 
@@ -701,6 +710,7 @@ model Project {
   id          String        @id @default(cuid())
   name        String
   description String?
+  healthNote  String?       @map("health_note")
   status      ProjectStatus @default(PLANNING)
   startDate   DateTime?     @map("start_date")
   dueDate     DateTime?     @map("due_date")
@@ -728,6 +738,7 @@ model Project {
   maintenanceRequests MaintenanceRequest[]
   githubRepositories  GitHubRepository[]
   phases              ProjectPhase[]
+  engineerReports     EngineerProgressReport[]
 
   @@index([clientId])
   @@index([status])
@@ -876,6 +887,7 @@ model Task {
   comments        TaskComment[]
   attachments     TaskAttachment[]
   timeEntries     TaskTimeEntry[]
+  timers          EngineerTaskTimer[]
   reviews         TaskReview[]
   checklist       TaskChecklistItem[]
   progressReports TaskProgressReport[]
@@ -898,7 +910,9 @@ enum ProjectMemberRole {
   MANAGER
   LEAD_ENGINEER
   ENGINEER
+  REVIEWER
   QA_ENGINEER
+  CONTRIBUTOR
   VIEWER
 }
 
@@ -908,6 +922,12 @@ model ProjectMember {
   userId           String            @map("user_id")
   role             ProjectMemberRole @default(ENGINEER)
   responsibilities String?
+  description      String?
+  startDate        DateTime?         @map("start_date")
+  expectedEndDate  DateTime?         @map("expected_end_date")
+  estimatedHours   Decimal?          @map("estimated_hours") @db.Decimal(8, 2)
+  priority         TaskPriority      @default(MEDIUM)
+  managerNotes     String?           @map("manager_notes")
   assignedAt       DateTime          @default(now()) @map("assigned_at")
   removedAt        DateTime?         @map("removed_at")
   createdAt        DateTime          @default(now()) @map("created_at")
@@ -925,6 +945,7 @@ enum ProjectInvitationStatus {
   PENDING
   ACCEPTED
   DECLINED
+  EXPIRED
   CANCELLED
 }
 
@@ -934,8 +955,15 @@ model ProjectInvitation {
   userId           String                  @map("user_id")
   role             ProjectMemberRole
   responsibilities String?
+  description      String?
+  startDate        DateTime?               @map("start_date")
+  expectedEndDate  DateTime?               @map("expected_end_date")
+  estimatedHours   Decimal?                @map("estimated_hours") @db.Decimal(8, 2)
+  priority         TaskPriority            @default(MEDIUM)
+  managerNotes     String?                 @map("manager_notes")
   status           ProjectInvitationStatus @default(PENDING)
   invitedAt        DateTime                @default(now()) @map("invited_at")
+  expiresAt        DateTime?               @map("expires_at")
   respondedAt      DateTime?               @map("responded_at")
   createdAt        DateTime                @default(now()) @map("created_at")
   updatedAt        DateTime                @updatedAt @map("updated_at")
@@ -955,8 +983,55 @@ enum EngineerAvailabilityStatus {
   UNAVAILABLE
 }
 
+enum EngineerAccountStatus {
+  INVITED
+  PENDING_VERIFICATION
+  PENDING_ACTIVATION
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum EngineerInvitationStatus {
+  INVITED
+  VERIFIED
+  ACTIVATED
+  CANCELLED
+}
+
+model EngineerAccountInvitation {
+  id                  String                   @id @default(cuid())
+  userId              String                   @unique @map("user_id")
+  invitedById         String                   @map("invited_by_id")
+  wasExistingUser     Boolean                  @default(false) @map("was_existing_user")
+  tokenHash           String                   @unique @map("token_hash")
+  activationTokenHash String?                  @unique @map("activation_token_hash")
+  expiresAt           DateTime                 @map("expires_at")
+  activationExpiresAt DateTime?                @map("activation_expires_at")
+  verifiedAt          DateTime?                @map("verified_at")
+  activatedAt         DateTime?                @map("activated_at")
+  lastSentAt          DateTime?                @map("last_sent_at")
+  sendCount           Int                      @default(0) @map("send_count")
+  deliveryStatus      String                   @default("PENDING") @map("delivery_status")
+  status              EngineerInvitationStatus @default(INVITED)
+  createdAt           DateTime                 @default(now()) @map("created_at")
+  updatedAt           DateTime                 @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("engineer_account_invitations")
+}
+
 model EngineerProfile {
   userId              String                     @id @map("user_id")
+  status              EngineerAccountStatus      @default(ACTIVE)
+  phone               String?
+  jobTitle            String?                    @map("job_title")
+  specialization      String?
+  secondarySpecializations String[]            @default([]) @map("secondary_specializations")
+  experienceLevel     String?                    @map("experience_level")
+  employmentType      String?                    @map("employment_type")
   headline            String?
   skills              String[]                   @default([])
   availability        EngineerAvailabilityStatus @default(AVAILABLE)
@@ -965,8 +1040,64 @@ model EngineerProfile {
   updatedAt           DateTime                   @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  structuredSkills EngineerSkill[]
+  weeklySchedule EngineerWeeklySchedule[]
 
   @@map("engineer_profiles")
+}
+
+enum EngineerSkillCategory {
+  FRONTEND
+  BACKEND
+  MOBILE
+  DEVOPS
+  DESIGN
+  QA
+  DATABASE
+  SECURITY
+  ARCHITECTURE
+  OTHER
+}
+
+enum EngineerSkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+model EngineerSkill {
+  id              String                @id @default(cuid())
+  userId          String                @map("user_id")
+  category        EngineerSkillCategory
+  name            String
+  level           EngineerSkillLevel
+  experienceYears Decimal               @map("experience_years") @db.Decimal(4, 1)
+  isPrimary       Boolean               @default(false) @map("is_primary")
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
+
+  profile EngineerProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@index([category, level])
+  @@map("engineer_skills")
+}
+
+model EngineerWeeklySchedule {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  weekday     Int
+  startMinute Int      @map("start_minute")
+  endMinute   Int      @map("end_minute")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  profile EngineerProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@unique([userId, weekday, startMinute])
+  @@index([userId, weekday])
+  @@map("engineer_weekly_schedule")
 }
 
 model EngineerAvailability {
@@ -996,6 +1127,30 @@ model ProjectAssignmentEvent {
   @@index([projectId, occurredAt])
   @@index([userId, occurredAt])
   @@map("project_assignment_events")
+}
+
+// A durable snapshot of the manager-approved transfer; historical work remains
+// with its original author even when open responsibilities change assignee.
+model ProjectHandover {
+  id                       String   @id @default(cuid())
+  projectId                String   @map("project_id")
+  fromUserId               String   @map("from_user_id")
+  toUserId                 String   @map("to_user_id")
+  actorId                  String   @map("actor_id")
+  notes                    String
+  checklist                Json
+  transferredTaskCount     Int      @default(0) @map("transferred_task_count")
+  transferredBugCount      Int      @default(0) @map("transferred_bug_count")
+  transferredMaintenanceCount Int   @default(0) @map("transferred_maintenance_count")
+  transferredDocumentCount Int     @default(0) @map("transferred_document_count")
+  transferredReleaseCount Int      @default(0) @map("transferred_release_count")
+  sourceRemoved            Boolean  @default(false) @map("source_removed")
+  createdAt                DateTime @default(now()) @map("created_at")
+
+  @@index([projectId, createdAt])
+  @@index([fromUserId, createdAt])
+  @@index([toUserId, createdAt])
+  @@map("project_handovers")
 }
 
 enum DocumentationFormat {
@@ -1043,6 +1198,9 @@ model ProjectDocumentation {
   comments       DocumentationComment[]
   taskLinks      DocumentTaskLink[]
   milestoneLinks DocumentMilestoneLink[]
+  planProposals  DocumentPlanProposal[]
+  attachments    DocumentAttachmentLink[] @relation("DocumentationAttachmentParent")
+  attachedTo     DocumentAttachmentLink[] @relation("DocumentationAttachmentFile")
 
   @@index([projectId, status])
   @@index([projectId, category])
@@ -1114,6 +1272,44 @@ model DocumentMilestoneLink {
   @@map("document_milestone_links")
 }
 
+enum DocumentPlanStatus {
+  PROPOSED
+  ACTIVATED
+  REJECTED
+}
+
+model DocumentPlanProposal {
+  id            String             @id @default(cuid())
+  documentId    String             @map("document_id")
+  sourceVersion Int                @map("source_version")
+  plan          Json
+  status        DocumentPlanStatus @default(PROPOSED)
+  proposedById  String             @map("proposed_by_id")
+  reviewedById  String?            @map("reviewed_by_id")
+  reviewedAt    DateTime?          @map("reviewed_at")
+  reviewNote    String?            @map("review_note")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  document ProjectDocumentation @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, status, createdAt])
+  @@map("document_plan_proposals")
+}
+
+model DocumentAttachmentLink {
+  documentId     String   @map("document_id")
+  fileDocumentId String   @map("file_document_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  document ProjectDocumentation @relation("DocumentationAttachmentParent", fields: [documentId], references: [id], onDelete: Cascade)
+  file     ProjectDocumentation @relation("DocumentationAttachmentFile", fields: [fileDocumentId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, fileDocumentId])
+  @@index([fileDocumentId])
+  @@map("document_attachment_links")
+}
+
 model TaskDependency {
   taskId      String   @map("task_id")
   dependsOnId String   @map("depends_on_id")
@@ -1170,10 +1366,88 @@ model TaskTimeEntry {
 
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  revisions TaskTimeEntryRevision[]
 
   @@index([taskId, date])
   @@index([userId, date])
   @@map("task_time_entries")
+}
+
+model EngineerTaskTimer {
+  id        String    @id @default(cuid())
+  taskId    String    @map("task_id")
+  userId    String    @map("user_id")
+  startedAt DateTime  @default(now()) @map("started_at")
+  stoppedAt DateTime? @map("stopped_at")
+  entryId   String?   @map("entry_id")
+  discardReason String? @map("discard_reason")
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, startedAt])
+  @@map("engineer_task_timers")
+}
+
+model TaskTimeEntryRevision {
+  id              String   @id @default(cuid())
+  entryId         String   @map("entry_id")
+  actorId         String   @map("actor_id")
+  previousMinutes Int      @map("previous_minutes")
+  previousDate    DateTime @map("previous_date") @db.Date
+  previousNote    String?  @map("previous_note")
+  minutes         Int
+  date            DateTime @db.Date
+  note            String?
+  reason          String
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  entry TaskTimeEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  actor User @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([entryId, createdAt])
+  @@map("task_time_entry_revisions")
+}
+
+enum EngineerReportPeriod {
+  DAILY
+  WEEKLY
+}
+
+enum EngineerReportStatus {
+  SUBMITTED
+  CLARIFICATION_REQUESTED
+  REVIEWED
+}
+
+model EngineerProgressReport {
+  id                 String               @id @default(cuid())
+  projectId          String               @map("project_id")
+  authorId           String               @map("author_id")
+  period             EngineerReportPeriod
+  periodStart        DateTime             @map("period_start") @db.Date
+  completedWork      String               @map("completed_work")
+  inProgressWork     String?              @map("in_progress_work")
+  blockers           String?
+  nextPlannedWork    String?              @map("next_planned_work")
+  milestoneProgress  String?              @map("milestone_progress")
+  priorities         String?
+  hoursWorkedMinutes Int?                 @map("hours_worked_minutes")
+  reportedHoursMinutes Int?               @map("reported_hours_minutes")
+  status             EngineerReportStatus @default(SUBMITTED)
+  reviewNote         String?              @map("review_note")
+  reviewedById       String?              @map("reviewed_by_id")
+  reviewedAt         DateTime?            @map("reviewed_at")
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author User @relation("EngineerProgressReportAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  reviewer User? @relation("EngineerProgressReportReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, authorId, period, periodStart])
+  @@index([projectId, periodStart])
+  @@map("engineer_progress_reports")
 }
 
 model TaskReview {

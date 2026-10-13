@@ -51,6 +51,8 @@ const engineer: AuthUser = {
   twoFactorEnabled: false,
   twoFactorRequired: false,
 };
+const admin: AuthUser = { ...engineer, id: 'admin_1', roles: ['ADMIN'] };
+const viewer: AuthUser = { ...engineer, id: 'viewer_1', roles: ['MANAGER'] };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -61,7 +63,7 @@ describe('createMilestone', () => {
     vi.mocked(prisma.project.findFirst).mockResolvedValue({ id: 'prj_1' } as never);
     vi.mocked(prisma.milestone.create).mockResolvedValue(row as never);
 
-    const result = await createMilestone(input);
+    const result = await createMilestone(input, admin);
 
     expect(result).toMatchObject({ id: 'ms_1', project: { id: 'prj_1', name: 'Website' } });
     expect(prisma.milestone.create).toHaveBeenCalledOnce();
@@ -71,7 +73,7 @@ describe('createMilestone', () => {
     vi.mocked(prisma.project.findFirst).mockResolvedValue({ id: 'prj_1' } as never);
     vi.mocked(prisma.milestone.create).mockResolvedValue(row as never);
 
-    await createMilestone({ ...input, status: 'COMPLETED' });
+    await createMilestone({ ...input, status: 'COMPLETED' }, admin);
 
     const arg = vi.mocked(prisma.milestone.create).mock.calls[0]?.[0] as {
       data: { completedAt: Date | null };
@@ -82,7 +84,23 @@ describe('createMilestone', () => {
   it('rejects an unknown project', async () => {
     vi.mocked(prisma.project.findFirst).mockResolvedValue(null as never);
 
-    await expect(createMilestone(input)).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+    await expect(createMilestone(input, admin)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    expect(prisma.milestone.create).not.toHaveBeenCalled();
+  });
+
+  it('requires manager access even when the actor can view the project', async () => {
+    vi.mocked(prisma.project.findFirst).mockResolvedValue(null as never);
+    await expect(createMilestone(input, viewer)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    expect(prisma.project.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: [
+            { managerId: viewer.id },
+            { members: { some: { userId: viewer.id, role: 'MANAGER', removedAt: null } } },
+          ],
+        }),
+      }),
+    );
     expect(prisma.milestone.create).not.toHaveBeenCalled();
   });
 });
@@ -90,7 +108,7 @@ describe('createMilestone', () => {
 describe('updateMilestone', () => {
   it('throws NOT_FOUND when the milestone is missing', async () => {
     vi.mocked(prisma.milestone.findFirst).mockResolvedValue(null as never);
-    await expect(updateMilestone('missing', { status: 'COMPLETED' })).rejects.toMatchObject({
+    await expect(updateMilestone('missing', { status: 'COMPLETED' }, admin)).rejects.toMatchObject({
       code: 'NOT_FOUND',
     });
   });
@@ -102,7 +120,7 @@ describe('updateMilestone', () => {
     } as never);
     vi.mocked(prisma.milestone.update).mockResolvedValue({ ...row, status: 'COMPLETED' } as never);
 
-    await updateMilestone('ms_1', { status: 'COMPLETED' });
+    await updateMilestone('ms_1', { status: 'COMPLETED' }, admin);
 
     const arg = vi.mocked(prisma.milestone.update).mock.calls[0]?.[0] as {
       data: { completedAt?: Date | null };
@@ -120,12 +138,27 @@ describe('updateMilestone', () => {
       status: 'IN_PROGRESS',
     } as never);
 
-    await updateMilestone('ms_1', { status: 'IN_PROGRESS' });
+    await updateMilestone('ms_1', { status: 'IN_PROGRESS' }, admin);
 
     const arg = vi.mocked(prisma.milestone.update).mock.calls[0]?.[0] as {
       data: { completedAt?: Date | null };
     };
     expect(arg.data.completedAt).toBeNull();
+  });
+
+  it('hides a milestone in an unmanaged project from mutation', async () => {
+    vi.mocked(prisma.milestone.findFirst).mockResolvedValue(null as never);
+    await expect(updateMilestone('ms_1', { title: 'Changed' }, viewer)).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    });
+    expect(prisma.milestone.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          project: expect.objectContaining({ OR: expect.any(Array) }),
+        }),
+      }),
+    );
+    expect(prisma.milestone.update).not.toHaveBeenCalled();
   });
 });
 
@@ -134,7 +167,7 @@ describe('deleteMilestone', () => {
     vi.mocked(prisma.milestone.findFirst).mockResolvedValue({ id: 'ms_1' } as never);
     vi.mocked(prisma.milestone.update).mockResolvedValue({} as never);
 
-    await deleteMilestone('ms_1');
+    await deleteMilestone('ms_1', admin);
 
     expect(prisma.milestone.update).toHaveBeenCalledWith({
       where: { id: 'ms_1' },

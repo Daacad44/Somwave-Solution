@@ -127,7 +127,7 @@ export async function createPortfolioItem(
   input: CreatePortfolioItemInput,
 ): Promise<AdminPortfolioItem> {
   const existing = await prisma.portfolioItem.findUnique({ where: { slug: input.slug } });
-  if (existing) throw new AppError('CONFLICT', 409, 'Slug-kan horey ayaa loo isticmaalay');
+  if (existing) throw new AppError('CONFLICT', 409, 'This slug is already in use');
 
   const row = await prisma.portfolioItem.create({
     data: {
@@ -156,7 +156,7 @@ export async function updatePortfolioItem(
 
   if (input.slug && input.slug !== item.slug) {
     const clash = await prisma.portfolioItem.findUnique({ where: { slug: input.slug } });
-    if (clash) throw new AppError('CONFLICT', 409, 'Slug-kan horey ayaa loo isticmaalay');
+    if (clash) throw new AppError('CONFLICT', 409, 'This slug is already in use');
   }
 
   const publishing = input.isPublished === true && !item.isPublished;

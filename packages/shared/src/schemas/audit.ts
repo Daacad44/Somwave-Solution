@@ -6,6 +6,9 @@ export const adminAuditLogSchema = z.object({
   subjectType: z.string(),
   subjectId: z.string().nullable(),
   actorId: z.string().nullable(),
+  correlationId: z.string().nullable(),
+  before: z.unknown().nullable(),
+  after: z.unknown().nullable(),
   createdAt: z.string(),
 });
 

@@ -4,7 +4,7 @@ This reference covers the implemented engineering, operations, project documenta
 
 ## Authentication, access, and responses
 
-All endpoints below require an authenticated access cookie except `POST /api/v1/github/webhooks`, which requires a valid `X-Hub-Signature-256` HMAC signature over the raw request body and a configured `GITHUB_WEBHOOK_SECRET`. A signed-in user also needs the permission shown in the tables. `R`, `M`, `C`, and `V` below mean `engineering.read`, `engineering.manage`, `engineering.tasks.create`, and `engineering.tasks.review`; `GR` and `GM` mean `github.read` and `github.manage`; `N` means `notifications.read`. `C|M` means either permission. Super admins hold all permissions. Permissions alone do not grant access to another project's data: engineering and operations services check active project membership or project management, with administrator exceptions. Documentation routes use project membership and project role checks in their service rather than route-level engineering permissions.
+All endpoints below require an authenticated access cookie except the public engineer invitation verification/activation routes and `POST /api/v1/github/webhooks`. The webhook requires a valid `X-Hub-Signature-256` HMAC signature over the raw request body and a configured `GITHUB_WEBHOOK_SECRET`. A signed-in user also needs the permission shown in the tables. `R`, `M`, `C`, and `V` below mean `engineering.read`, `engineering.manage`, `engineering.tasks.create`, and `engineering.tasks.review`; `GR` and `GM` mean `github.read` and `github.manage`; `N` means `notifications.read`. `C|M` means either permission. Super admins hold all permissions. Permissions alone do not grant access to another project's data: engineering and operations services check active project membership or project management, with administrator exceptions. Documentation routes use project membership and project role checks in their service rather than route-level engineering permissions.
 
 Successful JSON responses use `{ "data": ... }` (and `{ "meta": { "page", "pageSize", "total" } }` where pagination applies). Errors use `{ "error": { "code": "...", "message": "...", "details"?: ... } }`. Common responses are 400 `VALIDATION_ERROR`, 401 `UNAUTHORIZED`, 403 `FORBIDDEN`, 404 `NOT_FOUND`, and 409 `CONFLICT`. Some invitation setup/email failures return 503 `SERVICE_UNAVAILABLE`. Validation errors may include flattened field details. Creation endpoints generally return 201; consult the controller for the exact status.
 
@@ -14,10 +14,28 @@ Example engineer invitation:
 POST /api/v1/engineering/projects/PROJECT_ID/invitations
 Content-Type: application/json
 
-{"email":"engineer@example.com","name":"New Engineer","role":"ENGINEER","responsibilities":"API review"}
+{"email":"engineer@example.com","role":"ENGINEER","description":"API delivery","responsibilities":"API review","startDate":"2026-10-15T09:00:00Z","expectedEndDate":"2026-12-01T17:00:00Z","estimatedHours":120,"priority":"HIGH"}
 ```
 
-The `name` field is required only when the email has no existing engineer account. Creating that account requires `SMTP_HOST`, `SMTP_FROM`, and `APP_PUBLIC_URL`; the server sends a password setup email. It also queues a required project invitation email. The invitation stays `PENDING` and does **not** grant project membership until its recipient accepts it. An existing account that is inactive or lacks an engineer role cannot be invited through this route. Managers may cancel pending invitations; only the recipient may accept or decline.
+For a new engineer, a manager may provide `name` in this request; the service provisions an invited account without granting active engineer access. Administrators can also register the account separately first. Project assignment requires configured email delivery and the required assignment fields shown above. The invitation stays `PENDING` and does **not** grant project membership until its recipient accepts it. Managers may cancel pending invitations; only the recipient may accept or decline. Existing historical members remain members; migration does not silently reinterpret their membership as an accepted invitation.
+
+## Engineer registration and activation
+
+Administrator account management is under `/api/v1/engineering/accounts`; requests use [`engineerAccount.ts`](../packages/shared/src/schemas/engineerAccount.ts). The public verification and activation routes are IP rate limited. Store `SMTP_HOST`, `SMTP_FROM`, and `APP_PUBLIC_URL` in backend runtime secrets for real invitations. Creation reuses an existing identity where eligible and does not give a newly invited account engineering access before verified activation. Invitation and activation tokens are single use, expire, and are stored only as hashes. A queued or successful delivery record is not proof that the recipient received an email.
+
+| Method and path | Access | Purpose / body |
+| --- | --- | --- |
+| `GET /api/v1/engineering/accounts` | M, admin scope | List engineer accounts and profile statuses. |
+| `POST /api/v1/engineering/accounts` | M, admin scope | Register with `name`, `email`, `jobTitle`, `specialization`, `skills`, `experienceLevel`, `employmentType`, `weeklyCapacityHours`, `availability`; optional `phone`. Creates an invitation and queues email. |
+| `GET /api/v1/engineering/accounts/:userId` | M, admin scope | Account/profile detail. |
+| `PATCH /api/v1/engineering/accounts/:userId` | M, admin scope | Update organizational profile fields; email cannot be changed here. |
+| `GET /api/v1/engineering/accounts/:userId/activity` | M, admin scope | Account audit activity. |
+| `POST /api/v1/engineering/accounts/:userId/resend` | M, admin scope | Rotate and resend a pending invitation, with resend throttling. |
+| `POST /api/v1/engineering/accounts/:userId/cancel` | M, admin scope | Cancel a pending account invitation. |
+| `POST /api/v1/engineering/accounts/:userId/suspend` | M, admin scope | Suspend engineer access. |
+| `POST /api/v1/engineering/accounts/:userId/reactivate` | M, admin scope | Reactivate a suspended account. |
+| `POST /api/v1/auth/engineer-invitations/verify` | Public, rate limited | `{ "token": "..." }`; consume email verification token and return a short-lived activation token and profile summary. |
+| `POST /api/v1/auth/engineer-invitations/activate` | Public, rate limited | `{ "activationToken": "...", "password": "..." }` plus optional profile completion fields; activates the engineer identity. Existing identities provide their current password. |
 
 ## Engineering projects, membership, and profiles
 
@@ -27,27 +45,36 @@ Base path: `/api/v1/engineering`. Body shapes are in [`engineering.ts`](../packa
 | --- | --- | --- |
 | `GET /projects` | R | Projects visible to the current user. |
 | `GET /metrics` | R | Engineering overview metrics. |
+| `GET /team-overview` | M + ADMIN/SUPER_ADMIN | Ten organization-wide staffing KPIs; capacity uses current-week task estimates, project commitments and leave, while project risk counts upcoming deadlines and blocked/overdue tasks. |
 | `GET /analytics` | R | Aggregated engineering analytics. |
 | `GET /invitations/me` | R | Current user's pending project invitations. |
 | `POST /invitations/:invitationId/respond` | R | `{ "decision": "ACCEPT" | "DECLINE" }`. Acceptance adds project membership atomically. |
 | `GET /engineers/me/profile` | R | Current engineer profile. |
 | `PATCH /engineers/me/profile` | R | Optional `headline`, `skills`, `availability`, `weeklyCapacityHours`, `timezone`. |
+| `GET /engineers/me/skills`, `PUT /engineers/me/skills` | R | Read or replace structured skills with category, level, experience years and primary designation. |
+| `GET /engineers/me/schedule`, `PUT /engineers/me/schedule` | R | Read or replace non-overlapping weekly local-time working intervals. |
+| `GET /engineers/search-skills` | M | Search engineer skills for staffing. |
+| `GET /engineers/:userId/skills`, `GET /engineers/:userId/schedule` | M | Manager inspection of an engineer's structured skills and schedule. |
 | `GET /engineers/me/availability` | R | Current user's availability slots. |
 | `POST /engineers/me/availability` | R | `startAt`, `endAt` (offset ISO timestamps), `kind` (`WORKING`, `TIME_OFF`, `ON_CALL`), optional `note`. |
 | `DELETE /engineers/me/availability/:slotId` | R | Remove owned slot. |
 | `GET /projects/:projectId/engineer-profiles` | R | Project engineer profiles with workload and four-week capacity. Non-managers see only this project's task load and their own availability slots; managers see cross-project capacity for staffing. |
 | `GET /projects/:projectId/members` | R | Active project members. |
 | `GET /projects/:projectId/assignment-history` | M | Assignment and invitation history. |
-| `GET /projects/:projectId/eligible-engineers?search=...` | M | Candidate engineers; `search` is optional. |
+| `GET /projects/:projectId/eligible-engineers?search=...` | M | Candidate engineers with current-week capacity, open estimates and near/over-capacity flags; `search` is optional. |
 | `GET /projects/:projectId/invitations` | M | Pending invitations for this project. |
-| `POST /projects/:projectId/invitations` | M | `email`, optional `name`, engineer `role` (`ENGINEER`, `LEAD_ENGINEER`, `QA_ENGINEER`), optional `responsibilities`. Email is normalized to lowercase. |
+| `POST /projects/:projectId/invitations` | M | `email`, project `role` (`ENGINEER`, `LEAD_ENGINEER`, `REVIEWER`, `QA_ENGINEER`, `CONTRIBUTOR`), required `description`, `startDate`, `expectedEndDate`, `estimatedHours`; optional `name` for a new account, `responsibilities`, `priority`, `managerNotes`. Email is normalized to lowercase. |
 | `DELETE /projects/:projectId/invitations/:invitationId` | M | Cancel a pending invitation. |
 | `POST /projects/:projectId/reassign-tasks` | M | `{ "fromUserId": "...", "toUserId": "..." }`; bulk reassign open tasks between active engineers on this project. |
+| `GET /projects/:projectId/handovers` | M | List manager-approved handover history and retained checklists. |
+| `POST /projects/:projectId/handovers` | M | `fromUserId`, `toUserId`, required `notes`; optional `removeSource`, `transferBugs`, `transferMaintenance`, `transferDocuments`, `transferReleases`. Creates an audited handover and transfers selected open responsibilities. |
+| `GET /engineers/:userId/assignments` | M | Assignment history for an engineer. |
+| `GET /engineers/:userId/overview` | M | Aggregated tasks, progress reports, tracked time and maintenance across accepted projects visible to the administrator or manager, with summary totals. |
 | `POST /projects/:projectId/members` | M | Existing-user `{ "userId": "...", "role": "...", "responsibilities"?: "..." }`. Engineer roles go through the invitation/acceptance flow; `MANAGER` and `VIEWER` are assigned directly. |
 | `PATCH /projects/:projectId/members/:userId` | M | Change `role` and/or `responsibilities`; upgrading a non-engineer member to an engineer role requires an invitation instead. |
 | `DELETE /projects/:projectId/members/:userId` | M | Remove member. |
 
-Project member roles are `MANAGER`, `LEAD_ENGINEER`, `ENGINEER`, `QA_ENGINEER`, and `VIEWER`. Managers control membership. An invitation for an already assigned engineer returns 409. An already answered or cancelled invitation cannot be accepted; a concurrent second response returns 409.
+Project member roles are `MANAGER`, `LEAD_ENGINEER`, `ENGINEER`, `REVIEWER`, `QA_ENGINEER`, `CONTRIBUTOR`, and `VIEWER`. Managers control membership. An invitation for an already assigned engineer returns 409. An already answered or cancelled invitation cannot be accepted; a concurrent second response returns 409.
 
 ## Engineering planning and tasks
 
@@ -82,6 +109,22 @@ Base path: `/api/v1/engineering`.
 | `GET /tasks/:taskId/attachments/:attachmentId/file` | R | Download attachment bytes. |
 
 Task types: `FEATURE`, `BUG_FIX`, `IMPROVEMENT`, `RESEARCH`, `DESIGN`, `TESTING`, `DOCUMENTATION`, `MAINTENANCE`, `OTHER`. Priorities: `LOW`, `MEDIUM`, `HIGH`, `URGENT`. Task kinds: `EPIC`, `TASK`, `SUBTASK`; a subtask needs a parent. See the schema for size caps and allowed attachment MIME types.
+
+## Progress reports and time tracking
+
+Base path: `/api/v1/engineering`; request schemas are in [`engineeringWorklog.ts`](../packages/shared/src/schemas/engineeringWorklog.ts). Work on a task requires accepted project access and task authorization. A user can have only one active timer. Stopping a timer records approved-task time; corrections retain before/after revisions and a reason. Weekly reports start on Monday. The server calculates reported hours from time entries when `hoursWorkedMinutes` is omitted; callers can supply that field explicitly, so managers should review discrepancies.
+
+| Method and path | Permission | Purpose / body |
+| --- | --- | --- |
+| `GET /timers/active` | R | Current user's running task timer, if any. |
+| `POST /tasks/:taskId/timer/start` | C | Start timer for an authorized approved task. |
+| `POST /timers/active/stop` | C | Stop and save elapsed time; optional `note`. |
+| `POST /timers/active/discard` | C | Stop without time entry; required `reason`. |
+| `PATCH /tasks/:taskId/hours/:entryId` | R plus owner/manager scope | Correct `minutes`, `date`, optional `note`, required `reason`. |
+| `GET /tasks/:taskId/hours/:entryId/revisions` | R plus project scope | Read correction history. |
+| `GET /projects/:projectId/progress-reports` | R | List project reports with access filtering. |
+| `POST /projects/:projectId/progress-reports` | R plus engineer scope | Submit `period` (`DAILY`/`WEEKLY`), `periodStart` (`YYYY-MM-DD`), `completedWork`; optional `inProgressWork`, `blockers`, `nextPlannedWork`, `milestoneProgress`, `priorities`, `hoursWorkedMinutes`. |
+| `PATCH /progress-reports/:reportId/review` | M | `{ "status": "REVIEWED" | "CLARIFICATION_REQUESTED", "note": "..." }`. |
 
 ## Operations, health, and releases
 
@@ -142,6 +185,18 @@ Base path: `/api/v1/projects/:projectId/documentation`. Body schemas are in [`pr
 | `PATCH /:documentId/status` | Write or approve | `{ "status": "...", "expectedVersion": n }`; `APPROVED` needs manager approval. |
 
 Status transitions are `DRAFT` → `IN_REVIEW` → `APPROVED` → `ARCHIVED`; `IN_REVIEW` may return to `DRAFT`. Archived documents cannot be edited. A stale `expectedVersion` returns 409. File uploads are base64 JSON with server-side type and size checks.
+
+### Documentation-based development plans
+
+Plans use [`documentPlan.ts`](../packages/shared/src/schemas/documentPlan.ts): an approved text document can yield a reviewable hierarchy of phases, milestones, epics, tasks, subtasks, dependencies and checklists. Creation accepts an optional explicit `plan` object; otherwise the server suggests an editable draft from document headings and bullet points. Activation is a manager approval action and writes approved tasks and the project hierarchy transactionally. Rejected plans do not create active work.
+
+| Method and path suffix | Access | Purpose / body |
+| --- | --- | --- |
+| `GET /:documentId/plans` | Read | List proposals for the document. |
+| `POST /:documentId/plans` | Write | Create a proposal, optionally with `{ "plan": { "phases": [], "milestones": [], "tasks": [] } }` conforming to the shared schema. |
+| `GET /:documentId/plans/:planId` | Read | Inspect a proposed plan. |
+| `POST /:documentId/plans/:planId/activate` | Manager approval | Activate a proposal; optional `note`. |
+| `POST /:documentId/plans/:planId/reject` | Manager approval | Reject a proposal; optional `note`. |
 
 ## GitHub App
 

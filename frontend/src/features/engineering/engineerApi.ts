@@ -44,6 +44,40 @@ export interface AssignmentEvent {
   role: string;
   occurredAt: string;
 }
+export interface ProjectHandover {
+  id: string;
+  projectId: string;
+  fromUserId: string;
+  toUserId: string;
+  fromUser?: { id: string; name: string; email: string } | null;
+  toUser?: { id: string; name: string; email: string } | null;
+  notes: string;
+  checklist: {
+    incompleteTaskIds: string[];
+    pendingReviewTaskIds: string[];
+    openBugIds: string[];
+    openMaintenanceIds: string[];
+    documentIds: string[];
+    activeReleaseIds: string[];
+  };
+  transferredTaskCount: number;
+  transferredBugCount: number;
+  transferredMaintenanceCount: number;
+  transferredDocumentCount: number;
+  transferredReleaseCount: number;
+  sourceRemoved: boolean;
+  createdAt: string;
+}
+export interface HandoverInput {
+  fromUserId: string;
+  toUserId: string;
+  removeSource: boolean;
+  transferBugs: boolean;
+  transferMaintenance: boolean;
+  transferDocuments: boolean;
+  transferReleases: boolean;
+  notes: string;
+}
 
 export const engineerApi = {
   mine: () => apiFetch<EngineerProfile | null>('/engineering/engineers/me/profile'),
@@ -76,5 +110,12 @@ export const engineerApi = {
     apiFetch<{ reassignedCount: number }>(`/engineering/projects/${projectId}/reassign-tasks`, {
       method: 'POST',
       body: JSON.stringify({ fromUserId, toUserId }),
+    }),
+  handovers: (projectId: string) =>
+    apiFetch<ProjectHandover[]>(`/engineering/projects/${projectId}/handovers`),
+  createHandover: (projectId: string, input: HandoverInput) =>
+    apiFetch<ProjectHandover>(`/engineering/projects/${projectId}/handovers`, {
+      method: 'POST',
+      body: JSON.stringify(input),
     }),
 };

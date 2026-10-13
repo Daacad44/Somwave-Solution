@@ -6,17 +6,21 @@ import type {
   AdminTask,
   CreateProjectInput,
   ProjectHealth,
+  ProjectHealthReason,
   ProjectStatus,
   ProjectWorkspace,
   TaskPriority,
   TaskStatus,
   UpdateProjectInput,
   AuthUser,
+  UpdateProjectHealthNoteInput,
 } from '@somwave/shared';
-import { MAX_PAGE_SIZE } from '@somwave/shared';
+import { holdsPermission, MAX_PAGE_SIZE, PERMISSIONS } from '@somwave/shared';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
+import { correlationId } from '../lib/requestContext';
+import { calculateWeeklyCapacity } from './engineering-capacity.service';
 
 const adminProjectSelect = {
   id: true,
@@ -137,15 +141,48 @@ export function deriveProjectHealth(input: {
   dueDate: string | null;
   now?: Date;
 }): ProjectHealth {
-  if (input.status === 'COMPLETED') return 'COMPLETE';
-  if (input.status === 'CANCELLED') return 'CANCELLED';
-  if (!input.dueDate) return 'NO_DATE';
-  const due = Date.parse(input.dueDate);
-  if (Number.isNaN(due)) return 'NO_DATE';
+  return deriveProjectHealthDetails(input).health;
+}
+
+export function deriveProjectHealthDetails(input: {
+  status: ProjectStatus;
+  dueDate: string | null;
+  overdueMilestones?: number;
+  overdueTasks?: number;
+  blockedTasks?: number;
+  blockedDependencies?: number;
+  constrainedEngineers?: number;
+  remainingTasks?: number;
+  now?: Date;
+}): { health: ProjectHealth; reasons: ProjectHealthReason[] } {
+  if (input.status === 'COMPLETED') return { health: 'COMPLETE', reasons: [] };
+  if (input.status === 'CANCELLED') return { health: 'CANCELLED', reasons: [] };
+  const reasons: ProjectHealthReason[] = [];
+  const due = input.dueDate ? Date.parse(input.dueDate) : NaN;
+  const remainingTasks = input.remainingTasks ?? 0;
   const now = (input.now ?? new Date()).getTime();
-  if (due < now) return 'OVERDUE';
-  if (due - now <= 7 * DAY_MS) return 'AT_RISK';
-  return 'ON_TRACK';
+  const projectOverdue = Number.isFinite(due) && due < now;
+  if (projectOverdue) reasons.push({ code: 'PROJECT_OVERDUE', count: 1 });
+  if (input.overdueMilestones) {
+    reasons.push({ code: 'MILESTONES_OVERDUE', count: input.overdueMilestones });
+  }
+  if (input.overdueTasks) reasons.push({ code: 'TASKS_OVERDUE', count: input.overdueTasks });
+  if (input.blockedTasks) reasons.push({ code: 'TASKS_BLOCKED', count: input.blockedTasks });
+  if (input.blockedDependencies) {
+    reasons.push({ code: 'DEPENDENCIES_BLOCKED', count: input.blockedDependencies });
+  }
+  if (input.constrainedEngineers && remainingTasks > 0) {
+    reasons.push({ code: 'CAPACITY_CONSTRAINED', count: input.constrainedEngineers });
+  }
+  if (input.status === 'ON_HOLD') reasons.push({ code: 'ON_HOLD', count: 1 });
+  if (Number.isFinite(due) && !projectOverdue && due - now <= 7 * DAY_MS) {
+    reasons.push({ code: 'DEADLINE_NEAR', count: 1 });
+  }
+  if (projectOverdue || input.overdueMilestones || input.overdueTasks) {
+    return { health: 'OVERDUE', reasons };
+  }
+  if (reasons.length > 0) return { health: 'AT_RISK', reasons };
+  return { health: Number.isFinite(due) ? 'ON_TRACK' : 'NO_DATE', reasons };
 }
 
 export async function getProject(id: string, actor?: AuthUser): Promise<AdminProject | null> {
@@ -160,7 +197,7 @@ export async function getProject(id: string, actor?: AuthUser): Promise<AdminPro
 async function assertManagerExists(managerId: string | null | undefined): Promise<void> {
   if (!managerId) return;
   const manager = await prisma.user.findFirst({
-    where: { id: managerId, deletedAt: null },
+    where: { id: managerId, isActive: true, deletedAt: null },
     select: { id: true },
   });
   if (!manager) throw new AppError('VALIDATION_ERROR', 400, 'Manager not found');
@@ -221,6 +258,38 @@ export async function updateProject(
   return toAdminProject(row);
 }
 
+export async function updateProjectHealthNote(
+  id: string,
+  input: UpdateProjectHealthNoteInput,
+  actor: AuthUser,
+): Promise<{ note: string | null }> {
+  const project = await prisma.project.findFirst({
+    where: { id, deletedAt: null, ...projectManageScope(actor) },
+    select: { id: true, healthNote: true },
+  });
+  if (!project) throw new AppError('NOT_FOUND', 404, 'Project not found');
+  const note = input.note?.trim() || null;
+  await prisma.$transaction(async (tx) => {
+    const result = await tx.project.updateMany({
+      where: { id, deletedAt: null, ...projectManageScope(actor) },
+      data: { healthNote: note },
+    });
+    if (result.count === 0) throw new AppError('NOT_FOUND', 404, 'Project not found');
+    await tx.auditLog.create({
+      data: {
+        actorId: actor.id,
+        action: 'project.health_note.updated',
+        subjectType: 'Project',
+        subjectId: id,
+        before: { note: project.healthNote },
+        after: { note },
+        correlationId: correlationId(),
+      },
+    });
+  });
+  return { note };
+}
+
 export async function getProjectWorkspace(
   id: string,
   scope: { actor: AuthUser } | { clientId: string },
@@ -233,12 +302,43 @@ export async function getProjectWorkspace(
     },
     select: {
       ...adminProjectSelect,
+      healthNote: true,
       client: { select: { companyName: true } },
     },
   });
   if (!row) return null;
 
-  const [tasks, milestones, total, done] = await Promise.all([
+  const canEditHealthNote =
+    'actor' in scope &&
+    holdsPermission(scope.actor, PERMISSIONS.PROJECTS_UPDATE) &&
+    (scope.actor.roles.some((role) => role === 'ADMIN' || role === 'SUPER_ADMIN') ||
+      row.manager?.id === scope.actor.id ||
+      Boolean(
+        await prisma.projectMember.findFirst({
+          where: { projectId: id, userId: scope.actor.id, role: 'MANAGER', removedAt: null },
+          select: { id: true },
+        }),
+      ));
+
+  const now = new Date();
+  const weekAhead = new Date(now.getTime() + 7 * DAY_MS);
+  const openTaskWhere: Prisma.TaskWhereInput = {
+    projectId: id,
+    deletedAt: null,
+    status: { notIn: ['DONE', 'CANCELLED'] },
+  };
+  const [
+    tasks,
+    milestones,
+    total,
+    done,
+    cancelled,
+    overdueTasks,
+    blockedTasks,
+    overdueMilestones,
+    blockedDependencies,
+    members,
+  ] = await Promise.all([
     prisma.task.findMany({
       where: { projectId: id, deletedAt: null },
       orderBy: { createdAt: 'desc' },
@@ -273,7 +373,94 @@ export async function getProjectWorkspace(
     }),
     prisma.task.count({ where: { projectId: id, deletedAt: null } }),
     prisma.task.count({ where: { projectId: id, deletedAt: null, status: 'DONE' } }),
+    prisma.task.count({ where: { projectId: id, deletedAt: null, status: 'CANCELLED' } }),
+    prisma.task.count({ where: { ...openTaskWhere, dueDate: { lt: now } } }),
+    prisma.task.count({ where: { ...openTaskWhere, status: 'BLOCKED' } }),
+    prisma.milestone.count({
+      where: { projectId: id, deletedAt: null, status: { not: 'COMPLETED' }, dueDate: { lt: now } },
+    }),
+    prisma.task.count({
+      where: {
+        ...openTaskWhere,
+        dependencies: {
+          some: { dependsOn: { deletedAt: null, status: { notIn: ['DONE', 'CANCELLED'] } } },
+        },
+      },
+    }),
+    prisma.projectMember.findMany({
+      where: { projectId: id, removedAt: null, role: 'ENGINEER' },
+      select: {
+        user: {
+          select: {
+            isActive: true,
+            engineerProfile: {
+              select: { status: true, availability: true, weeklyCapacityHours: true },
+            },
+            assignedTasks: {
+              where: {
+                deletedAt: null,
+                approvalStatus: 'APPROVED',
+                status: { notIn: ['DONE', 'CANCELLED'] },
+                project: { deletedAt: null, status: { notIn: ['COMPLETED', 'CANCELLED'] } },
+              },
+              select: { startDate: true, dueDate: true, estimatedHours: true },
+            },
+            availabilitySlots: {
+              where: { endAt: { gt: now }, startAt: { lt: weekAhead } },
+              select: { startAt: true, endAt: true, kind: true },
+            },
+            projectMemberships: {
+              where: {
+                removedAt: null,
+                project: { deletedAt: null, status: { notIn: ['COMPLETED', 'CANCELLED'] } },
+              },
+              select: { startDate: true, expectedEndDate: true, estimatedHours: true },
+            },
+          },
+        },
+      },
+    }),
   ]);
+
+  const constrainedEngineers = members.filter(({ user }) => {
+    const profile = user.engineerProfile;
+    if (!user.isActive || !profile || profile.status !== 'ACTIVE') return true;
+    const capacity = calculateWeeklyCapacity(
+      user.assignedTasks.map((task) => ({
+        startDate: task.startDate,
+        dueDate: task.dueDate,
+        estimatedHours: Number(task.estimatedHours ?? 0),
+      })),
+      user.availabilitySlots,
+      Number(profile.weeklyCapacityHours),
+      profile.availability,
+      now,
+    )[0]!;
+    const commitment = user.projectMemberships.reduce((hours, member) => {
+      if (!member.estimatedHours) return hours;
+      const end = member.expectedEndDate?.getTime() ?? now.getTime() + 28 * DAY_MS;
+      const start = member.startDate?.getTime() ?? now.getTime();
+      if (end < now.getTime() || start > weekAhead.getTime()) return hours;
+      return (
+        hours + Number(member.estimatedHours) / Math.max(1, Math.ceil((end - start) / (7 * DAY_MS)))
+      );
+    }, 0);
+    return (
+      capacity.availableHours <= 0 ||
+      Math.max(capacity.estimatedHours, commitment) >= capacity.availableHours
+    );
+  }).length;
+  const healthDetails = deriveProjectHealthDetails({
+    status: row.status,
+    dueDate: row.dueDate?.toISOString() ?? null,
+    overdueMilestones,
+    overdueTasks,
+    blockedTasks,
+    blockedDependencies,
+    constrainedEngineers,
+    remainingTasks: total - done - cancelled,
+    now,
+  });
 
   const project = {
     ...toAdminProject(row),
@@ -305,7 +492,10 @@ export async function getProjectWorkspace(
   return {
     project,
     progress: deriveProgress(total, done),
-    health: deriveProjectHealth({ status: project.status, dueDate: project.dueDate }),
+    health: healthDetails.health,
+    healthReasons: healthDetails.reasons,
+    healthNote: 'actor' in scope ? row.healthNote : null,
+    canEditHealthNote,
     taskCounts: { total, done, open: total - done },
     tasks: mappedTasks,
     milestones: mappedMilestones,

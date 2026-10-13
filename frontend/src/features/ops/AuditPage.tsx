@@ -16,7 +16,7 @@ export function AuditPage(): ReactNode {
     const q = search.trim().toLowerCase();
     return (query.data ?? []).filter((row) => {
       if (!q) return true;
-      return [row.action, row.subjectType, row.subjectId, row.actorId]
+      return [row.action, row.subjectType, row.subjectId, row.actorId, row.correlationId]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(q));
     });
@@ -32,10 +32,12 @@ export function AuditPage(): ReactNode {
   return (
     <section>
       <h1 className="text-2xl font-semibold text-ink">Audit log</h1>
-      <p className="mt-1 text-base text-muted">A permanent record of who did what and when.</p>
+      <p className="mt-1 text-base text-muted">
+        Trace important changes by actor, resource, and request ID.
+      </p>
       <form onSubmit={onSearch} className="mt-6 flex max-w-md gap-2">
         <Input
-          placeholder="Search action or type…"
+          placeholder="Search action, resource, actor, or request ID…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           aria-label="Search audit log"
@@ -56,11 +58,13 @@ export function AuditPage(): ReactNode {
           <Table>
             <THead>
               <Tr>
-                <Th>Actions</Th>
+                <Th>Action</Th>
                 <Th>Type</Th>
-                <Th>Aqoonsi</Th>
-                <Th>Qofka</Th>
+                <Th>Resource ID</Th>
+                <Th>Actor ID</Th>
+                <Th>Request ID</Th>
                 <Th>Time</Th>
+                <Th>Changes</Th>
               </Tr>
             </THead>
             <TBody>
@@ -70,7 +74,27 @@ export function AuditPage(): ReactNode {
                   <Td>{row.subjectType}</Td>
                   <Td className="font-mono text-sm">{row.subjectId ?? '—'}</Td>
                   <Td className="font-mono text-sm">{row.actorId ?? '—'}</Td>
+                  <Td className="font-mono text-xs break-all">{row.correlationId ?? '—'}</Td>
                   <Td>{formatDate(row.createdAt)}</Td>
+                  <Td>
+                    {row.before !== null || row.after !== null ? (
+                      <details className="text-sm">
+                        <summary className="cursor-pointer">View</summary>
+                        {row.before !== null ? (
+                          <pre className="max-w-xs overflow-auto whitespace-pre-wrap">
+                            Before: {JSON.stringify(row.before, null, 2)}
+                          </pre>
+                        ) : null}
+                        {row.after !== null ? (
+                          <pre className="max-w-xs overflow-auto whitespace-pre-wrap">
+                            After: {JSON.stringify(row.after, null, 2)}
+                          </pre>
+                        ) : null}
+                      </details>
+                    ) : (
+                      '—'
+                    )}
+                  </Td>
                 </Tr>
               ))}
             </TBody>

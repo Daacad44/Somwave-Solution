@@ -1,11 +1,16 @@
 // Projects hooks (I2.1, §4: server state via TanStack Query, no global store).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CreateProjectInput, UpdateProjectInput } from '@somwave/shared';
+import type {
+  CreateProjectInput,
+  UpdateProjectInput,
+  UpdateProjectHealthNoteInput,
+} from '@somwave/shared';
 import {
   listProjects,
   createProject,
   getProjectWorkspace,
   updateProject,
+  updateProjectHealthNote,
   deleteProject,
   type ListProjectsParams,
 } from './api';
@@ -42,6 +47,15 @@ export function useUpdateProject() {
     mutationFn: ({ id, input }: { id: string; input: UpdateProjectInput }) =>
       updateProject(id, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: PROJECTS_KEY }),
+  });
+}
+
+export function useUpdateProjectHealthNote(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateProjectHealthNoteInput) => updateProjectHealthNote(id, input),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: [...PROJECTS_KEY, 'workspace', id] }),
   });
 }
 
