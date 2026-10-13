@@ -20,7 +20,11 @@ function missing(): never {
   throw new AppError('NOT_FOUND', 404, 'Project documentation not found');
 }
 
-async function assertProjectAccess(projectId: string, actor: Actor, access: Access): Promise<void> {
+export async function assertProjectAccess(
+  projectId: string,
+  actor: Actor,
+  access: Access,
+): Promise<void> {
   const project = await prisma.project.findFirst({
     where: { id: projectId, deletedAt: null },
     select: { id: true, managerId: true },
@@ -38,7 +42,11 @@ async function assertProjectAccess(projectId: string, actor: Actor, access: Acce
   });
   if (!member || member.removedAt) missing();
   if (access === 'read') return;
-  if (access === 'write' && ['ENGINEER', 'LEAD_ENGINEER', 'MANAGER'].includes(member.role)) return;
+  if (
+    access === 'write' &&
+    ['ENGINEER', 'LEAD_ENGINEER', 'CONTRIBUTOR', 'MANAGER'].includes(member.role)
+  )
+    return;
   if (access === 'approve' && member.role === 'MANAGER') return;
   throw new AppError('FORBIDDEN', 403, 'Insufficient project role');
 }
@@ -192,6 +200,73 @@ export async function listProjectDocumentation(
 export async function getProjectDocumentation(projectId: string, documentId: string, actor: Actor) {
   await assertProjectAccess(projectId, actor, 'read');
   return toDocument(await getExisting(projectId, documentId));
+}
+
+export async function listDocumentationAttachments(
+  projectId: string,
+  documentId: string,
+  actor: Actor,
+): Promise<ProjectDocumentation[]> {
+  await assertProjectAccess(projectId, actor, 'read');
+  const document = await getExisting(projectId, documentId);
+  if (document.format === 'FILE')
+    throw new AppError('VALIDATION_ERROR', 400, 'A file cannot own attachments');
+  const links = await prisma.documentAttachmentLink.findMany({
+    where: { documentId, file: { projectId, deletedAt: null, format: 'FILE' } },
+    include: { file: true },
+    orderBy: { createdAt: 'asc' },
+  });
+  return links.map((link) => toDocument(link.file));
+}
+
+export async function addDocumentationAttachment(
+  projectId: string,
+  documentId: string,
+  fileDocumentId: string,
+  actor: Actor,
+): Promise<ProjectDocumentation> {
+  await assertProjectAccess(projectId, actor, 'write');
+  const [document, file] = await Promise.all([
+    getExisting(projectId, documentId),
+    getExisting(projectId, fileDocumentId),
+  ]);
+  if (document.format === 'FILE' || file.format !== 'FILE')
+    throw new AppError('VALIDATION_ERROR', 400, 'Attach a file to a text document');
+  const existingCount = await prisma.documentAttachmentLink.count({ where: { documentId } });
+  if (existingCount >= 50)
+    throw new AppError('VALIDATION_ERROR', 400, 'Document attachment limit reached');
+  await prisma.documentAttachmentLink.upsert({
+    where: { documentId_fileDocumentId: { documentId, fileDocumentId } },
+    create: { documentId, fileDocumentId },
+    update: {},
+  });
+  await writeAudit({
+    actorId: actor.id,
+    action: 'projectDocumentation.attachment.add',
+    subjectType: 'ProjectDocumentation',
+    subjectId: documentId,
+  });
+  return toDocument(file);
+}
+
+export async function removeDocumentationAttachment(
+  projectId: string,
+  documentId: string,
+  fileDocumentId: string,
+  actor: Actor,
+): Promise<void> {
+  await assertProjectAccess(projectId, actor, 'write');
+  await getExisting(projectId, documentId);
+  const result = await prisma.documentAttachmentLink.deleteMany({
+    where: { documentId, fileDocumentId, file: { projectId } },
+  });
+  if (!result.count) throw new AppError('NOT_FOUND', 404, 'Document attachment not found');
+  await writeAudit({
+    actorId: actor.id,
+    action: 'projectDocumentation.attachment.remove',
+    subjectType: 'ProjectDocumentation',
+    subjectId: documentId,
+  });
 }
 
 export async function createProjectDocumentation(

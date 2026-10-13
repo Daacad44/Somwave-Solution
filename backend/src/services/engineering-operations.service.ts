@@ -121,7 +121,7 @@ async function activeEngineer(projectId: string, userId: string): Promise<void> 
   if (
     !member ||
     member.removedAt ||
-    !['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER'].includes(member.role)
+    !['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER', 'CONTRIBUTOR'].includes(member.role)
   ) {
     throw new AppError('VALIDATION_ERROR', 400, 'Assignee must be an active project engineer');
   }
@@ -810,11 +810,21 @@ export async function transitionRelease(
   ) {
     throw new AppError('CONFLICT', 409, 'A successful production deployment record is required');
   }
-  const changed = await prisma.release.updateMany({
-    where: { id: releaseId, status: release.status },
-    data: { status: input.status },
+  await prisma.$transaction(async (tx) => {
+    const changed = await tx.release.updateMany({
+      where: { id: releaseId, status: release.status },
+      data: { status: input.status },
+    });
+    if (!changed.count) throw new AppError('CONFLICT', 409, 'Release was changed by another user');
+    if (input.status === 'VERIFIED') {
+      const system = await tx.managedSystem.updateMany({
+        where: { id: release.systemId, deletedAt: null },
+        data: { currentVersion: release.version, lastUpdateAt: new Date() },
+      });
+      if (!system.count)
+        throw new AppError('CONFLICT', 409, 'Managed system is no longer available');
+    }
   });
-  if (!changed.count) throw new AppError('CONFLICT', 409, 'Release was changed by another user');
   await writeAudit({
     actorId: actor.id,
     action: `release.${input.status.toLowerCase()}`,

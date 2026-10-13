@@ -13,6 +13,9 @@ export async function listAuditLogs(): Promise<AdminAuditLog[]> {
     subjectType: row.subjectType,
     subjectId: row.subjectId,
     actorId: row.actorId,
+    correlationId: row.correlationId,
+    before: row.before,
+    after: row.after,
     createdAt: row.createdAt.toISOString(),
   }));
 }

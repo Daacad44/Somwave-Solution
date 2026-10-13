@@ -18,12 +18,16 @@ import {
   inviteProjectEngineerSchema,
   respondProjectInvitationSchema,
   reassignProjectTasksSchema,
+  createProjectHandoverSchema,
   PERMISSIONS,
+  replaceEngineerSkillsSchema,
+  replaceEngineerWeeklyScheduleSchema,
 } from '@somwave/shared';
 import { requireAuth } from '../middleware/auth';
-import { rbac } from '../middleware/rbac';
+import { rbac, rbacAny } from '../middleware/rbac';
 import { validate } from '../middleware/validate';
 import * as controller from '../controllers/engineering.controller';
+import * as skillController from '../controllers/engineer-skills.controller';
 
 export const engineeringRouter: Router = Router();
 engineeringRouter.use(requireAuth);
@@ -44,6 +48,43 @@ engineeringRouter.get(
   '/engineers/me/profile',
   rbac(PERMISSIONS.ENGINEERING_READ),
   controller.myEngineerProfile,
+);
+engineeringRouter.get(
+  '/engineers/me/skills',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  skillController.mySkills,
+);
+engineeringRouter.put(
+  '/engineers/me/skills',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  validate(replaceEngineerSkillsSchema),
+  skillController.putMySkills,
+);
+engineeringRouter.get(
+  '/engineers/me/schedule',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  skillController.mySchedule,
+);
+engineeringRouter.put(
+  '/engineers/me/schedule',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  validate(replaceEngineerWeeklyScheduleSchema),
+  skillController.putMySchedule,
+);
+engineeringRouter.get(
+  '/engineers/search-skills',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  skillController.skillSearch,
+);
+engineeringRouter.get(
+  '/engineers/:userId/skills',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  skillController.engineerSkills,
+);
+engineeringRouter.get(
+  '/engineers/:userId/schedule',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  skillController.engineerSchedule,
 );
 engineeringRouter.patch(
   '/engineers/me/profile',
@@ -68,6 +109,21 @@ engineeringRouter.delete(
   controller.removeMyAvailability,
 );
 engineeringRouter.get('/metrics', rbac(PERMISSIONS.ENGINEERING_READ), controller.metrics);
+engineeringRouter.get(
+  '/team-overview',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  controller.teamOverview,
+);
+engineeringRouter.get(
+  '/engineers/:userId/assignments',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  controller.engineerAssignments,
+);
+engineeringRouter.get(
+  '/engineers/:userId/overview',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  controller.engineerOverview,
+);
 engineeringRouter.get('/analytics', rbac(PERMISSIONS.ENGINEERING_READ), controller.analytics);
 engineeringRouter.get(
   '/projects/:projectId/engineer-profiles',
@@ -78,6 +134,17 @@ engineeringRouter.get(
   '/projects/:projectId/assignment-history',
   rbac(PERMISSIONS.ENGINEERING_MANAGE),
   controller.assignmentHistory,
+);
+engineeringRouter.get(
+  '/projects/:projectId/handovers',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  controller.handovers,
+);
+engineeringRouter.post(
+  '/projects/:projectId/handovers',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  validate(createProjectHandoverSchema),
+  controller.createHandover,
 );
 engineeringRouter.get(
   '/projects/:projectId/members',
@@ -162,7 +229,7 @@ engineeringRouter.post(
 );
 engineeringRouter.post(
   '/tasks/:taskId/review',
-  rbac(PERMISSIONS.ENGINEERING_TASK_REVIEW),
+  rbacAny([PERMISSIONS.ENGINEERING_TASK_REVIEW, PERMISSIONS.ENGINEERING_READ]),
   validate(reviewEngineeringTaskSchema),
   controller.reviewTask,
 );

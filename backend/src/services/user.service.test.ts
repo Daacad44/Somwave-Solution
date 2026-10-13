@@ -12,6 +12,7 @@ vi.mock('../lib/prisma', () => ({
     },
     role: { count: vi.fn(), findMany: vi.fn(), findFirst: vi.fn() },
     refreshToken: { updateMany: vi.fn() },
+    engineerProfile: { update: vi.fn() },
     $transaction: vi.fn((ops: unknown[]) => Promise.all(ops)),
   },
 }));
@@ -141,6 +142,26 @@ describe('updateUser', () => {
       where: { userId: 'usr_1', revokedAt: null },
       data: { revokedAt: expect.any(Date) },
     });
+    expect(prisma.$transaction).toHaveBeenCalledOnce();
+  });
+
+  it('blocks generic reactivation of a suspended engineer', async () => {
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({
+      id: 'usr_1',
+      roles: [],
+      engineerProfile: { status: 'SUSPENDED' },
+    } as never);
+    await expect(updateUser('usr_1', { isActive: true }, admin)).rejects.toMatchObject({
+      code: 'CONFLICT',
+    });
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('refuses to suspend the acting administrator', async () => {
+    await expect(updateUser(admin.id, { isActive: false }, admin)).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+    });
+    expect(prisma.user.update).not.toHaveBeenCalled();
   });
 
   it('prevents an administrator from editing a super administrator', async () => {

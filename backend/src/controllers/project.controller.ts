@@ -1,7 +1,12 @@
 // Projects controller (I2.1, §5). Parses the request, delegates to the service,
 // returns the standard envelope. No Prisma here.
 import type { NextFunction, Request, Response } from 'express';
-import type { CreateProjectInput, UpdateProjectInput, ProjectStatus } from '@somwave/shared';
+import type {
+  CreateProjectInput,
+  UpdateProjectInput,
+  UpdateProjectHealthNoteInput,
+  ProjectStatus,
+} from '@somwave/shared';
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, PROJECT_STATUSES } from '@somwave/shared';
 import { AppError, sendData } from '../lib/http';
 import * as projectService from '../services/project.service';
@@ -83,6 +88,28 @@ export async function update(req: Request, res: Response, next: NextFunction): P
       req.authUser,
     );
     sendData(res, project);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateHealthNote(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { id } = req.params;
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Project not found');
+    if (!req.authUser) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+    sendData(
+      res,
+      await projectService.updateProjectHealthNote(
+        id,
+        req.body as UpdateProjectHealthNoteInput,
+        req.authUser,
+      ),
+    );
   } catch (err) {
     next(err);
   }

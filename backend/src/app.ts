@@ -9,6 +9,7 @@ import { pinoHttp } from 'pino-http';
 import { corsOrigins } from './lib/env';
 import { buildCorsOptions } from './lib/cors';
 import { logger } from './lib/logger';
+import { withRequestContext } from './lib/requestContext';
 import { apiRateLimiter } from './middleware/rateLimit';
 import { healthRouter } from './routes/health.routes';
 import { authRouter } from './routes/auth.routes';
@@ -42,6 +43,7 @@ import {
 import { dashboardRouter } from './routes/dashboard.routes';
 import { searchRouter } from './routes/search.routes';
 import { engineeringRouter } from './routes/engineering.routes';
+import { engineerAccountRouter } from './routes/engineer-account.routes';
 import { engineeringOperationsRouter } from './routes/engineering-operations.routes';
 import { projectDocumentationRouter } from './routes/project-documentation.routes';
 import { githubRouter, githubWebhooksRouter } from './routes/github.routes';
@@ -75,6 +77,7 @@ export function createApp(): Express {
   app.use('/api/v1/engineering/tasks/:taskId/attachments', express.json({ limit: '35mb' }));
   app.use(express.json({ limit: '1mb' }));
   app.use(pinoHttp({ logger }));
+  app.use(withRequestContext);
 
   app.use(healthRouter);
 
@@ -89,6 +92,7 @@ export function createApp(): Express {
   app.use('/api/v1/projects', projectsRouter);
   app.use('/api/v1/projects', projectDocumentationRouter);
   app.use('/api/v1/engineering', engineeringRouter);
+  app.use('/api/v1/engineering/accounts', engineerAccountRouter);
   app.use('/api/v1/engineering', engineeringOperationsRouter);
   app.use('/api/v1/github', githubRouter);
   app.use('/api/v1/tasks', tasksRouter);

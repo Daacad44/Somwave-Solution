@@ -7,7 +7,10 @@ import { LoadingState, EmptyState, ErrorState } from '../../components/states';
 import { useHasPermission } from '../../lib/rbac';
 import { useCurrentUser } from '../auth/hooks';
 import { engineeringApi } from './api';
-import { engineerApi } from './engineerApi';
+import { engineerApi, type HandoverInput } from './engineerApi';
+import { EngineerDirectory } from './EngineerDirectory';
+import { EngineerSkillsSchedule } from './EngineerSkillsSchedule';
+import { Modal } from '../../components/ui/Modal';
 
 function MyProfile(): ReactNode {
   const client = useQueryClient();
@@ -192,6 +195,9 @@ function MyProfile(): ReactNode {
           </Button>
         </form>
       </section>
+      <div className="lg:col-span-2">
+        <EngineerSkillsSchedule />
+      </div>
     </div>
   );
 }
@@ -206,6 +212,15 @@ export function EngineerManagementPage(): ReactNode {
   const [fromUserId, setFromUserId] = useState('');
   const [toUserId, setToUserId] = useState('');
   const [actionMessage, setActionMessage] = useState('');
+  const [handoverNotes, setHandoverNotes] = useState('');
+  const [handoverOptions, setHandoverOptions] = useState({
+    removeSource: false,
+    transferBugs: true,
+    transferMaintenance: true,
+    transferDocuments: true,
+    transferReleases: true,
+  });
+  const [confirmHandover, setConfirmHandover] = useState(false);
   const queryClient = useQueryClient();
   const projects = useQuery({
     queryKey: ['engineering-projects'],
@@ -222,17 +237,30 @@ export function EngineerManagementPage(): ReactNode {
     queryFn: () => engineerApi.history(selectedId),
     enabled: Boolean(selectedId && canManage),
   });
+  const handovers = useQuery({
+    queryKey: ['engineer-handovers', selectedId],
+    queryFn: () => engineerApi.handovers(selectedId),
+    enabled: Boolean(selectedId && canManage),
+  });
   const reassignment = useMutation({
-    mutationFn: () => engineerApi.reassignTasks(selectedId, fromUserId, toUserId),
+    mutationFn: (input: HandoverInput) => engineerApi.createHandover(selectedId, input),
     onSuccess: (result) => {
-      setActionMessage(`${result.reassignedCount} open task(s) reassigned.`);
+      setActionMessage(
+        `Handover recorded. ${result.transferredTaskCount} task(s), ${result.transferredBugCount} bug(s), and ${result.transferredMaintenanceCount} maintenance item(s) transferred.`,
+      );
+      setConfirmHandover(false);
+      setHandoverNotes('');
       void queryClient.invalidateQueries({ queryKey: ['engineer-team', selectedId] });
       void queryClient.invalidateQueries({ queryKey: ['engineer-assignment-history', selectedId] });
+      void queryClient.invalidateQueries({ queryKey: ['engineer-handovers', selectedId] });
       void queryClient.invalidateQueries({ queryKey: ['engineering-tasks', selectedId] });
     },
     onError: (error: Error) => setActionMessage(error.message),
   });
-  const recommendations = [...(team.data ?? [])]
+  const engineerMembers = (team.data ?? []).filter((member) =>
+    ['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER', 'REVIEWER', 'CONTRIBUTOR'].includes(member.role),
+  );
+  const recommendations = [...engineerMembers]
     .filter((member) => member.user.id !== fromUserId)
     .map((member) => ({
       ...member,
@@ -254,6 +282,9 @@ export function EngineerManagementPage(): ReactNode {
   return (
     <section className="space-y-5">
       <h1 className="text-2xl font-semibold text-ink">Engineer management</h1>
+      {canManage && user?.roles.some((role) => ['SUPER_ADMIN', 'ADMIN'].includes(role)) ? (
+        <EngineerDirectory />
+      ) : null}
       {projects.isLoading ? (
         <LoadingState rows={2} />
       ) : projects.isError ? (
@@ -268,7 +299,12 @@ export function EngineerManagementPage(): ReactNode {
             <select
               className="mt-1 w-full rounded border border-border bg-surface p-3"
               value={selectedId}
-              onChange={(event) => setProjectId(event.target.value)}
+              onChange={(event) => {
+                setProjectId(event.target.value);
+                setFromUserId('');
+                setToUserId('');
+                setActionMessage('');
+              }}
             >
               {projects.data.map((row) => (
                 <option key={row.id} value={row.id}>
@@ -331,18 +367,19 @@ export function EngineerManagementPage(): ReactNode {
               <EmptyState title="No engineers assigned" />
             )}
           </div>
-          {canManage && team.data && team.data.length > 1 ? (
+          {canManage && engineerMembers.length > 1 ? (
             <form
               className="space-y-3 rounded-lg border border-border bg-surface p-4"
               onSubmit={(event) => {
                 event.preventDefault();
-                reassignment.mutate();
+                setConfirmHandover(true);
               }}
             >
-              <h2 className="text-lg font-semibold">Reassign open tasks</h2>
+              <h2 className="text-lg font-semibold">Engineer handover</h2>
               <p className="text-sm text-muted">
-                Move all unfinished tasks in this project from one engineer to another. Estimates
-                across projects guide the recommendation.
+                Transfer unfinished tasks to an accepted project engineer. Choose which other
+                responsibilities to transfer and record a handover note. The complete checklist is
+                saved for review.
               </p>
               {actionMessage ? (
                 <p role="status" className="text-sm">
@@ -362,7 +399,7 @@ export function EngineerManagementPage(): ReactNode {
                     }}
                   >
                     <option value="">Select engineer</option>
-                    {team.data.map((member) => (
+                    {engineerMembers.map((member) => (
                       <option key={member.user.id} value={member.user.id}>
                         {member.user.name} ({member.activeTaskCount} open tasks)
                       </option>
@@ -395,14 +432,103 @@ export function EngineerManagementPage(): ReactNode {
                   estimated headroom).
                 </p>
               ) : null}
+              <label className="block text-sm">
+                Handover notes
+                <textarea
+                  className="mt-1 min-h-24 w-full rounded border border-border bg-surface p-3"
+                  minLength={1}
+                  maxLength={5000}
+                  required
+                  value={handoverNotes}
+                  onChange={(event) => setHandoverNotes(event.target.value)}
+                />
+              </label>
+              <fieldset className="grid gap-2 text-sm sm:grid-cols-2">
+                <legend className="mb-2 font-medium">Transfer responsibilities</legend>
+                {(
+                  [
+                    ['transferBugs', 'Open bugs'],
+                    ['transferMaintenance', 'Maintenance work'],
+                    ['transferDocuments', 'Document ownership'],
+                    ['transferReleases', 'Active releases'],
+                    ['removeSource', 'Remove source from this project after handover'],
+                  ] as const
+                ).map(([key, title]) => (
+                  <label key={key} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={handoverOptions[key]}
+                      onChange={(event) =>
+                        setHandoverOptions({ ...handoverOptions, [key]: event.target.checked })
+                      }
+                    />
+                    {title}
+                  </label>
+                ))}
+              </fieldset>
               <Button
                 type="submit"
-                disabled={!fromUserId || !toUserId || reassignment.isPending}
+                disabled={
+                  !fromUserId || !toUserId || !handoverNotes.trim() || reassignment.isPending
+                }
                 isLoading={reassignment.isPending}
               >
-                Reassign tasks
+                Review handover
               </Button>
             </form>
+          ) : null}
+          {canManage ? (
+            <section className="rounded-lg border border-border bg-surface p-4">
+              <h2 className="font-semibold">Handover history</h2>
+              {handovers.isLoading ? (
+                <LoadingState rows={2} />
+              ) : handovers.isError ? (
+                <ErrorState
+                  description="Could not load handover history."
+                  onRetry={() => void handovers.refetch()}
+                />
+              ) : handovers.data?.length ? (
+                <ol className="mt-3 space-y-2 text-sm">
+                  {handovers.data.map((row) => (
+                    <li key={row.id} className="rounded border border-border p-3">
+                      <strong>
+                        {row.fromUser?.name ??
+                          team.data?.find((member) => member.user.id === row.fromUserId)?.user
+                            .name ??
+                          row.fromUserId}
+                      </strong>{' '}
+                      →{' '}
+                      <strong>
+                        {row.toUser?.name ??
+                          team.data?.find((member) => member.user.id === row.toUserId)?.user.name ??
+                          row.toUserId}
+                      </strong>{' '}
+                      · {new Date(row.createdAt).toLocaleString()}
+                      <p className="mt-1">{row.notes}</p>
+                      <p className="mt-1 text-muted">
+                        Transferred: {row.transferredTaskCount} tasks, {row.transferredBugCount}{' '}
+                        bugs, {row.transferredMaintenanceCount} maintenance,{' '}
+                        {row.transferredDocumentCount} documents, {row.transferredReleaseCount}{' '}
+                        releases · Source {row.sourceRemoved ? 'removed' : 'retained'}
+                      </p>
+                      <details className="mt-2">
+                        <summary className="cursor-pointer">Recorded checklist</summary>
+                        <ul className="ml-4 mt-1 list-disc text-muted">
+                          <li>{row.checklist.incompleteTaskIds.length} unfinished tasks</li>
+                          <li>{row.checklist.pendingReviewTaskIds.length} pending reviews</li>
+                          <li>{row.checklist.openBugIds.length} open bugs</li>
+                          <li>{row.checklist.openMaintenanceIds.length} maintenance requests</li>
+                          <li>{row.checklist.documentIds.length} documents</li>
+                          <li>{row.checklist.activeReleaseIds.length} active releases</li>
+                        </ul>
+                      </details>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <EmptyState title="No handovers recorded" />
+              )}
+            </section>
           ) : null}
           {canManage ? (
             <details className="rounded-lg border border-border bg-surface p-4">
@@ -431,6 +557,43 @@ export function EngineerManagementPage(): ReactNode {
         <EmptyState title="No projects available" />
       )}
       {isEngineer ? <MyProfile /> : null}
+      <Modal
+        open={confirmHandover}
+        onClose={() => setConfirmHandover(false)}
+        title="Confirm engineer handover"
+      >
+        <p className="text-sm text-muted">
+          Transfer active responsibilities from{' '}
+          {team.data?.find((member) => member.user.id === fromUserId)?.user.name ??
+            'the source engineer'}{' '}
+          to{' '}
+          {team.data?.find((member) => member.user.id === toUserId)?.user.name ??
+            'the replacement engineer'}
+          ?{' '}
+          {handoverOptions.removeSource
+            ? 'The source engineer will also be removed from this project.'
+            : 'The source engineer will remain a project member.'}
+        </p>
+        <p className="mt-2 text-sm">The transfer and audit record will be saved together.</p>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => setConfirmHandover(false)}>
+            Cancel
+          </Button>
+          <Button
+            isLoading={reassignment.isPending}
+            onClick={() =>
+              reassignment.mutate({
+                fromUserId,
+                toUserId,
+                notes: handoverNotes,
+                ...handoverOptions,
+              })
+            }
+          >
+            Confirm handover
+          </Button>
+        </div>
+      </Modal>
     </section>
   );
 }

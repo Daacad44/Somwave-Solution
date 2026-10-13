@@ -5,6 +5,7 @@ import type {
   ProjectStatus,
   ProjectWorkspace,
   UpdateProjectInput,
+  UpdateProjectHealthNoteInput,
 } from '@somwave/shared';
 import { apiFetch, apiFetchPaged, type PaginationMeta } from '../../lib/apiClient';
 
@@ -37,6 +38,16 @@ export function createProject(input: CreateProjectInput): Promise<AdminProject> 
 
 export function updateProject(id: string, input: UpdateProjectInput): Promise<AdminProject> {
   return apiFetch<AdminProject>(`/projects/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateProjectHealthNote(
+  id: string,
+  input: UpdateProjectHealthNoteInput,
+): Promise<{ note: string | null }> {
+  return apiFetch<{ note: string | null }>(`/projects/${id}/health-note`, {
     method: 'PATCH',
     body: JSON.stringify(input),
   });

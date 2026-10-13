@@ -11,6 +11,12 @@ vi.mock('../lib/prisma', () => ({
       updateMany: vi.fn(),
     },
     documentationVersion: { findMany: vi.fn(), findUnique: vi.fn() },
+    documentAttachmentLink: {
+      findMany: vi.fn(),
+      count: vi.fn(),
+      upsert: vi.fn(),
+      deleteMany: vi.fn(),
+    },
     auditLog: { create: vi.fn() },
   },
 }));
@@ -22,6 +28,8 @@ import {
   createProjectDocumentation,
   getProjectDocumentation,
   listProjectDocumentation,
+  addDocumentationAttachment,
+  listDocumentationAttachments,
 } from './project-documentation.service';
 
 const engineer = {
@@ -132,5 +140,38 @@ describe('file validation', () => {
         data: expect.objectContaining({ content: null, storageKey: 'obj/123' }),
       }),
     );
+  });
+});
+
+describe('document attachments', () => {
+  it('rejects an attachment outside the project before creating a link', async () => {
+    vi.mocked(prisma.projectDocumentation.findFirst)
+      .mockResolvedValueOnce({ format: 'MARKDOWN' } as never)
+      .mockResolvedValueOnce(null as never);
+    await expect(
+      addDocumentationAttachment('project-a', 'doc-a', 'file-other-project', engineer),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    expect(prisma.documentAttachmentLink.upsert).not.toHaveBeenCalled();
+  });
+
+  it('requires a file record as the attachment and preserves its identity', async () => {
+    vi.mocked(prisma.projectDocumentation.findFirst)
+      .mockResolvedValueOnce({ format: 'MARKDOWN' } as never)
+      .mockResolvedValueOnce({ format: 'MARKDOWN' } as never);
+    await expect(
+      addDocumentationAttachment('project-a', 'doc-a', 'doc-b', engineer),
+    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+    expect(prisma.documentAttachmentLink.upsert).not.toHaveBeenCalled();
+  });
+
+  it('hides all attachment links from a removed project member', async () => {
+    vi.mocked(prisma.projectMember.findUnique).mockResolvedValue({
+      role: 'ENGINEER',
+      removedAt: new Date(),
+    } as never);
+    await expect(
+      listDocumentationAttachments('project-a', 'doc-a', engineer),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    expect(prisma.documentAttachmentLink.findMany).not.toHaveBeenCalled();
   });
 });

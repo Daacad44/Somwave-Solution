@@ -10,9 +10,19 @@ vi.mock('../lib/prisma', () => ({
       updateMany: vi.fn(),
       update: vi.fn(),
     },
-    user: { findFirst: vi.fn(), create: vi.fn(), delete: vi.fn() },
+    user: { findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), delete: vi.fn() },
     role: { findUnique: vi.fn() },
-    projectInvitation: { findFirst: vi.fn(), upsert: vi.fn(), updateMany: vi.fn() },
+    projectInvitation: {
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+      upsert: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    projectHandover: { create: vi.fn(), findMany: vi.fn() },
+    bugReport: { findMany: vi.fn(), updateMany: vi.fn(), count: vi.fn() },
+    maintenanceRequest: { findMany: vi.fn(), updateMany: vi.fn(), count: vi.fn() },
+    projectDocumentation: { findMany: vi.fn(), updateMany: vi.fn(), count: vi.fn() },
+    release: { findMany: vi.fn(), updateMany: vi.fn(), count: vi.fn() },
     gitHubTaskLink: { findMany: vi.fn() },
     projectAssignmentEvent: { create: vi.fn() },
     milestone: { findFirst: vi.fn() },
@@ -22,6 +32,7 @@ vi.mock('../lib/prisma', () => ({
       create: vi.fn(),
       update: vi.fn(),
       updateMany: vi.fn(),
+      count: vi.fn(),
     },
     taskReview: { create: vi.fn() },
     taskDependency: { findMany: vi.fn() },
@@ -31,13 +42,11 @@ vi.mock('../lib/prisma', () => ({
   },
 }));
 vi.mock('./notification-delivery.service', () => ({ emitNotification: vi.fn() }));
-vi.mock('../lib/mailer', () => ({ sendMail: vi.fn() }));
-vi.mock('../lib/password', () => ({ hashPassword: vi.fn().mockResolvedValue('hashed-password') }));
+vi.mock('./engineer-account.service', () => ({ ensureEngineerAccountForProjectInvite: vi.fn() }));
 
 import { prisma } from '../lib/prisma';
 import { emitNotification } from './notification-delivery.service';
-import { sendMail } from '../lib/mailer';
-import { env } from '../lib/env';
+import { ensureEngineerAccountForProjectInvite } from './engineer-account.service';
 import {
   createEngineeringTask,
   reviewEngineeringTask,
@@ -45,9 +54,12 @@ import {
   inviteProjectEngineer,
   respondToProjectInvitation,
   reassignProjectTasks,
+  createProjectHandover,
+  removeProjectMember,
   scheduleTask,
   verifyTaskQa,
   updateProjectMember,
+  listEligibleEngineers,
 } from './engineering.service';
 
 const engineer = { id: 'user_1', roles: ['STAFF'] };
@@ -58,9 +70,53 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(prisma.project.findFirst).mockResolvedValue(project as never);
   vi.mocked(prisma.projectMember.findUnique).mockResolvedValue(null);
+  vi.mocked(ensureEngineerAccountForProjectInvite).mockResolvedValue({
+    id: engineer.id,
+    email: 'engineer@example.com',
+    name: 'Engineer',
+  });
+  vi.mocked(prisma.task.findMany).mockResolvedValue([]);
+  vi.mocked(prisma.bugReport.findMany).mockResolvedValue([]);
+  vi.mocked(prisma.maintenanceRequest.findMany).mockResolvedValue([]);
+  vi.mocked(prisma.projectDocumentation.findMany).mockResolvedValue([]);
+  vi.mocked(prisma.release.findMany).mockResolvedValue([]);
+  vi.mocked(prisma.task.updateMany).mockResolvedValue({ count: 0 } as never);
+  vi.mocked(prisma.bugReport.updateMany).mockResolvedValue({ count: 0 } as never);
+  vi.mocked(prisma.maintenanceRequest.updateMany).mockResolvedValue({ count: 0 } as never);
+  vi.mocked(prisma.projectDocumentation.updateMany).mockResolvedValue({ count: 0 } as never);
+  vi.mocked(prisma.release.updateMany).mockResolvedValue({ count: 0 } as never);
 });
 
 describe('engineering project isolation', () => {
+  it('keeps active-profile eligibility when searching and reports current-week capacity', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      {
+        id: 'engineer',
+        name: 'Engineer',
+        email: 'engineer@example.com',
+        engineerProfile: { weeklyCapacityHours: 20, availability: 'AVAILABLE' },
+        assignedTasks: [{ startDate: null, dueDate: null, estimatedHours: 19 }],
+        availabilitySlots: [],
+      },
+    ] as never);
+    const rows = await listEligibleEngineers(project.id, manager, 'engineer');
+    expect(prisma.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            { OR: [{ engineerProfile: { is: null } }, { engineerProfile: { status: 'ACTIVE' } }] },
+          ]),
+        }),
+      }),
+    );
+    expect(rows[0]).toMatchObject({
+      weeklyCapacityHours: 20,
+      estimatedOpenHours: 19,
+      estimatedHoursThisWeek: 19,
+      nearCapacity: true,
+      overCapacity: false,
+    });
+  });
   it('blocks a user without active membership from listing a private project', async () => {
     vi.mocked(prisma.projectMember.findUnique).mockResolvedValue(null);
     await expect(listProjectEngineeringTasks(project.id, engineer)).rejects.toMatchObject({
@@ -108,6 +164,47 @@ describe('engineering project isolation', () => {
 });
 
 describe('independent review', () => {
+  it("allows an accepted project reviewer to review another engineer's submitted task", async () => {
+    vi.mocked(prisma.projectMember.findUnique).mockResolvedValue({
+      role: 'REVIEWER',
+      removedAt: null,
+    } as never);
+    vi.mocked(prisma.task.findFirst).mockResolvedValue({
+      id: 'task_1',
+      projectId: project.id,
+      reporterId: 'other_engineer',
+      title: 'Private task',
+      reviewRequired: true,
+      approvalStatus: 'SUBMITTED',
+    } as never);
+    vi.mocked(prisma.task.update).mockResolvedValue({
+      id: 'task_1',
+      approvalStatus: 'APPROVED',
+    } as never);
+    const reviewer = { id: engineer.id, roles: ['ENGINEER'] };
+    await expect(
+      reviewEngineeringTask('task_1', reviewer, { decision: 'APPROVE' }),
+    ).resolves.toMatchObject({ approvalStatus: 'APPROVED' });
+  });
+
+  it('rejects a project contributor from reviewing submitted work', async () => {
+    vi.mocked(prisma.projectMember.findUnique).mockResolvedValue({
+      role: 'CONTRIBUTOR',
+      removedAt: null,
+    } as never);
+    vi.mocked(prisma.task.findFirst).mockResolvedValue({
+      id: 'task_1',
+      projectId: project.id,
+      reporterId: 'other_engineer',
+      reviewRequired: true,
+      approvalStatus: 'SUBMITTED',
+    } as never);
+    await expect(
+      reviewEngineeringTask('task_1', engineer, { decision: 'APPROVE' }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    expect(prisma.task.update).not.toHaveBeenCalled();
+  });
+
   it('prevents the author from approving their own task even when they manage the project', async () => {
     vi.mocked(prisma.task.findFirst).mockResolvedValue({
       id: 'task_1',
@@ -151,22 +248,31 @@ describe('independent review', () => {
 });
 
 describe('project engineer invitations', () => {
-  it('queues a required email without granting project membership before acceptance', async () => {
-    vi.mocked(prisma.user.findFirst).mockResolvedValue({
-      id: engineer.id,
-      email: 'engineer@example.com',
-      name: 'Engineer',
-    } as never);
+  const details = {
+    email: 'engineer@example.com',
+    role: 'ENGINEER' as const,
+    description: 'Implement the project API',
+    responsibilities: 'Build and test the API',
+    startDate: '2026-10-14T09:00:00Z',
+    expectedEndDate: '2026-11-14T09:00:00Z',
+    estimatedHours: 80,
+    priority: 'HIGH' as const,
+  };
+
+  it('creates a pending invitation and queues email without granting membership', async () => {
     vi.mocked(prisma.projectInvitation.upsert).mockResolvedValue({
       id: 'invitation_1',
       invitedAt: new Date('2026-10-12T00:00:00Z'),
     } as never);
-    const result = await inviteProjectEngineer(project.id, manager, {
-      email: 'engineer@example.com',
-      role: 'ENGINEER',
-    });
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: engineer.id } as never);
+    const result = await inviteProjectEngineer(project.id, manager, details);
     expect(result.status).toBe('PENDING');
     expect(prisma.projectMember.upsert).not.toHaveBeenCalled();
+    expect(prisma.projectInvitation.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ description: details.description, estimatedHours: 80 }),
+      }),
+    );
     expect(emitNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         eventKey: 'project.assignment',
@@ -176,40 +282,27 @@ describe('project engineer invitations', () => {
     );
   });
 
-  it('rejects an existing active member instead of sending a second invitation', async () => {
-    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: engineer.id } as never);
-    vi.mocked(prisma.projectMember.findUnique).mockResolvedValue({
-      removedAt: null,
-      role: 'ENGINEER',
+  it('does not resend an unexpired pending invitation', async () => {
+    vi.mocked(prisma.projectInvitation.findUnique).mockResolvedValue({
+      id: 'invitation_1',
+      status: 'PENDING',
+      expiresAt: new Date('2099-01-01'),
     } as never);
-    await expect(
-      inviteProjectEngineer(project.id, manager, {
-        email: 'engineer@example.com',
-        role: 'ENGINEER',
-      }),
-    ).rejects.toMatchObject({ code: 'CONFLICT' });
+    const result = await inviteProjectEngineer(project.id, manager, details);
+    expect(result).toMatchObject({ duplicate: true, status: 'PENDING' });
     expect(prisma.projectInvitation.upsert).not.toHaveBeenCalled();
+    expect(emitNotification).not.toHaveBeenCalled();
   });
 
-  it('invites an existing viewer without upgrading access before acceptance', async () => {
-    vi.mocked(prisma.user.findFirst).mockResolvedValue({
-      id: engineer.id,
-      email: 'engineer@example.com',
-    } as never);
+  it('rejects an existing active engineer membership', async () => {
     vi.mocked(prisma.projectMember.findUnique).mockResolvedValue({
       removedAt: null,
-      role: 'VIEWER',
-    } as never);
-    vi.mocked(prisma.projectInvitation.upsert).mockResolvedValue({
-      id: 'invitation_3',
-      invitedAt: new Date('2026-10-12T00:00:00Z'),
-    } as never);
-    await inviteProjectEngineer(project.id, manager, {
-      email: 'engineer@example.com',
       role: 'ENGINEER',
+    } as never);
+    await expect(inviteProjectEngineer(project.id, manager, details)).rejects.toMatchObject({
+      code: 'CONFLICT',
     });
-    expect(prisma.projectMember.upsert).not.toHaveBeenCalled();
-    expect(prisma.projectInvitation.upsert).toHaveBeenCalled();
+    expect(prisma.projectInvitation.upsert).not.toHaveBeenCalled();
   });
 
   it('rejects a direct viewer-to-engineer role upgrade', async () => {
@@ -221,127 +314,49 @@ describe('project engineer invitations', () => {
     await expect(
       updateProjectMember(project.id, engineer.id, manager, { role: 'ENGINEER' }),
     ).rejects.toMatchObject({ code: 'CONFLICT' });
-    expect(prisma.projectMember.update).not.toHaveBeenCalled();
   });
 
-  it('does not create a new account when setup email is unavailable', async () => {
-    vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
-    await expect(
-      inviteProjectEngineer(project.id, manager, {
-        email: 'new-engineer@example.com',
-        name: 'New Engineer',
-        role: 'ENGINEER',
-      }),
-    ).rejects.toMatchObject({ code: 'SERVICE_UNAVAILABLE' });
-    expect(prisma.user.create).not.toHaveBeenCalled();
-  });
-
-  it('creates a new engineer account and sends a password setup email before inviting', async () => {
-    const old = {
-      SMTP_HOST: env.SMTP_HOST,
-      SMTP_FROM: env.SMTP_FROM,
-      APP_PUBLIC_URL: env.APP_PUBLIC_URL,
-    };
-    env.SMTP_HOST = 'smtp.example.test';
-    env.SMTP_FROM = 'team@example.test';
-    env.APP_PUBLIC_URL = 'https://app.example.test';
-    try {
-      vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
-      vi.mocked(prisma.role.findUnique).mockResolvedValue({ id: 'engineer_role' } as never);
-      vi.mocked(prisma.user.create).mockResolvedValue({
-        id: engineer.id,
-        email: 'new-engineer@example.com',
-        name: 'New Engineer',
-      } as never);
-      vi.mocked(sendMail).mockResolvedValue({ sent: true });
-      vi.mocked(prisma.projectInvitation.upsert).mockResolvedValue({
-        id: 'invitation_2',
-        invitedAt: new Date('2026-10-12T00:00:00Z'),
-      } as never);
-      const result = await inviteProjectEngineer(project.id, manager, {
-        email: 'new-engineer@example.com',
-        name: 'New Engineer',
-        role: 'ENGINEER',
-      });
-      expect(result.status).toBe('PENDING');
-      expect(prisma.user.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            roles: { create: { roleId: 'engineer_role' } },
-            passwordResets: { create: expect.objectContaining({ tokenHash: expect.any(String) }) },
-          }),
-        }),
-      );
-      expect(sendMail).toHaveBeenCalledWith(
-        expect.objectContaining({
-          to: 'new-engineer@example.com',
-          template: 'engineer-account-invite.v1',
-          vars: expect.objectContaining({
-            setupUrl: expect.stringContaining('/reset-password?token='),
-          }),
-        }),
-      );
-    } finally {
-      env.SMTP_HOST = old.SMTP_HOST;
-      env.SMTP_FROM = old.SMTP_FROM;
-      env.APP_PUBLIC_URL = old.APP_PUBLIC_URL;
-    }
-  });
-
-  it('removes a newly created account when the setup email cannot be sent', async () => {
-    const old = {
-      SMTP_HOST: env.SMTP_HOST,
-      SMTP_FROM: env.SMTP_FROM,
-      APP_PUBLIC_URL: env.APP_PUBLIC_URL,
-    };
-    env.SMTP_HOST = 'smtp.example.test';
-    env.SMTP_FROM = 'team@example.test';
-    env.APP_PUBLIC_URL = 'https://app.example.test';
-    try {
-      vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
-      vi.mocked(prisma.role.findUnique).mockResolvedValue({ id: 'engineer_role' } as never);
-      vi.mocked(prisma.user.create).mockResolvedValue({
-        id: engineer.id,
-        email: 'new-engineer@example.com',
-      } as never);
-      vi.mocked(prisma.projectInvitation.upsert).mockResolvedValue({
-        id: 'invitation_2',
-        invitedAt: new Date(),
-      } as never);
-      vi.mocked(sendMail).mockResolvedValue({ sent: false, reason: 'error' } as never);
-      await expect(
-        inviteProjectEngineer(project.id, manager, {
-          email: 'new-engineer@example.com',
-          name: 'New Engineer',
-          role: 'ENGINEER',
-        }),
-      ).rejects.toMatchObject({ code: 'SERVICE_UNAVAILABLE' });
-      expect(prisma.projectInvitation.upsert).toHaveBeenCalled();
-      expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: engineer.id } });
-      expect(emitNotification).not.toHaveBeenCalled();
-    } finally {
-      env.SMTP_HOST = old.SMTP_HOST;
-      env.SMTP_FROM = old.SMTP_FROM;
-      env.APP_PUBLIC_URL = old.APP_PUBLIC_URL;
-    }
-  });
-
-  it('allows only the invited user to accept and creates membership atomically', async () => {
+  it('rejects an expired invitation without granting access', async () => {
     vi.mocked(prisma.projectInvitation.findFirst).mockResolvedValue({
       id: 'invitation_1',
       userId: engineer.id,
       projectId: project.id,
       role: 'ENGINEER',
-      responsibilities: null,
+      status: 'PENDING',
+      expiresAt: new Date('2020-01-01'),
     } as never);
+    await expect(
+      respondToProjectInvitation(
+        'invitation_1',
+        { id: engineer.id, roles: ['ENGINEER'] },
+        { decision: 'ACCEPT' },
+      ),
+    ).rejects.toMatchObject({ code: 'CONFLICT' });
+    expect(prisma.projectInvitation.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'EXPIRED' }),
+      }),
+    );
+    expect(prisma.projectMember.upsert).not.toHaveBeenCalled();
+  });
+
+  it('accepts only for an active engineer and creates membership atomically', async () => {
+    vi.mocked(prisma.projectInvitation.findFirst).mockResolvedValue({
+      id: 'invitation_1',
+      userId: engineer.id,
+      projectId: project.id,
+      role: 'ENGINEER',
+      status: 'PENDING',
+      priority: 'MEDIUM',
+    } as never);
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: engineer.id } as never);
     vi.mocked(prisma.projectInvitation.updateMany).mockResolvedValue({ count: 1 } as never);
-    const result = await respondToProjectInvitation('invitation_1', engineer, {
-      decision: 'ACCEPT',
-    });
+    const result = await respondToProjectInvitation(
+      'invitation_1',
+      { id: engineer.id, roles: ['ENGINEER'] },
+      { decision: 'ACCEPT' },
+    );
     expect(result.status).toBe('ACCEPTED');
-    expect(prisma.projectInvitation.findFirst).toHaveBeenCalledWith({
-      where: expect.objectContaining({ userId: engineer.id, status: 'PENDING' }),
-    });
     expect(prisma.projectMember.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         create: expect.objectContaining({ projectId: project.id, userId: engineer.id }),
@@ -349,13 +364,15 @@ describe('project engineer invitations', () => {
     );
   });
 
-  it('does not grant membership when an invitation is declined', async () => {
+  it('does not create membership when declined', async () => {
     vi.mocked(prisma.projectInvitation.findFirst).mockResolvedValue({
       id: 'invitation_1',
       userId: engineer.id,
       projectId: project.id,
       role: 'ENGINEER',
+      status: 'PENDING',
     } as never);
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: engineer.id } as never);
     vi.mocked(prisma.projectInvitation.updateMany).mockResolvedValue({ count: 1 } as never);
     const result = await respondToProjectInvitation('invitation_1', engineer, {
       decision: 'DECLINE',
@@ -397,6 +414,94 @@ describe('project task reassignment', () => {
       },
       data: { assigneeId: 'engineer_2' },
     });
+  });
+});
+
+describe('project handover', () => {
+  const handoverInput = {
+    fromUserId: engineer.id,
+    toUserId: 'engineer_2',
+    removeSource: true,
+    transferBugs: false,
+    transferMaintenance: false,
+    transferDocuments: false,
+    transferReleases: false,
+    notes: 'Transfer the active implementation and review queue.',
+  };
+
+  it('requires an accepted active replacement before transferring any work', async () => {
+    vi.mocked(prisma.projectMember.findMany).mockResolvedValue([
+      { id: 'source', userId: engineer.id, role: 'ENGINEER' },
+    ] as never);
+    await expect(createProjectHandover(project.id, manager, handoverInput)).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+    });
+    expect(prisma.task.updateMany).not.toHaveBeenCalled();
+    expect(prisma.projectHandover.create).not.toHaveBeenCalled();
+  });
+
+  it('blocks removal when open maintenance has not been approved for transfer', async () => {
+    vi.mocked(prisma.projectMember.findMany).mockResolvedValue([
+      { id: 'source', userId: engineer.id, role: 'ENGINEER' },
+      { id: 'target', userId: 'engineer_2', role: 'ENGINEER' },
+    ] as never);
+    vi.mocked(prisma.maintenanceRequest.findMany).mockResolvedValue([
+      { id: 'maintenance_1' },
+    ] as never);
+    await expect(createProjectHandover(project.id, manager, handoverInput)).rejects.toMatchObject({
+      code: 'CONFLICT',
+    });
+    expect(prisma.projectMember.update).not.toHaveBeenCalled();
+    expect(prisma.projectHandover.create).not.toHaveBeenCalled();
+  });
+
+  it('records a checklist and transfers open work while preserving historical authorship', async () => {
+    vi.mocked(prisma.projectMember.findMany).mockResolvedValue([
+      { id: 'source', userId: engineer.id, role: 'ENGINEER' },
+      { id: 'target', userId: 'engineer_2', role: 'ENGINEER' },
+    ] as never);
+    vi.mocked(prisma.task.findMany).mockResolvedValue([
+      { id: 'task_1', approvalStatus: 'SUBMITTED' },
+    ] as never);
+    vi.mocked(prisma.task.updateMany).mockResolvedValue({ count: 1 } as never);
+    vi.mocked(prisma.projectHandover.create).mockResolvedValue({
+      id: 'handover_1',
+      transferredTaskCount: 1,
+    } as never);
+    const result = await createProjectHandover(project.id, manager, handoverInput);
+    expect(result.transferredTaskCount).toBe(1);
+    expect(prisma.task.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ['task_1'] }, projectId: project.id, assigneeId: engineer.id },
+      data: { assigneeId: 'engineer_2' },
+    });
+    expect(prisma.projectHandover.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        checklist: expect.objectContaining({ pendingReviewTaskIds: ['task_1'] }),
+        sourceRemoved: true,
+      }),
+    });
+    expect(prisma.projectMember.update).toHaveBeenCalledWith({
+      where: { id: 'source' },
+      data: { removedAt: expect.any(Date) },
+    });
+  });
+
+  it('blocks direct removal while open project tasks remain', async () => {
+    vi.mocked(prisma.projectMember.findUnique).mockResolvedValue({
+      id: 'source',
+      userId: engineer.id,
+      role: 'ENGINEER',
+      removedAt: null,
+    } as never);
+    vi.mocked(prisma.task.count).mockResolvedValue(1);
+    vi.mocked(prisma.bugReport.count).mockResolvedValue(0);
+    vi.mocked(prisma.maintenanceRequest.count).mockResolvedValue(0);
+    vi.mocked(prisma.projectDocumentation.count).mockResolvedValue(0);
+    vi.mocked(prisma.release.count).mockResolvedValue(0);
+    await expect(removeProjectMember(project.id, engineer.id, manager)).rejects.toMatchObject({
+      code: 'CONFLICT',
+    });
+    expect(prisma.projectMember.update).not.toHaveBeenCalled();
   });
 });
 

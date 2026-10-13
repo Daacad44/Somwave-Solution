@@ -47,7 +47,7 @@ export function RolesPage(): ReactNode {
                   <Td className="font-medium">{role.name}</Td>
                   <Td>
                     <Badge tone={role.isSystem ? 'info' : 'neutral'}>
-                      {role.isSystem ? 'Nidaam' : 'Gaar'}
+                      {role.isSystem ? 'System' : 'Custom'}
                     </Badge>
                   </Td>
                   <Td>

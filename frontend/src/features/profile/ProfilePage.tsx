@@ -168,8 +168,10 @@ export function ProfilePage(): ReactNode {
               <dd className="font-medium text-ink">Africa/Mogadishu (UTC+3)</dd>
             </div>
             <div>
-              <dt className="text-muted">Default locale</dt>
-              <dd className="font-medium text-ink">Somali</dd>
+              <dt className="text-muted">Interface language</dt>
+              <dd className="font-medium text-ink">
+                {user.roles.includes('CLIENT') ? 'Somali' : 'English'}
+              </dd>
             </div>
           </dl>
           <p className="mt-4 text-sm text-muted">

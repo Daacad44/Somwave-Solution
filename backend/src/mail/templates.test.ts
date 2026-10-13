@@ -22,13 +22,14 @@ describe('mail templates', () => {
     expect(mail.text).toContain('Salaan');
   });
 
-  it('gives a new engineer a time-limited account setup link and project context', () => {
+  it('gives a new engineer a single-use, time-limited verification link', () => {
     const mail = renderMail('engineer-account-invite.v1', {
-      projectName: 'Atlas',
-      setupUrl: 'https://app.example.com/reset-password?token=example',
+      name: 'Ada',
+      setupUrl: 'https://app.example.com/activate-engineer?token=example',
     });
-    expect(mail.text).toContain('Atlas');
-    expect(mail.text).toContain('https://app.example.com/reset-password?token=example');
-    expect(mail.text).toContain('24 hours');
+    expect(mail.text).toContain('Ada');
+    expect(mail.text).toContain('https://app.example.com/activate-engineer?token=example');
+    expect(mail.text).toContain('48 hours');
+    expect(mail.text).toContain('used once');
   });
 });

@@ -1,4 +1,4 @@
-import { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react';
+import { forwardRef, useId, type InputHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '../../lib/cn';
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -11,7 +11,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   { label, error, id, name, className, trailing, ...props },
   ref,
 ) {
-  const inputId = id ?? name;
+  const generatedId = useId();
+  const inputId = id ?? name ?? generatedId;
   const errorId = error && inputId ? `${inputId}-error` : undefined;
   return (
     <div className="flex flex-col gap-1">

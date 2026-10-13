@@ -7,14 +7,17 @@ import {
   TASK_PRIORITY_LABELS,
   TASK_STATUS_LABELS,
   type ProjectHealth,
+  type ProjectHealthReason,
   type ProjectWorkspace,
 } from '@somwave/shared';
 import { Badge } from '../../../components/ui/Badge';
+import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Table, TBody, Td, Th, THead, Tr } from '../../../components/ui/Table';
 import { EmptyState } from '../../../components/states';
 import { formatLongDate } from '../../../lib/date';
 import { ProjectTimeline } from './ProjectTimeline';
+import { useUpdateProjectHealthNote } from '../hooks';
 
 const HEALTH_TONE: Record<ProjectHealth, 'success' | 'warning' | 'error' | 'neutral' | 'info'> = {
   ON_TRACK: 'success',
@@ -35,11 +38,39 @@ const ENGLISH_PROJECT_STATUS = {
 const ENGLISH_HEALTH = {
   ON_TRACK: 'On track',
   AT_RISK: 'At risk',
-  OVERDUE: 'Overdue',
-  COMPLETE: 'Complete',
+  OVERDUE: 'Delayed',
+  COMPLETE: 'Completed',
   CANCELLED: 'Cancelled',
   NO_DATE: 'No date',
 };
+
+function healthReasonText(reason: ProjectHealthReason, language: 'en' | 'so'): string {
+  const count = reason.count;
+  const plural = (word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
+  const labels: Record<ProjectHealthReason['code'], [string, string]> = {
+    PROJECT_OVERDUE: ['Project deadline has passed', 'Waqtigii mashruuca wuu dhaafay'],
+    MILESTONES_OVERDUE: [
+      `${plural('milestone')} overdue`,
+      `${count} marxaladood ayaa dib u dhacay`,
+    ],
+    TASKS_OVERDUE: [`${plural('task')} overdue`, `${count} hawlood ayaa dib u dhacay`],
+    TASKS_BLOCKED: [`${plural('task')} blocked`, `${count} hawlood ayaa xanniban`],
+    DEPENDENCIES_BLOCKED: [
+      `${plural('task')} waiting on dependencies`,
+      `${count} hawlood ayaa ku xiran hawlo kale`,
+    ],
+    CAPACITY_CONSTRAINED: [
+      `${plural('engineer')} at or over capacity`,
+      `${count} injineer ayaa awooddiisu buuxdaa`,
+    ],
+    DEADLINE_NEAR: [
+      'Project deadline is within seven days',
+      'Waqtiga mashruuca waxaa ka haray toddoba maalmood ama ka yar',
+    ],
+    ON_HOLD: ['Project is on hold', 'Mashruucu waa hakad'],
+  };
+  return labels[reason.code][language === 'so' ? 1 : 0];
+}
 const ENGLISH_MILESTONE_STATUS = {
   PENDING: 'Pending',
   IN_PROGRESS: 'In progress',
@@ -59,6 +90,9 @@ export function ProjectWorkspaceView({
 }): ReactNode {
   const t = (english: string, somali: string): string => (language === 'so' ? somali : english);
   const [taskQuery, setTaskQuery] = useState('');
+  const [editingHealthNote, setEditingHealthNote] = useState(false);
+  const [healthNoteDraft, setHealthNoteDraft] = useState(data.healthNote ?? '');
+  const saveHealthNote = useUpdateProjectHealthNote(data.project.id);
   const tasks = useMemo(() => {
     const needle = taskQuery.trim().toLowerCase();
     if (!needle) return data.tasks;
@@ -158,6 +192,102 @@ export function ProjectWorkspaceView({
               </p>
             </>
           )}
+        </div>
+        <div
+          className="mt-5 rounded-md border border-border bg-canvas p-4"
+          aria-label={t('Project health assessment', 'Qiimaynta caafimaadka mashruuca')}
+        >
+          <h2 className="text-sm font-semibold text-ink">
+            {t('Health assessment', 'Qiimaynta mashruuca')}
+          </h2>
+          {data.healthReasons.length > 0 ? (
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted">
+              {data.healthReasons.map((reason) => (
+                <li key={reason.code}>{healthReasonText(reason, language)}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-sm text-muted">
+              {data.health === 'NO_DATE'
+                ? t(
+                    'Set a project deadline to complete the schedule assessment.',
+                    'Ku dar taariikhda dhammaadka si jadwalka loo qiimeeyo.',
+                  )
+                : data.health === 'ON_TRACK'
+                  ? t('No active risk signals were found.', 'Calaamado khatar ah lama helin.')
+                  : t('The project is closed.', 'Mashruucu waa xiran yahay.')}
+            </p>
+          )}
+          {data.healthNote ? (
+            <div className="mt-3 border-t border-border pt-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted">
+                {t('Manager context', 'Faallada maamulaha')}
+              </p>
+              <p className="mt-1 whitespace-pre-wrap text-sm text-ink">{data.healthNote}</p>
+            </div>
+          ) : null}
+          {data.canEditHealthNote ? (
+            editingHealthNote ? (
+              <form
+                className="mt-3 space-y-2 border-t border-border pt-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  saveHealthNote.mutate(
+                    { note: healthNoteDraft.trim() || null },
+                    {
+                      onSuccess: () => setEditingHealthNote(false),
+                    },
+                  );
+                }}
+              >
+                <label className="block text-sm font-medium text-ink" htmlFor="project-health-note">
+                  {t('Manager context', 'Faallada maamulaha')}
+                </label>
+                <textarea
+                  id="project-health-note"
+                  rows={3}
+                  maxLength={2000}
+                  value={healthNoteDraft}
+                  onChange={(event) => setHealthNoteDraft(event.target.value)}
+                  className="w-full rounded-md border border-border bg-surface p-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                />
+                {saveHealthNote.isError ? (
+                  <p role="alert" className="text-sm text-error">
+                    {t(
+                      'Could not save the note. Try again.',
+                      'Faallada lama kaydin. Mar kale isku day.',
+                    )}
+                  </p>
+                ) : null}
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={saveHealthNote.isPending}>
+                    {t('Save note', 'Kaydi faallada')}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setEditingHealthNote(false)}
+                  >
+                    {t('Cancel', 'Jooji')}
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <Button
+                className="mt-3"
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setHealthNoteDraft(data.healthNote ?? '');
+                  setEditingHealthNote(true);
+                }}
+              >
+                {data.healthNote
+                  ? t('Edit context', 'Wax ka beddel faallada')
+                  : t('Add manager context', 'Ku dar faallada maamulaha')}
+              </Button>
+            )
+          ) : null}
         </div>
       </header>
 

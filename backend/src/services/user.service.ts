@@ -146,11 +146,24 @@ export async function updateUser(
   input: UpdateUserInput,
   actor: AuthUser,
 ): Promise<AdminUser> {
+  if (id === actor.id && input.isActive === false) {
+    throw new AppError('VALIDATION_ERROR', 400, 'You cannot suspend your own account');
+  }
   const user = await prisma.user.findFirst({
     where: { id, deletedAt: null },
-    select: { id: true, roles: { select: { role: { select: { name: true } } } } },
+    select: {
+      id: true,
+      roles: { select: { role: { select: { name: true } } } },
+      engineerProfile: { select: { status: true } },
+    },
   });
   if (!user) throw new AppError('NOT_FOUND', 404, 'User not found');
+  if (
+    input.isActive === true &&
+    (user.engineerProfile?.status === 'SUSPENDED' || user.engineerProfile?.status === 'DEACTIVATED')
+  ) {
+    throw new AppError('CONFLICT', 409, 'Reactivate this engineer through Engineer Management');
+  }
   if (
     user.roles.some(({ role }) => role.name === 'SUPER_ADMIN') &&
     !actor.roles.includes('SUPER_ADMIN')
@@ -162,7 +175,7 @@ export async function updateUser(
     await assertRoleAssignmentAllowed(input.roleIds, actor);
   }
 
-  const row = await prisma.user.update({
+  const update = prisma.user.update({
     where: { id },
     data: {
       ...(input.name !== undefined ? { name: input.name } : {}),
@@ -174,15 +187,27 @@ export async function updateUser(
     select: adminUserSelect,
   });
 
-  // Deactivating a user must end their sessions immediately (§13).
+  // Commit suspension and session revocation together. Access tokens are also
+  // checked against the live isActive flag on every authenticated request.
   if (input.isActive === false) {
-    await prisma.refreshToken.updateMany({
-      where: { userId: id, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
+    const [row] = await prisma.$transaction([
+      update,
+      prisma.refreshToken.updateMany({
+        where: { userId: id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+      ...(user.engineerProfile?.status === 'ACTIVE'
+        ? [
+            prisma.engineerProfile.update({
+              where: { userId: id },
+              data: { status: 'DEACTIVATED' },
+            }),
+          ]
+        : []),
+    ]);
+    return toAdminUser(row);
   }
-
-  return toAdminUser(row);
+  return toAdminUser(await update);
 }
 
 // Soft delete — users are never hard-deleted (§7). Also revokes live sessions.

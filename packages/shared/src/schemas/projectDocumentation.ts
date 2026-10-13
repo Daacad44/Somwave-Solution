@@ -131,6 +131,10 @@ export const documentationLinkSchema = z.object({
   targetId: z.string().trim().min(1).max(100),
 });
 
+export const documentationAttachmentSchema = z.object({
+  fileDocumentId: z.string().trim().min(1).max(100),
+});
+
 export const documentationLinksSchema = z.object({
   taskIds: z.array(z.string()),
   milestoneIds: z.array(z.string()),

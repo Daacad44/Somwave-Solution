@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { generateSync } from 'otplib';
 
 test('engineering modules load from real APIs', async ({ page }, testInfo) => {
   for (const [path, title] of [
@@ -40,4 +41,69 @@ test('navigation, responsive layout, and theme switch work', async ({ page }, te
     await page.locator('#app-nav').getByRole('button', { name: 'Close navigation' }).click();
     await expect(page.getByRole('button', { name: 'Open navigation' })).toBeVisible();
   }
+});
+
+test('engineer directory filters and registration form are usable', async ({ page }) => {
+  const adminEmail = process.env.E2E_ADMIN_EMAIL;
+  const adminPassword = process.env.E2E_ADMIN_PASSWORD;
+  const adminTotpSecret = process.env.E2E_ADMIN_TOTP_SECRET;
+  test.skip(
+    !adminEmail || !adminPassword || !adminTotpSecret,
+    'Set E2E_ADMIN_EMAIL, E2E_ADMIN_PASSWORD, and E2E_ADMIN_TOTP_SECRET for admin UI checks',
+  );
+  await page.context().clearCookies();
+  await page.goto('/login');
+  await page.getByLabel('Email').fill(adminEmail!);
+  await page.getByLabel('Password', { exact: true }).fill(adminPassword!);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.getByRole('heading', { name: 'Verify your sign-in' })).toBeVisible();
+  await page.getByLabel('2FA code').fill(generateSync({ secret: adminTotpSecret! }));
+  await page.getByRole('button', { name: 'Verify', exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await page.goto('/engineering/engineers');
+  await expect(page.getByRole('heading', { name: 'Engineer management' })).toBeVisible();
+  const directory = page.getByRole('region', { name: 'Engineering team directory' });
+  await expect(directory).toBeVisible();
+  await expect(directory.getByLabel('Search engineers')).toBeVisible();
+  await directory.getByLabel('Filter account status').selectOption('ACTIVE');
+  await directory.getByLabel('Filter availability').selectOption('AVAILABLE');
+  await directory.getByLabel('Search engineers').fill('browser-e2e-no-match@example.invalid');
+  await expect(directory.getByText(/No matching engineers|No engineers registered/)).toBeVisible();
+  await directory.getByLabel('Search engineers').clear();
+  await directory.getByLabel('Filter account status').selectOption('ALL');
+  await directory.getByLabel('Filter availability').selectOption('ALL');
+
+  await directory.getByRole('button', { name: 'Register engineer' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Register engineer' });
+  await expect(dialog.getByLabel('Full name')).toBeVisible();
+  await expect(dialog.getByLabel('Email address')).toBeVisible();
+  await expect(dialog.getByLabel('Weekly working hours')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Send invitation' }).click();
+  await expect(dialog.getByLabel('Full name')).toBeFocused();
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(dialog).toBeHidden();
+
+  const firstProfile = directory.getByRole('link', { name: 'View profile' }).first();
+  await expect(firstProfile).toBeVisible();
+  await firstProfile.click();
+  await expect(
+    page.getByRole('heading', { name: 'Workload and performance context' }),
+  ).toBeVisible();
+  const skillsSection = page.getByRole('region', { name: 'Engineer skills and schedule' });
+  await expect(skillsSection.getByRole('heading', { name: 'Technical skills' })).toBeVisible();
+  await expect(
+    skillsSection.getByRole('heading', { name: 'Weekly working schedule' }),
+  ).toBeVisible();
+});
+
+test('public engineer activation rejects missing and invalid links', async ({ page }) => {
+  await page.goto('/activate-engineer');
+  await expect(page.getByRole('heading', { name: 'Activate engineer account' })).toBeVisible();
+  await expect(page.getByRole('alert')).toContainText('invitation link is incomplete');
+  await expect(page.getByRole('button', { name: 'Verify email' })).toHaveCount(0);
+
+  await page.goto('/activate-engineer?token=browser-e2e-invalid-token');
+  await page.getByRole('button', { name: 'Verify email' }).click();
+  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Activate account' })).toHaveCount(0);
 });

@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Prisma } from '@prisma/client';
-import type { AuthUser } from '@somwave/shared';
+import { PERMISSIONS, type AuthUser } from '@somwave/shared';
+
+const transactionMocks = vi.hoisted(() => ({
+  updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+  auditCreate: vi.fn().mockResolvedValue({}),
+}));
 
 vi.mock('../lib/prisma', () => ({
   prisma: {
@@ -13,8 +18,17 @@ vi.mock('../lib/prisma', () => ({
     },
     user: { findFirst: vi.fn() },
     task: { findMany: vi.fn(), count: vi.fn() },
-    milestone: { findMany: vi.fn() },
-    $transaction: vi.fn((ops: unknown[]) => Promise.all(ops)),
+    milestone: { findMany: vi.fn(), count: vi.fn() },
+    projectMember: { findMany: vi.fn(), findFirst: vi.fn() },
+    auditLog: { create: vi.fn() },
+    $transaction: vi.fn((ops: unknown[] | ((tx: unknown) => unknown)) =>
+      typeof ops === 'function'
+        ? ops({
+            project: { updateMany: transactionMocks.updateMany },
+            auditLog: { create: transactionMocks.auditCreate },
+          })
+        : Promise.all(ops),
+    ),
   },
 }));
 
@@ -22,11 +36,13 @@ import { prisma } from '../lib/prisma';
 import {
   createProject,
   deriveProjectHealth,
+  deriveProjectHealthDetails,
   deriveProgress,
   updateProject,
   deleteProject,
   listProjects,
   getProjectWorkspace,
+  updateProjectHealthNote,
 } from './project.service';
 
 const admin: AuthUser = {
@@ -34,7 +50,7 @@ const admin: AuthUser = {
   name: 'Admin',
   email: 'admin@example.com',
   roles: ['ADMIN'],
-  permissions: [],
+  permissions: [PERMISSIONS.PROJECTS_UPDATE],
   clientId: null,
   twoFactorEnabled: false,
   twoFactorRequired: false,
@@ -56,6 +72,7 @@ const row = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  transactionMocks.updateMany.mockResolvedValue({ count: 1 });
 });
 
 describe('createProject', () => {
@@ -76,6 +93,16 @@ describe('createProject', () => {
       createProject({ name: 'Website', status: 'PLANNING', managerId: 'ghost' }),
     ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
     expect(prisma.project.create).not.toHaveBeenCalled();
+  });
+
+  it('does not assign a suspended user as project manager', async () => {
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(null as never);
+    await expect(
+      createProject({ name: 'Website', status: 'PLANNING', managerId: 'suspended' }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+    expect(prisma.user.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'suspended', isActive: true, deletedAt: null } }),
+    );
   });
 });
 
@@ -144,6 +171,100 @@ describe('getProjectWorkspace', () => {
     );
     expect(prisma.task.findMany).not.toHaveBeenCalled();
   });
+
+  it('derives delayed status from milestones, tasks and dependencies beyond the displayed page', async () => {
+    vi.mocked(prisma.project.findFirst).mockResolvedValue({
+      ...row,
+      healthNote: 'Waiting for client review',
+      client: null,
+    } as never);
+    vi.mocked(prisma.task.findMany).mockResolvedValue([] as never);
+    vi.mocked(prisma.milestone.findMany).mockResolvedValue([] as never);
+    vi.mocked(prisma.task.count)
+      .mockResolvedValueOnce(120 as never)
+      .mockResolvedValueOnce(25 as never)
+      .mockResolvedValueOnce(5 as never)
+      .mockResolvedValueOnce(3 as never)
+      .mockResolvedValueOnce(2 as never)
+      .mockResolvedValueOnce(4 as never);
+    vi.mocked(prisma.milestone.count).mockResolvedValue(1 as never);
+    vi.mocked(prisma.projectMember.findMany).mockResolvedValue([] as never);
+
+    const result = await getProjectWorkspace('prj_1', { actor: admin });
+    expect(result?.health).toBe('OVERDUE');
+    expect(result?.healthReasons).toEqual(
+      expect.arrayContaining([
+        { code: 'MILESTONES_OVERDUE', count: 1 },
+        { code: 'TASKS_OVERDUE', count: 3 },
+        { code: 'TASKS_BLOCKED', count: 2 },
+        { code: 'DEPENDENCIES_BLOCKED', count: 4 },
+      ]),
+    );
+    expect(result?.taskCounts.total).toBe(120);
+    expect(result?.healthNote).toBe('Waiting for client review');
+    expect(result?.canEditHealthNote).toBe(true);
+  });
+
+  it('does not disclose internal manager context to clients', async () => {
+    vi.mocked(prisma.project.findFirst).mockResolvedValue({
+      ...row,
+      healthNote: 'Internal staffing concern',
+      client: null,
+    } as never);
+    vi.mocked(prisma.task.findMany).mockResolvedValue([] as never);
+    vi.mocked(prisma.milestone.findMany).mockResolvedValue([] as never);
+    vi.mocked(prisma.task.count).mockResolvedValue(0 as never);
+    vi.mocked(prisma.milestone.count).mockResolvedValue(0 as never);
+    vi.mocked(prisma.projectMember.findMany).mockResolvedValue([] as never);
+    const result = await getProjectWorkspace('prj_1', { clientId: 'client_1' });
+    expect(result?.healthNote).toBeNull();
+    expect(result?.canEditHealthNote).toBe(false);
+  });
+});
+
+describe('updateProjectHealthNote', () => {
+  it('requires project manager scope and does not update an unowned project', async () => {
+    vi.mocked(prisma.project.findFirst).mockResolvedValue(null as never);
+    await expect(
+      updateProjectHealthNote('prj_1', { note: 'Context' }, viewer),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    expect(prisma.project.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ OR: expect.any(Array) }),
+      }),
+    );
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('trims a manager note before saving', async () => {
+    vi.mocked(prisma.project.findFirst).mockResolvedValue({
+      id: 'prj_1',
+      healthNote: null,
+    } as never);
+    const result = await updateProjectHealthNote('prj_1', { note: '  Scope changed  ' }, admin);
+    expect(result.note).toBe('Scope changed');
+    expect(transactionMocks.updateMany).toHaveBeenCalledWith({
+      where: { id: 'prj_1', deletedAt: null },
+      data: { healthNote: 'Scope changed' },
+    });
+    expect(transactionMocks.auditCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ actorId: admin.id, action: 'project.health_note.updated' }),
+      }),
+    );
+  });
+
+  it('rejects an update if manager access is revoked before the write', async () => {
+    vi.mocked(prisma.project.findFirst).mockResolvedValue({
+      id: 'prj_1',
+      healthNote: null,
+    } as never);
+    transactionMocks.updateMany.mockResolvedValue({ count: 0 });
+    await expect(
+      updateProjectHealthNote('prj_1', { note: 'Context' }, viewer),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    expect(transactionMocks.auditCreate).not.toHaveBeenCalled();
+  });
 });
 
 describe('listProjects', () => {
@@ -186,5 +307,44 @@ describe('deriveProjectHealth', () => {
 
   it('does not invent a health date for an undated project', () => {
     expect(deriveProjectHealth({ status: 'PLANNING', dueDate: null, now })).toBe('NO_DATE');
+  });
+
+  it('marks overdue work as delayed even without a project deadline', () => {
+    expect(
+      deriveProjectHealthDetails({ status: 'ACTIVE', dueDate: null, overdueTasks: 2, now }),
+    ).toEqual({
+      health: 'OVERDUE',
+      reasons: [{ code: 'TASKS_OVERDUE', count: 2 }],
+    });
+  });
+
+  it('marks blocked dependencies and team capacity as risks with explanations', () => {
+    expect(
+      deriveProjectHealthDetails({
+        status: 'ACTIVE',
+        dueDate: '2026-07-30T00:00:00Z',
+        blockedDependencies: 1,
+        constrainedEngineers: 2,
+        remainingTasks: 5,
+        now,
+      }),
+    ).toEqual({
+      health: 'AT_RISK',
+      reasons: [
+        { code: 'DEPENDENCIES_BLOCKED', count: 1 },
+        { code: 'CAPACITY_CONSTRAINED', count: 2 },
+      ],
+    });
+  });
+
+  it('gives closed project status precedence over stale risk signals', () => {
+    expect(
+      deriveProjectHealthDetails({
+        status: 'COMPLETED',
+        dueDate: '2026-05-01T00:00:00Z',
+        overdueTasks: 3,
+        now,
+      }),
+    ).toEqual({ health: 'COMPLETE', reasons: [] });
   });
 });
