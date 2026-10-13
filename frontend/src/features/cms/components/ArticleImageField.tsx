@@ -131,7 +131,7 @@ export function ArticleImageField({
         ) : (
           <div className="flex flex-col items-center gap-2 py-4 text-center">
             <ImagePlus className="h-8 w-8 text-muted" aria-hidden="true" />
-            <p className="text-base font-medium text-ink">Jiid sawirka halkan</p>
+            <p className="text-base font-medium text-ink">Drag an image here</p>
             <p className="text-sm text-muted">or click to choose</p>
             <p className="text-sm text-muted">PNG, JPG, JPEG, WEBP — max 5MB</p>
             <Button

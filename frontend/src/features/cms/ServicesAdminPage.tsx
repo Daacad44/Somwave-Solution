@@ -75,7 +75,7 @@ export function ServicesAdminPage(): ReactNode {
                   <Td>{service.order}</Td>
                   <Td>
                     <Badge tone={service.isPublished ? 'success' : 'neutral'}>
-                      {service.isPublished ? 'La daabacay' : 'Qabyo'}
+                      {service.isPublished ? 'Published' : 'Draft'}
                     </Badge>
                   </Td>
                   <Td>

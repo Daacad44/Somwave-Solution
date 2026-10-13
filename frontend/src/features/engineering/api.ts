@@ -22,6 +22,7 @@ export interface EngineeringTask {
   status: string;
   approvalStatus: string;
   dueDate: string | null;
+  estimatedHours: string | number | null;
   assigneeId: string | null;
   reporterId: string | null;
   kind: string;
@@ -89,6 +90,23 @@ export interface EngineeringMember {
   id: string;
   role: string;
   responsibilities: string | null;
+  user: { id: string; name: string; email: string };
+}
+
+export interface ProjectInvitation {
+  id: string;
+  projectId: string;
+  role: string;
+  responsibilities: string | null;
+  invitedAt: string;
+  project: { name: string };
+}
+
+export interface PendingProjectInvitation {
+  id: string;
+  role: string;
+  responsibilities: string | null;
+  invitedAt: string;
   user: { id: string; name: string; email: string };
 }
 
@@ -224,8 +242,36 @@ export const engineeringApi = {
     }),
   members: (projectId: string) =>
     apiFetch<EngineeringMember[]>(`/engineering/projects/${projectId}/members`),
+  projectDependencies: (projectId: string) =>
+    apiFetch<Array<{ taskId: string; dependsOnId: string }>>(
+      `/engineering/projects/${projectId}/dependencies`,
+    ),
   eligibleEngineers: (projectId: string) =>
     apiFetch<EligibleEngineer[]>(`/engineering/projects/${projectId}/eligible-engineers`),
+  myInvitations: () => apiFetch<ProjectInvitation[]>('/engineering/invitations/me'),
+  respondInvitation: (id: string, decision: 'ACCEPT' | 'DECLINE') =>
+    apiFetch<{ id: string; projectId: string; status: string }>(
+      `/engineering/invitations/${id}/respond`,
+      { method: 'POST', body: JSON.stringify({ decision }) },
+    ),
+  projectInvitations: (projectId: string) =>
+    apiFetch<PendingProjectInvitation[]>(`/engineering/projects/${projectId}/invitations`),
+  inviteEngineer: (
+    projectId: string,
+    email: string,
+    name: string,
+    role: string,
+    responsibilities: string,
+  ) =>
+    apiFetch<{ id: string; status: string }>(`/engineering/projects/${projectId}/invitations`, {
+      method: 'POST',
+      body: JSON.stringify({ email, ...(name ? { name } : {}), role, responsibilities }),
+    }),
+  cancelInvitation: (projectId: string, invitationId: string) =>
+    apiFetch<{ success: boolean }>(
+      `/engineering/projects/${projectId}/invitations/${invitationId}`,
+      { method: 'DELETE' },
+    ),
   addMember: (projectId: string, userId: string, role: string, responsibilities: string) =>
     apiFetch<EngineeringMember>(`/engineering/projects/${projectId}/members`, {
       method: 'POST',
@@ -237,10 +283,14 @@ export const engineeringApi = {
     }),
   systems: (projectId: string) =>
     apiFetch<ManagedSystem[]>(`/engineering/projects/${projectId}/systems`),
-  createSystem: (projectId: string, name: string) =>
+  createSystem: (projectId: string, name: string, productionUrl?: string) =>
     apiFetch<ManagedSystem>(`/engineering/projects/${projectId}/systems`, {
       method: 'POST',
-      body: JSON.stringify({ name, technologyStack: [] }),
+      body: JSON.stringify({
+        name,
+        technologyStack: [],
+        ...(productionUrl ? { productionUrl } : {}),
+      }),
     }),
   bugs: (systemId: string) => apiFetch<EngineeringBug[]>(`/engineering/systems/${systemId}/bugs`),
   updates: (systemId: string) =>

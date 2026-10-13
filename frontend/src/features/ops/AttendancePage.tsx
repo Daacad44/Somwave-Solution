@@ -37,14 +37,14 @@ export function AttendancePage(): ReactNode {
     <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-ink">Imaanshaha</h1>
+          <h1 className="text-2xl font-semibold text-ink">Attendance</h1>
           <p className="mt-1 text-base text-muted">Daily clock-in and clock-out records.</p>
         </div>
       </div>
       {canWrite ? (
         <div className="mt-6 flex flex-wrap items-end gap-2">
           <Select
-            label="Shaqaalaha"
+            label="Employee"
             options={[
               { value: '', label: 'Select an employee' },
               ...(employees.data ?? []).map((row) => ({
@@ -63,7 +63,7 @@ export function AttendancePage(): ReactNode {
             onClick={() => void run('out')}
             isLoading={checkOut.isPending}
           >
-            Bax
+            Clock out
           </Button>
         </div>
       ) : null}
@@ -79,7 +79,7 @@ export function AttendancePage(): ReactNode {
           <Table>
             <THead>
               <Tr>
-                <Th>Shaqaalaha</Th>
+                <Th>Employee</Th>
                 <Th>Date</Th>
                 <Th>Clock-in</Th>
                 <Th>Clock-out</Th>

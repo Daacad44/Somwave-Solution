@@ -45,6 +45,7 @@ model User {
   notifications                 Notification[]
   notificationPreferences       NotificationPreference[]
   projectMemberships            ProjectMember[]
+  projectInvitations            ProjectInvitation[]
   ownedDocumentation            ProjectDocumentation[]   @relation("DocumentationOwner")
   createdDocumentation          ProjectDocumentation[]   @relation("DocumentationCreator")
   updatedDocumentation          ProjectDocumentation[]   @relation("DocumentationUpdater")
@@ -718,6 +719,7 @@ model Project {
   invoices            Invoice[]
   tickets             SupportTicket[]
   members             ProjectMember[]
+  invitations         ProjectInvitation[]
   documentation       ProjectDocumentation[]
   managedSystems      ManagedSystem[]
   systemUpdates       SystemUpdate[]
@@ -917,6 +919,34 @@ model ProjectMember {
   @@unique([projectId, userId])
   @@index([userId, removedAt])
   @@map("project_members")
+}
+
+enum ProjectInvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
+}
+
+model ProjectInvitation {
+  id               String                  @id @default(cuid())
+  projectId        String                  @map("project_id")
+  userId           String                  @map("user_id")
+  role             ProjectMemberRole
+  responsibilities String?
+  status           ProjectInvitationStatus @default(PENDING)
+  invitedAt        DateTime                @default(now()) @map("invited_at")
+  respondedAt      DateTime?               @map("responded_at")
+  createdAt        DateTime                @default(now()) @map("created_at")
+  updatedAt        DateTime                @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([userId, status])
+  @@index([projectId, status])
+  @@map("project_invitations")
 }
 
 enum EngineerAvailabilityStatus {
@@ -1242,11 +1272,27 @@ model ManagedSystem {
   releases         Release[]
   bugs             BugReport[]
   maintenance      MaintenanceRequest[]
+  healthChecks     SystemHealthCheck[]
 
   @@index([projectId, maintenanceStatus])
   @@index([clientId])
   @@index([assignedEngineerId])
   @@map("managed_systems")
+}
+
+model SystemHealthCheck {
+  id         String   @id @default(cuid())
+  systemId   String   @map("system_id")
+  status     String
+  httpStatus Int?     @map("http_status")
+  responseMs Int?     @map("response_ms")
+  error      String?
+  checkedAt  DateTime @default(now()) @map("checked_at")
+
+  system ManagedSystem @relation(fields: [systemId], references: [id], onDelete: Cascade)
+
+  @@index([systemId, checkedAt])
+  @@map("system_health_checks")
 }
 
 enum SystemUpdateCategory {

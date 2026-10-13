@@ -53,8 +53,11 @@ export async function get(req: Request, res: Response, next: NextFunction): Prom
 export async function workspace(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    const project = id ? await projectService.getProjectWorkspace(id) : null;
-    if (!project) throw new AppError('NOT_FOUND', 404, 'Mashruucan lama helin');
+    if (!req.authUser) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+    const project = id
+      ? await projectService.getProjectWorkspace(id, { actor: req.authUser })
+      : null;
+    if (!project) throw new AppError('NOT_FOUND', 404, 'Project not found');
     sendData(res, project);
   } catch (err) {
     next(err);

@@ -3,7 +3,7 @@
 // applications can't be deleted — unpublish it instead (matches the server).
 import { type ReactNode, useState } from 'react';
 import type { AdminJobOpening } from '@somwave/shared';
-import { PERMISSIONS, EMPLOYMENT_TYPE_LABELS } from '@somwave/shared';
+import { PERMISSIONS } from '@somwave/shared';
 import { Table, THead, TBody, Tr, Th, Td } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -13,6 +13,7 @@ import { ApiError } from '../../lib/apiClient';
 import { useHasPermission } from '../../lib/rbac';
 import { useCmsCareers, useDeleteOpening } from './hooks';
 import { JobOpeningFormModal } from './components/JobOpeningFormModal';
+import { STAFF_EMPLOYMENT_TYPE_LABELS } from './labels';
 
 export function CareersAdminPage(): ReactNode {
   const query = useCmsCareers();
@@ -73,11 +74,13 @@ export function CareersAdminPage(): ReactNode {
               {openings.map((opening) => (
                 <Tr key={opening.id}>
                   <Td className="font-medium">{opening.title}</Td>
-                  <Td className="text-muted">{EMPLOYMENT_TYPE_LABELS[opening.employmentType]}</Td>
+                  <Td className="text-muted">
+                    {STAFF_EMPLOYMENT_TYPE_LABELS[opening.employmentType]}
+                  </Td>
                   <Td>{opening.applicationCount}</Td>
                   <Td>
                     <Badge tone={opening.isPublished ? 'success' : 'neutral'}>
-                      {opening.isPublished ? 'La daabacay' : 'Qabyo'}
+                      {opening.isPublished ? 'Published' : 'Draft'}
                     </Badge>
                   </Td>
                   <Td>
@@ -138,7 +141,7 @@ export function CareersAdminPage(): ReactNode {
                 await del.mutateAsync(confirming.id);
                 setConfirming(null);
               } catch (err) {
-                setDeleteError(err instanceof ApiError ? err.message : 'Cilad ayaa dhacday.');
+                setDeleteError(err instanceof ApiError ? err.message : 'Something went wrong.');
               }
             }}
           >

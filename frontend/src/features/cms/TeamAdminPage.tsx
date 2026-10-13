@@ -39,7 +39,7 @@ export function TeamAdminPage(): ReactNode {
     <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-ink">Kooxda (CMS)</h1>
+          <h1 className="text-2xl font-semibold text-ink">Team (CMS)</h1>
           <p className="mt-1 text-base text-muted">Manage team members shown on the website.</p>
         </div>
         {canCreate ? <Button onClick={openCreate}>New team member</Button> : null}
@@ -59,8 +59,8 @@ export function TeamAdminPage(): ReactNode {
           <Table>
             <THead>
               <Tr>
-                <Th>Magaca</Th>
-                <Th>Jagada</Th>
+                <Th>Name</Th>
+                <Th>Role</Th>
                 <Th>Order</Th>
                 <Th>Status</Th>
                 <Th className="text-end">Actions</Th>
@@ -74,7 +74,7 @@ export function TeamAdminPage(): ReactNode {
                   <Td>{member.order}</Td>
                   <Td>
                     <Badge tone={member.isPublished ? 'success' : 'neutral'}>
-                      {member.isPublished ? 'La daabacay' : 'Qabyo'}
+                      {member.isPublished ? 'Published' : 'Draft'}
                     </Badge>
                   </Td>
                   <Td>

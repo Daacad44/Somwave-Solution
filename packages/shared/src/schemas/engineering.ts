@@ -19,6 +19,35 @@ export const addProjectMemberSchema = z.object({
 });
 export type AddProjectMemberInput = z.infer<typeof addProjectMemberSchema>;
 
+export const inviteProjectEngineerSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .email()
+    .max(255)
+    .transform((value) => value.toLowerCase()),
+  name: z.string().trim().min(1).max(120).optional(),
+  role: z.enum(['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER']).default('ENGINEER'),
+  responsibilities: z.string().trim().max(2000).nullable().optional(),
+});
+export type InviteProjectEngineerInput = z.infer<typeof inviteProjectEngineerSchema>;
+
+export const respondProjectInvitationSchema = z.object({
+  decision: z.enum(['ACCEPT', 'DECLINE']),
+});
+export type RespondProjectInvitationInput = z.infer<typeof respondProjectInvitationSchema>;
+
+export const reassignProjectTasksSchema = z
+  .object({
+    fromUserId: z.string().min(1),
+    toUserId: z.string().min(1),
+  })
+  .refine((value) => value.fromUserId !== value.toUserId, {
+    path: ['toUserId'],
+    message: 'Choose a different engineer',
+  });
+export type ReassignProjectTasksInput = z.infer<typeof reassignProjectTasksSchema>;
+
 export const updateProjectMemberSchema = z
   .object({
     role: projectMemberRoleSchema.optional(),

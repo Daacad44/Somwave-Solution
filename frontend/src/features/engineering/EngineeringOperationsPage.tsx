@@ -69,7 +69,9 @@ export function EngineeringOperationsPage(): ReactNode {
   const canManage = useHasPermission(PERMISSIONS.ENGINEERING_MANAGE);
   const [projectId, setProjectId] = useState('');
   const [systemId, setSystemId] = useState('');
-  const [tab, setTab] = useState<'bugs' | 'maintenance' | 'updates' | 'releases'>('bugs');
+  const [tab, setTab] = useState<'bugs' | 'maintenance' | 'updates' | 'releases' | 'health'>(
+    'bugs',
+  );
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('NEW_FEATURE');
@@ -120,6 +122,11 @@ export function EngineeringOperationsPage(): ReactNode {
     queryKey: ['operations-releases', selectedSystemId],
     queryFn: () => operationsApi.releases(selectedSystemId),
     enabled: Boolean(selectedSystemId && tab === 'releases'),
+  });
+  const health = useQuery({
+    queryKey: ['operations-health', selectedSystemId],
+    queryFn: () => operationsApi.health(selectedSystemId),
+    enabled: Boolean(selectedSystemId && tab === 'health'),
   });
   const tasks = useQuery({
     queryKey: ['engineering-tasks', selectedProjectId],
@@ -232,23 +239,65 @@ export function EngineeringOperationsPage(): ReactNode {
                 role="tablist"
                 aria-label="Engineering operations"
               >
-                {(['bugs', 'maintenance', 'updates', 'releases'] as const).map((value) => (
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={tab === value}
-                    key={value}
-                    className={`rounded px-4 py-2 text-sm ${tab === value ? 'bg-primary text-surface' : 'bg-surface-alt text-ink'}`}
-                    onClick={() => setTab(value)}
-                  >
-                    {value.charAt(0).toUpperCase() + value.slice(1)}
-                  </button>
-                ))}
+                {(['bugs', 'maintenance', 'updates', 'releases', 'health'] as const).map(
+                  (value) => (
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={tab === value}
+                      key={value}
+                      className={`rounded px-4 py-2 text-sm ${tab === value ? 'bg-primary text-surface' : 'bg-surface-alt text-ink'}`}
+                      onClick={() => setTab(value)}
+                    >
+                      {value.charAt(0).toUpperCase() + value.slice(1)}
+                    </button>
+                  ),
+                )}
               </div>
               {message ? (
                 <p role="status" className="text-sm">
                   {message}
                 </p>
+              ) : null}
+              {tab === 'health' ? (
+                <section className="space-y-3 rounded-lg border border-border bg-surface p-4">
+                  <h2 className="text-lg font-semibold">Production health checks</h2>
+                  <p className="text-sm text-muted">
+                    HTTPS checks run for systems whose production host is enabled by the operator. A
+                    status change alerts the project manager and assigned engineer.
+                  </p>
+                  {health.isLoading ? (
+                    <LoadingState rows={3} />
+                  ) : health.isError ? (
+                    <ErrorState onRetry={() => void health.refetch()} />
+                  ) : health.data?.length ? (
+                    <ul className="space-y-2 text-sm">
+                      {health.data.map((check) => (
+                        <li
+                          key={check.id}
+                          className="flex flex-wrap justify-between gap-2 rounded bg-surface-alt p-3"
+                        >
+                          <span
+                            className={
+                              check.status === 'DOWN' ? 'font-semibold text-error' : 'font-semibold'
+                            }
+                          >
+                            {check.status} · {check.httpStatus ?? 'No response'} ·{' '}
+                            {check.responseMs ?? '—'} ms
+                          </span>
+                          <time dateTime={check.checkedAt}>
+                            {new Date(check.checkedAt).toLocaleString()}
+                          </time>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <EmptyState
+                      title="No health checks recorded"
+                      description="Configure an allowed HTTPS production host to begin checks."
+                    />
+                  )}
+                </section>
               ) : null}
               {tab === 'bugs' ? (
                 <div className="space-y-3">

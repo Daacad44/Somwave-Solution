@@ -29,6 +29,8 @@ const engineer: AuthUser = {
   twoFactorEnabled: false,
   twoFactorRequired: false,
 };
+const admin: AuthUser = { ...engineer, id: 'admin_1', roles: ['ADMIN'] };
+const staffViewer: AuthUser = { ...engineer, id: 'staff_1', roles: ['STAFF'] };
 
 const row = {
   id: 'tsk_1',
@@ -65,7 +67,7 @@ describe('createTask', () => {
     vi.mocked(prisma.project.findFirst).mockResolvedValue({ id: 'prj_1' } as never);
     vi.mocked(prisma.task.create).mockResolvedValue(row as never);
 
-    const result = await createTask(input);
+    const result = await createTask(input, admin);
 
     expect(result).toMatchObject({ id: 'tsk_1', project: { id: 'prj_1', name: 'Website' } });
     expect(prisma.task.create).toHaveBeenCalledOnce();
@@ -79,7 +81,7 @@ describe('createTask', () => {
   it('rejects an unknown project', async () => {
     vi.mocked(prisma.project.findFirst).mockResolvedValue(null as never);
 
-    await expect(createTask(input)).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+    await expect(createTask(input, admin)).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
     expect(prisma.task.create).not.toHaveBeenCalled();
   });
 
@@ -87,9 +89,17 @@ describe('createTask', () => {
     vi.mocked(prisma.project.findFirst).mockResolvedValue({ id: 'prj_1' } as never);
     vi.mocked(prisma.user.findFirst).mockResolvedValue(null as never);
 
-    await expect(createTask({ ...input, assigneeId: 'ghost' })).rejects.toMatchObject({
+    await expect(createTask({ ...input, assigneeId: 'ghost' }, admin)).rejects.toMatchObject({
       code: 'VALIDATION_ERROR',
     });
+    expect(prisma.task.create).not.toHaveBeenCalled();
+  });
+
+  it('does not let a staff viewer bypass independent task review', async () => {
+    vi.mocked(prisma.project.findFirst)
+      .mockResolvedValueOnce({ id: input.projectId } as never)
+      .mockResolvedValueOnce(null as never);
+    await expect(createTask(input, staffViewer)).rejects.toMatchObject({ code: 'FORBIDDEN' });
     expect(prisma.task.create).not.toHaveBeenCalled();
   });
 });
@@ -143,12 +153,25 @@ describe('deleteTask', () => {
     vi.mocked(prisma.task.findFirst).mockResolvedValue({ id: 'tsk_1' } as never);
     vi.mocked(prisma.task.update).mockResolvedValue({} as never);
 
-    await deleteTask('tsk_1');
+    await deleteTask('tsk_1', admin);
 
     expect(prisma.task.update).toHaveBeenCalledWith({
       where: { id: 'tsk_1' },
       data: { deletedAt: expect.any(Date) },
     });
+  });
+
+  it('does not let a global manager with viewer membership delete another project task', async () => {
+    vi.mocked(prisma.task.findFirst).mockResolvedValue(null as never);
+    await expect(deleteTask('tsk_1', { ...staffViewer, roles: ['MANAGER'] })).rejects.toMatchObject(
+      { code: 'NOT_FOUND' },
+    );
+    expect(prisma.task.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ project: { OR: expect.any(Array) } }),
+      }),
+    );
+    expect(prisma.task.update).not.toHaveBeenCalled();
   });
 });
 

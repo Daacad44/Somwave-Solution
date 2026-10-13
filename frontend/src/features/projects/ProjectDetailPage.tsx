@@ -9,19 +9,19 @@ export function ProjectDetailPage(): ReactNode {
   const query = useProjectWorkspace(id);
 
   if (!id) {
-    return <ErrorState title="Mashruucan lama helin" />;
+    return <ErrorState title="Project not found" />;
   }
   if (query.isLoading) {
-    return <LoadingState rows={8} label="Waa la soo rarayaa mashruuca" />;
+    return <LoadingState rows={8} label="Loading project" />;
   }
   if (query.isError || !query.data) {
     return (
       <ErrorState
-        title="Mashruuca lama soo rari karin"
-        description="Hubi in mashruucu jiro oo aad fasax u leedahay."
+        title="Could not load project"
+        description="Check that the project exists and you have access."
         onRetry={() => query.refetch()}
       />
     );
   }
-  return <ProjectWorkspaceView data={query.data} backTo="/projects" backLabel="Mashruucyada" />;
+  return <ProjectWorkspaceView data={query.data} backTo="/projects" backLabel="Projects" />;
 }

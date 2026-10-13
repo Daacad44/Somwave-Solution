@@ -49,7 +49,7 @@ export async function getPortalProject(
     select: { id: true },
   });
   if (!owned) throw new AppError('NOT_FOUND', 404, 'Mashruuc lama helin');
-  const workspace = await getProjectWorkspace(id);
+  const workspace = await getProjectWorkspace(id, { clientId });
   if (!workspace) throw new AppError('NOT_FOUND', 404, 'Mashruuc lama helin');
   return workspace;
 }

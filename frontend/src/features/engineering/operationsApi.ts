@@ -59,7 +59,17 @@ export interface Deployment {
   createdAt: string;
 }
 
+export interface SystemHealthCheck {
+  id: string;
+  status: string;
+  httpStatus: number | null;
+  responseMs: number | null;
+  checkedAt: string;
+}
+
 export const operationsApi = {
+  health: (systemId: string) =>
+    apiFetch<SystemHealthCheck[]>(`/engineering/systems/${systemId}/health`),
   updates: (systemId: string) =>
     apiFetch<SystemUpdate[]>(`/engineering/systems/${systemId}/updates`),
   createUpdate: (systemId: string, title: string, category: string) =>

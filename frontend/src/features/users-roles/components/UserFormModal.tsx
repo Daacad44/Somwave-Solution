@@ -87,7 +87,7 @@ export function UserFormModal({ open, onClose, roles, user }: UserFormModalProps
           error={errors.email?.message}
           {...register('email')}
         />
-        <Input label="Magaca" error={errors.name?.message} {...register('name')} />
+        <Input label="Name" error={errors.name?.message} {...register('name')} />
         {!isEdit ? (
           <Input
             label="Password"

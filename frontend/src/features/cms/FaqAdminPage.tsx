@@ -72,7 +72,7 @@ export function FaqAdminPage(): ReactNode {
                   <Td>{faq.order}</Td>
                   <Td>
                     <Badge tone={faq.isPublished ? 'success' : 'neutral'}>
-                      {faq.isPublished ? 'La daabacay' : 'Qabyo'}
+                      {faq.isPublished ? 'Published' : 'Draft'}
                     </Badge>
                   </Td>
                   <Td>

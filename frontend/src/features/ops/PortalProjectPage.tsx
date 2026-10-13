@@ -24,6 +24,11 @@ export function PortalProjectPage(): ReactNode {
     );
   }
   return (
-    <ProjectWorkspaceView data={query.data} backTo="/portal/projects" backLabel="Mashruucyadayda" />
+    <ProjectWorkspaceView
+      data={query.data}
+      backTo="/portal/projects"
+      backLabel="Mashruucyadayda"
+      language="so"
+    />
   );
 }

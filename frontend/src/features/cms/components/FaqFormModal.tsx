@@ -89,7 +89,7 @@ export function FaqFormModal({ open, onClose, faq }: FaqFormModalProps): ReactNo
           />
           <label className="mb-2 flex items-center gap-2 text-base text-ink">
             <input type="checkbox" className="size-4 accent-primary" {...register('isPublished')} />
-            La daabaco (published)
+            Published
           </label>
         </div>
 

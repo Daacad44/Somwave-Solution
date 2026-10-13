@@ -75,6 +75,17 @@ export function projectScope(actor?: AuthUser): Prisma.ProjectWhereInput {
   };
 }
 
+/** Mutations require project ownership, an active manager membership, or administrator role. */
+export function projectManageScope(actor: AuthUser): Prisma.ProjectWhereInput {
+  if (actor.roles.some((role) => role === 'SUPER_ADMIN' || role === 'ADMIN')) return {};
+  return {
+    OR: [
+      { managerId: actor.id },
+      { members: { some: { userId: actor.id, role: 'MANAGER', removedAt: null } } },
+    ],
+  };
+}
+
 export interface PagedProjects {
   items: AdminProject[];
   page: number;
@@ -179,8 +190,9 @@ export async function updateProject(
   input: UpdateProjectInput,
   actor?: AuthUser,
 ): Promise<AdminProject> {
+  if (!actor) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
   const project = await prisma.project.findFirst({
-    where: { id, deletedAt: null, ...projectScope(actor) },
+    where: { id, deletedAt: null, ...projectManageScope(actor) },
   });
   if (!project) throw new AppError('NOT_FOUND', 404, 'Project not found');
 
@@ -209,9 +221,16 @@ export async function updateProject(
   return toAdminProject(row);
 }
 
-export async function getProjectWorkspace(id: string): Promise<ProjectWorkspace | null> {
+export async function getProjectWorkspace(
+  id: string,
+  scope: { actor: AuthUser } | { clientId: string },
+): Promise<ProjectWorkspace | null> {
   const row = await prisma.project.findFirst({
-    where: { id, deletedAt: null },
+    where: {
+      id,
+      deletedAt: null,
+      ...('actor' in scope ? projectScope(scope.actor) : { clientId: scope.clientId }),
+    },
     select: {
       ...adminProjectSelect,
       client: { select: { companyName: true } },
@@ -295,8 +314,9 @@ export async function getProjectWorkspace(id: string): Promise<ProjectWorkspace 
 
 // Soft delete — project history is preserved (§7).
 export async function deleteProject(id: string, actor?: AuthUser): Promise<void> {
+  if (!actor) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
   const project = await prisma.project.findFirst({
-    where: { id, deletedAt: null, ...projectScope(actor) },
+    where: { id, deletedAt: null, ...projectManageScope(actor) },
   });
   if (!project) throw new AppError('NOT_FOUND', 404, 'Project not found');
   await prisma.project.update({ where: { id }, data: { deletedAt: new Date() } });

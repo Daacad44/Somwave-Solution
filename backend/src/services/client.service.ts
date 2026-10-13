@@ -6,6 +6,7 @@ import type {
   ProjectStatus,
   UpdateClientInput,
 } from '@somwave/shared';
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '@somwave/shared';
 import { deriveProgress } from './project.service';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
@@ -21,12 +22,27 @@ function toAdmin(row: {
   return { ...row, createdAt: row.createdAt.toISOString() };
 }
 
-export async function listClients(): Promise<AdminClient[]> {
-  const rows = await prisma.client.findMany({
-    where: { deletedAt: null },
-    orderBy: { createdAt: 'desc' },
-  });
-  return rows.map(toAdmin);
+export async function listClients(
+  params: { page?: number; pageSize?: number; search?: string } = {},
+) {
+  const page = params.page ?? DEFAULT_PAGE;
+  const pageSize = Math.min(params.pageSize ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
+  const where = {
+    deletedAt: null,
+    ...(params.search
+      ? { companyName: { contains: params.search, mode: 'insensitive' as const } }
+      : {}),
+  };
+  const [rows, total] = await Promise.all([
+    prisma.client.findMany({
+      where,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.client.count({ where }),
+  ]);
+  return { items: rows.map(toAdmin), page, pageSize, total };
 }
 
 export async function createClient(input: CreateClientInput): Promise<AdminClient> {

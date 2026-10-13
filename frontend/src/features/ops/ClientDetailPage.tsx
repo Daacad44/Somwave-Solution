@@ -16,13 +16,13 @@ export function ClientDetailPage(): ReactNode {
   const { id } = useParams();
   const query = useClientProfile(id);
 
-  if (!id) return <ErrorState title="Macmiilkan lama helin" />;
-  if (query.isLoading) return <LoadingState rows={8} label="Waa la soo rarayaa macmiilka" />;
+  if (!id) return <ErrorState title="Client not found" />;
+  if (query.isLoading) return <LoadingState rows={8} label="Loading client" />;
   if (query.isError || !query.data) {
     return (
       <ErrorState
-        title="Macmiilka lama soo rari karin"
-        description="Hubi in diiwaanku jiro oo aad fasax u leedahay."
+        title="Could not load client"
+        description="Check that the record exists and you have access."
         onRetry={() => query.refetch()}
       />
     );
@@ -36,7 +36,7 @@ export function ClientDetailPage(): ReactNode {
           to="/clients"
           className="font-medium text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         >
-          Macaamiisha
+          Clients
         </Link>
         <span aria-hidden="true"> / </span>
         <span className="text-ink">{client.companyName}</span>
@@ -47,7 +47,7 @@ export function ClientDetailPage(): ReactNode {
           <div>
             <h1 className="text-2xl font-semibold text-ink">{client.companyName}</h1>
             <p className="mt-1 text-sm text-muted">
-              {client.email ?? 'Iimayl ma jiro'}
+              {client.email ?? 'No email'}
               {client.phone ? ` · ${client.phone}` : ''}
             </p>
           </div>
@@ -55,24 +55,22 @@ export function ClientDetailPage(): ReactNode {
             {CLIENT_STATUS_LABELS[client.status]}
           </Badge>
         </div>
-        <p className="mt-3 text-sm text-muted">
-          La diiwaangeliyay {formatLongDate(client.createdAt)}
-        </p>
+        <p className="mt-3 text-sm text-muted">Registered {formatLongDate(client.createdAt)}</p>
       </header>
 
       <RecordSection
-        title="Mashruucyada"
-        emptyTitle="Mashruuc kuma xirna"
-        emptyDescription="Mashruucyada aad macmiilkan ku xirto ayaa halkan ka muuqan doona."
+        title="Projects"
+        emptyTitle="No linked projects"
+        emptyDescription="Projects linked to this client will appear here."
         isEmpty={client.projects.length === 0}
       >
         <Table>
           <THead>
             <Tr>
-              <Th>Magaca</Th>
-              <Th>Xaalad</Th>
-              <Th>Horumar</Th>
-              <Th>Dhammaad</Th>
+              <Th>Name</Th>
+              <Th>Status</Th>
+              <Th>Progress</Th>
+              <Th>Due</Th>
             </Tr>
           </THead>
           <TBody>
@@ -96,18 +94,18 @@ export function ClientDetailPage(): ReactNode {
       </RecordSection>
 
       <RecordSection
-        title="Biilasha"
-        emptyTitle="Biil ma jiro"
-        emptyDescription="Biilasha laga sameeyo bogga Biilasha ayaa halkan ka muuqan doona."
+        title="Invoices"
+        emptyTitle="No invoices yet"
+        emptyDescription="Invoices created on the Invoices page will appear here."
         isEmpty={client.invoices.length === 0}
       >
         <Table>
           <THead>
             <Tr>
-              <Th>Lambarka</Th>
-              <Th>Xaalad</Th>
-              <Th>Wadarta</Th>
-              <Th>Dhammaad</Th>
+              <Th>Number</Th>
+              <Th>Status</Th>
+              <Th>Total</Th>
+              <Th>Due</Th>
             </Tr>
           </THead>
           <TBody>
@@ -131,17 +129,17 @@ export function ClientDetailPage(): ReactNode {
       </RecordSection>
 
       <RecordSection
-        title="Taageerada"
-        emptyTitle="Tigidh ma jiro"
-        emptyDescription="Tigidhada macmiilkan ayaa halkan ka muuqan doona."
+        title="Support"
+        emptyTitle="No tickets yet"
+        emptyDescription="This client's support tickets will appear here."
         isEmpty={client.tickets.length === 0}
       >
         <Table>
           <THead>
             <Tr>
-              <Th>Koodh</Th>
-              <Th>Mawduuc</Th>
-              <Th>Xaalad</Th>
+              <Th>Code</Th>
+              <Th>Subject</Th>
+              <Th>Status</Th>
             </Tr>
           </THead>
           <TBody>
@@ -164,16 +162,16 @@ export function ClientDetailPage(): ReactNode {
       </RecordSection>
 
       <RecordSection
-        title="Dukumeentiyada"
-        emptyTitle="Dukumeenti ma jiro"
-        emptyDescription="Faylasha laga soo geliyo bogga Dukumeentiyada ayaa halkan ka muuqan doona."
+        title="Documents"
+        emptyTitle="No documents yet"
+        emptyDescription="Files uploaded on the Documents page will appear here."
         isEmpty={client.documents.length === 0}
       >
         <Table>
           <THead>
             <Tr>
-              <Th>Cinwaan</Th>
-              <Th>Taariikh</Th>
+              <Th>Title</Th>
+              <Th>Date</Th>
             </Tr>
           </THead>
           <TBody>

@@ -6,7 +6,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
   createJobOpeningSchema,
   EMPLOYMENT_TYPES,
-  EMPLOYMENT_TYPE_LABELS,
   type AdminJobOpening,
   type CreateJobOpeningInput,
 } from '@somwave/shared';
@@ -16,6 +15,7 @@ import { Select } from '../../../components/ui/Select';
 import { Button } from '../../../components/ui/Button';
 import { ApiError } from '../../../lib/apiClient';
 import { useCreateOpening, useUpdateOpening } from '../hooks';
+import { STAFF_EMPLOYMENT_TYPE_LABELS } from '../labels';
 
 export interface JobOpeningFormModalProps {
   open: boolean;
@@ -25,7 +25,7 @@ export interface JobOpeningFormModalProps {
 
 const typeOptions = EMPLOYMENT_TYPES.map((value) => ({
   value,
-  label: EMPLOYMENT_TYPE_LABELS[value],
+  label: STAFF_EMPLOYMENT_TYPE_LABELS[value],
 }));
 
 export function JobOpeningFormModal({
@@ -86,12 +86,12 @@ export function JobOpeningFormModal({
         <Input label="Title" error={errors.title?.message} {...register('title')} />
         <Input
           label="Slug (URL)"
-          placeholder="horumariye-frontend"
+          placeholder="frontend-developer"
           error={errors.slug?.message}
           {...register('slug')}
         />
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Goobta" error={errors.location?.message} {...register('location')} />
+          <Input label="Location" error={errors.location?.message} {...register('location')} />
           <Select
             label="Employment type"
             options={typeOptions}
@@ -99,10 +99,10 @@ export function JobOpeningFormModal({
             {...register('employmentType')}
           />
         </div>
-        <Input label="Kooban" error={errors.summary?.message} {...register('summary')} />
+        <Input label="Summary" error={errors.summary?.message} {...register('summary')} />
 
         <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-ink">Faahfaahin</span>
+          <span className="text-sm font-medium text-ink">Description</span>
           <textarea
             className="min-h-40 rounded-md border border-border bg-surface px-3 py-2 text-base text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             rows={6}
@@ -115,7 +115,7 @@ export function JobOpeningFormModal({
 
         <label className="flex items-center gap-2 text-base text-ink">
           <input type="checkbox" className="size-4 accent-primary" {...register('isPublished')} />
-          La daabaco (published)
+          Published
         </label>
 
         {serverError ? <p className="text-sm text-error">{serverError}</p> : null}

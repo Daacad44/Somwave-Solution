@@ -3,9 +3,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   createTimesheetSchema,
-  TIMESHEET_STATUS_LABELS,
   PERMISSIONS,
   type CreateTimesheetInput,
+  type TimesheetStatus,
 } from '@somwave/shared';
 import { Table, THead, TBody, Tr, Th, Td } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
@@ -18,6 +18,12 @@ import { useHasPermission } from '../../lib/rbac';
 import { formatDate } from '../../lib/date';
 import { ApiError } from '../../lib/apiClient';
 import { useTimesheets, useCreateTimesheet, useUpdateTimesheet } from './hooks';
+
+const TIMESHEET_STATUS_LABELS: Record<TimesheetStatus, string> = {
+  PENDING: 'Pending',
+  APPROVED: 'Approved',
+  REJECTED: 'Rejected',
+};
 
 export function TimesheetsPage(): ReactNode {
   const query = useTimesheets();
@@ -83,7 +89,7 @@ export function TimesheetsPage(): ReactNode {
                         variant="secondary"
                         onClick={() => update.mutate({ id: row.id, input: { status: 'APPROVED' } })}
                       >
-                        Ansixi
+                        Approve
                       </Button>
                     ) : (
                       <Badge>{TIMESHEET_STATUS_LABELS[row.status]}</Badge>

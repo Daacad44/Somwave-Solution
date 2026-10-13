@@ -32,10 +32,11 @@ const envSchema = z
     S3_ACCESS_KEY: z.string().min(1).optional(),
     S3_SECRET_KEY: z.string().min(1).optional(),
     APP_PUBLIC_URL: z.string().url().optional(),
+    HEALTH_PROBE_HOSTS: z.string().optional(),
+    BACKGROUND_WORKERS_ENABLED: z.enum(['true', 'false']).default('true'),
   })
   .superRefine((value, ctx) => {
-    if (!value.SMTP_HOST) return;
-    if (!value.SMTP_FROM) {
+    if (value.SMTP_HOST && !value.SMTP_FROM) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['SMTP_FROM'],

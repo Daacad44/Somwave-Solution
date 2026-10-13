@@ -203,6 +203,10 @@ export function EngineerManagementPage(): ReactNode {
     user?.roles.some((role) => ['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER'].includes(role)) ??
     false;
   const [projectId, setProjectId] = useState('');
+  const [fromUserId, setFromUserId] = useState('');
+  const [toUserId, setToUserId] = useState('');
+  const [actionMessage, setActionMessage] = useState('');
+  const queryClient = useQueryClient();
   const projects = useQuery({
     queryKey: ['engineering-projects'],
     queryFn: engineeringApi.projects,
@@ -218,6 +222,35 @@ export function EngineerManagementPage(): ReactNode {
     queryFn: () => engineerApi.history(selectedId),
     enabled: Boolean(selectedId && canManage),
   });
+  const reassignment = useMutation({
+    mutationFn: () => engineerApi.reassignTasks(selectedId, fromUserId, toUserId),
+    onSuccess: (result) => {
+      setActionMessage(`${result.reassignedCount} open task(s) reassigned.`);
+      void queryClient.invalidateQueries({ queryKey: ['engineer-team', selectedId] });
+      void queryClient.invalidateQueries({ queryKey: ['engineer-assignment-history', selectedId] });
+      void queryClient.invalidateQueries({ queryKey: ['engineering-tasks', selectedId] });
+    },
+    onError: (error: Error) => setActionMessage(error.message),
+  });
+  const recommendations = [...(team.data ?? [])]
+    .filter((member) => member.user.id !== fromUserId)
+    .map((member) => ({
+      ...member,
+      headroom: Math.max(
+        0,
+        (member.weeklyCapacity[0]?.availableHours ?? 0) -
+          (member.weeklyCapacity[0]?.estimatedHours ?? 0),
+      ),
+      available:
+        member.user.engineerProfile?.availability !== 'UNAVAILABLE' &&
+        !member.user.availabilitySlots.some(
+          (slot) =>
+            slot.kind === 'TIME_OFF' &&
+            new Date(slot.startAt) <= new Date() &&
+            new Date(slot.endAt) >= new Date(),
+        ),
+    }))
+    .sort((a, b) => Number(b.available) - Number(a.available) || b.headroom - a.headroom);
   return (
     <section className="space-y-5">
       <h1 className="text-2xl font-semibold text-ink">Engineer management</h1>
@@ -278,7 +311,8 @@ export function EngineerManagementPage(): ReactNode {
                   )}
                   <p className="mt-2 text-sm">
                     {member.activeTaskCount} active tasks · {member.estimatedOpenHours} estimated
-                    hours
+                    hours in this project · {member.estimatedAllProjectsHours} estimated hours
+                    across projects
                   </p>
                   {member.user.availabilitySlots.length ? (
                     <ul className="mt-2 text-xs">
@@ -297,6 +331,79 @@ export function EngineerManagementPage(): ReactNode {
               <EmptyState title="No engineers assigned" />
             )}
           </div>
+          {canManage && team.data && team.data.length > 1 ? (
+            <form
+              className="space-y-3 rounded-lg border border-border bg-surface p-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                reassignment.mutate();
+              }}
+            >
+              <h2 className="text-lg font-semibold">Reassign open tasks</h2>
+              <p className="text-sm text-muted">
+                Move all unfinished tasks in this project from one engineer to another. Estimates
+                across projects guide the recommendation.
+              </p>
+              {actionMessage ? (
+                <p role="status" className="text-sm">
+                  {actionMessage}
+                </p>
+              ) : null}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="text-sm">
+                  From engineer
+                  <select
+                    className="mt-1 w-full rounded border border-border bg-surface p-3"
+                    required
+                    value={fromUserId}
+                    onChange={(event) => {
+                      setFromUserId(event.target.value);
+                      setToUserId('');
+                    }}
+                  >
+                    <option value="">Select engineer</option>
+                    {team.data.map((member) => (
+                      <option key={member.user.id} value={member.user.id}>
+                        {member.user.name} ({member.activeTaskCount} open tasks)
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-sm">
+                  To engineer
+                  <select
+                    className="mt-1 w-full rounded border border-border bg-surface p-3"
+                    required
+                    value={toUserId}
+                    onChange={(event) => setToUserId(event.target.value)}
+                  >
+                    <option value="">Select engineer</option>
+                    {recommendations.map((member) => (
+                      <option key={member.user.id} value={member.user.id}>
+                        {member.user.name} ·{' '}
+                        {member.available
+                          ? `${member.headroom}h estimated headroom`
+                          : 'unavailable'}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              {fromUserId && recommendations[0]?.available ? (
+                <p className="text-sm text-muted">
+                  Recommended: {recommendations[0].user.name} ({recommendations[0].headroom}h
+                  estimated headroom).
+                </p>
+              ) : null}
+              <Button
+                type="submit"
+                disabled={!fromUserId || !toUserId || reassignment.isPending}
+                isLoading={reassignment.isPending}
+              >
+                Reassign tasks
+              </Button>
+            </form>
+          ) : null}
           {canManage ? (
             <details className="rounded-lg border border-border bg-surface p-4">
               <summary className="cursor-pointer font-semibold">Assignment history</summary>

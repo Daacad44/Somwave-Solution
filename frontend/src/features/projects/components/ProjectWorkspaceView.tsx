@@ -25,15 +25,39 @@ const HEALTH_TONE: Record<ProjectHealth, 'success' | 'warning' | 'error' | 'neut
   NO_DATE: 'info',
 };
 
+const ENGLISH_PROJECT_STATUS = {
+  PLANNING: 'Planning',
+  ACTIVE: 'Active',
+  ON_HOLD: 'On hold',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled',
+};
+const ENGLISH_HEALTH = {
+  ON_TRACK: 'On track',
+  AT_RISK: 'At risk',
+  OVERDUE: 'Overdue',
+  COMPLETE: 'Complete',
+  CANCELLED: 'Cancelled',
+  NO_DATE: 'No date',
+};
+const ENGLISH_MILESTONE_STATUS = {
+  PENDING: 'Pending',
+  IN_PROGRESS: 'In progress',
+  COMPLETED: 'Completed',
+};
+
 export function ProjectWorkspaceView({
   data,
   backTo,
   backLabel,
+  language = 'en',
 }: {
   data: ProjectWorkspace;
   backTo: string;
   backLabel: string;
+  language?: 'en' | 'so';
 }): ReactNode {
+  const t = (english: string, somali: string): string => (language === 'so' ? somali : english);
   const [taskQuery, setTaskQuery] = useState('');
   const tasks = useMemo(() => {
     const needle = taskQuery.trim().toLowerCase();
@@ -63,13 +87,19 @@ export function ProjectWorkspaceView({
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold text-ink">{data.project.name}</h1>
             <p className="mt-1 text-sm text-muted">
-              {data.project.clientName ?? 'Macmiil lama xirin'}
+              {data.project.clientName ?? t('No client linked', 'Macmiil lama xirin')}
               {data.project.manager ? ` · ${data.project.manager.name}` : ''}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Badge tone="info">{PROJECT_STATUS_LABELS[data.project.status]}</Badge>
-            <Badge tone={HEALTH_TONE[data.health]}>{PROJECT_HEALTH_LABELS[data.health]}</Badge>
+            <Badge tone="info">
+              {language === 'so'
+                ? PROJECT_STATUS_LABELS[data.project.status]
+                : ENGLISH_PROJECT_STATUS[data.project.status]}
+            </Badge>
+            <Badge tone={HEALTH_TONE[data.health]}>
+              {language === 'so' ? PROJECT_HEALTH_LABELS[data.health] : ENGLISH_HEALTH[data.health]}
+            </Badge>
           </div>
         </div>
         {data.project.description ? (
@@ -77,30 +107,33 @@ export function ProjectWorkspaceView({
         ) : null}
         <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
           <div>
-            <dt className="text-muted">Billowga</dt>
+            <dt className="text-muted">{t('Start', 'Billowga')}</dt>
             <dd className="font-medium text-ink">{formatLongDate(data.project.startDate)}</dd>
           </div>
           <div>
-            <dt className="text-muted">Dhammaadka</dt>
+            <dt className="text-muted">{t('Due', 'Dhammaadka')}</dt>
             <dd className="font-medium text-ink">{formatLongDate(data.project.dueDate)}</dd>
           </div>
           <div>
-            <dt className="text-muted">Miisaaniyad</dt>
+            <dt className="text-muted">{t('Budget', 'Miisaaniyad')}</dt>
             <dd className="font-medium text-ink">
               {data.project.budget ? `$${data.project.budget}` : '—'}
             </dd>
           </div>
           <div>
-            <dt className="text-muted">Hawlaha</dt>
+            <dt className="text-muted">{t('Tasks', 'Hawlaha')}</dt>
             <dd className="font-medium text-ink">
-              {data.taskCounts.done}/{data.taskCounts.total} la dhammeeyay
+              {data.taskCounts.done}/{data.taskCounts.total} {t('completed', 'la dhammeeyay')}
             </dd>
           </div>
         </dl>
         <div className="mt-4">
           {data.progress === null ? (
             <p className="text-sm text-muted">
-              Horumar lama xisaabin. Ku dar hawl si boqolkiiba uu u muuqdo.
+              {t(
+                'No progress yet. Add a task to track completion.',
+                'Horumar lama xisaabin. Ku dar hawl si boqolkiiba uu u muuqdo.',
+              )}
             </p>
           ) : (
             <>
@@ -110,7 +143,7 @@ export function ProjectWorkspaceView({
                 aria-valuenow={data.progress}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-label="Horumarka mashruuca"
+                aria-label={t('Project progress', 'Horumarka mashruuca')}
               >
                 <div
                   className="h-full rounded-full bg-brand"
@@ -118,7 +151,10 @@ export function ProjectWorkspaceView({
                 />
               </div>
               <p className="mt-2 text-sm text-muted">
-                {data.progress}% ee hawlaha waa la dhammeeyay.
+                {t(
+                  `${data.progress}% of tasks completed.`,
+                  `${data.progress}% ee hawlaha waa la dhammeeyay.`,
+                )}
               </p>
             </>
           )}
@@ -126,24 +162,34 @@ export function ProjectWorkspaceView({
       </header>
 
       <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-        <h2 className="text-base font-semibold text-ink">Jadwalka</h2>
+        <h2 className="text-base font-semibold text-ink">{t('Timeline', 'Jadwalka')}</h2>
         <p className="mt-1 text-sm text-muted">
-          Hawlaha iyo marxaladaha leh taariikh dhab ah. Taariikh aan jirin lama qiyaaso.
+          {t(
+            'Tasks and milestones with recorded dates. Missing dates are not estimated.',
+            'Hawlaha iyo marxaladaha leh taariikh dhab ah. Taariikh aan jirin lama qiyaaso.',
+          )}
         </p>
         <div className="mt-4">
-          <ProjectTimeline project={data.project} tasks={data.tasks} milestones={data.milestones} />
+          <ProjectTimeline
+            project={data.project}
+            tasks={data.tasks}
+            milestones={data.milestones}
+            language={language}
+          />
         </div>
       </section>
 
       <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold text-ink">Hawlaha</h2>
-            <p className="mt-1 text-sm text-muted">Hawlaha ku xiran mashruucan.</p>
+            <h2 className="text-base font-semibold text-ink">{t('Tasks', 'Hawlaha')}</h2>
+            <p className="mt-1 text-sm text-muted">
+              {t('Tasks in this project.', 'Hawlaha ku xiran mashruucan.')}
+            </p>
           </div>
           <Input
-            aria-label="Raadi hawlaha"
-            placeholder="Raadi hawl…"
+            aria-label={t('Search tasks', 'Raadi hawlaha')}
+            placeholder={t('Search tasks…', 'Raadi hawl…')}
             value={taskQuery}
             onChange={(event) => setTaskQuery(event.target.value)}
             className="sm:w-64"
@@ -152,22 +198,29 @@ export function ProjectWorkspaceView({
         <div className="mt-4">
           {tasks.length === 0 ? (
             <EmptyState
-              title={taskQuery ? 'Raadintaadu waxba ma soo celin' : 'Hawl ma jirto'}
+              title={
+                taskQuery
+                  ? t('No matching tasks', 'Raadintaadu waxba ma soo celin')
+                  : t('No tasks yet', 'Hawl ma jirto')
+              }
               description={
                 taskQuery
-                  ? 'Isku day magac kale.'
-                  : 'Hawlaha laga sameeyo bogga Hawlaha ayaa halkan ka muuqan doona.'
+                  ? t('Try another search.', 'Isku day magac kale.')
+                  : t(
+                      'Tasks created on the Tasks page will appear here.',
+                      'Hawlaha laga sameeyo bogga Hawlaha ayaa halkan ka muuqan doona.',
+                    )
               }
             />
           ) : (
             <Table>
               <THead>
                 <Tr>
-                  <Th>Cinwaan</Th>
-                  <Th>Xaalad</Th>
-                  <Th>Mudnaan</Th>
-                  <Th>Qofka</Th>
-                  <Th>Dhammaad</Th>
+                  <Th>{t('Title', 'Cinwaan')}</Th>
+                  <Th>{t('Status', 'Xaalad')}</Th>
+                  <Th>{t('Priority', 'Mudnaan')}</Th>
+                  <Th>{t('Assignee', 'Qofka')}</Th>
+                  <Th>{t('Due', 'Dhammaad')}</Th>
                 </Tr>
               </THead>
               <TBody>
@@ -187,27 +240,34 @@ export function ProjectWorkspaceView({
       </section>
 
       <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-        <h2 className="text-base font-semibold text-ink">Marxaladaha</h2>
+        <h2 className="text-base font-semibold text-ink">{t('Milestones', 'Marxaladaha')}</h2>
         <div className="mt-4">
           {data.milestones.length === 0 ? (
             <EmptyState
-              title="Marxalad ma jirto"
-              description="Marxaladaha laga sameeyo bogga Marxaladaha ayaa halkan ka muuqan doona."
+              title={t('No milestones yet', 'Marxalad ma jirto')}
+              description={t(
+                'Milestones created on the Milestones page will appear here.',
+                'Marxaladaha laga sameeyo bogga Marxaladaha ayaa halkan ka muuqan doona.',
+              )}
             />
           ) : (
             <Table>
               <THead>
                 <Tr>
-                  <Th>Cinwaan</Th>
-                  <Th>Xaalad</Th>
-                  <Th>Dhammaad</Th>
+                  <Th>{t('Title', 'Cinwaan')}</Th>
+                  <Th>{t('Status', 'Xaalad')}</Th>
+                  <Th>{t('Due', 'Dhammaad')}</Th>
                 </Tr>
               </THead>
               <TBody>
                 {data.milestones.map((milestone) => (
                   <Tr key={milestone.id}>
                     <Td className="font-medium">{milestone.title}</Td>
-                    <Td>{MILESTONE_STATUS_LABELS[milestone.status]}</Td>
+                    <Td>
+                      {language === 'so'
+                        ? MILESTONE_STATUS_LABELS[milestone.status]
+                        : ENGLISH_MILESTONE_STATUS[milestone.status]}
+                    </Td>
                     <Td className="text-muted">{formatLongDate(milestone.dueDate)}</Td>
                   </Tr>
                 ))}

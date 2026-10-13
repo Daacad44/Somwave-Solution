@@ -25,7 +25,7 @@ import type {
   AdminProject,
   AdminMilestone,
 } from '@somwave/shared';
-import { apiDownload, apiFetch } from '../../lib/apiClient';
+import { apiDownload, apiFetch, apiFetchPaged, type PaginationMeta } from '../../lib/apiClient';
 
 export function listLeads(): Promise<AdminInquiry[]> {
   return apiFetch<AdminInquiry[]>('/leads');
@@ -53,8 +53,29 @@ export function updateApplication(
   });
 }
 
-export function listClients(): Promise<AdminClient[]> {
-  return apiFetch<AdminClient[]>('/clients');
+export function listClientsPage(params: {
+  page: number;
+  pageSize: number;
+  search?: string;
+}): Promise<{ data: AdminClient[]; meta: PaginationMeta }> {
+  const query = new URLSearchParams({
+    page: String(params.page),
+    pageSize: String(params.pageSize),
+  });
+  if (params.search) query.set('search', params.search);
+  return apiFetchPaged<AdminClient[]>(`/clients?${query.toString()}`);
+}
+
+/** Client pickers require the complete option set; every server request stays bounded. */
+export async function listClients(): Promise<AdminClient[]> {
+  const pageSize = 100;
+  const first = await listClientsPage({ page: 1, pageSize });
+  const rows = [...first.data];
+  for (let page = 2; page <= Math.ceil(first.meta.total / pageSize); page += 1) {
+    const next = await listClientsPage({ page, pageSize });
+    rows.push(...next.data);
+  }
+  return rows;
 }
 export function createClient(input: CreateClientInput): Promise<AdminClient> {
   return apiFetch<AdminClient>('/clients', { method: 'POST', body: JSON.stringify(input) });
@@ -191,8 +212,13 @@ export function createLeave(input: import('@somwave/shared').CreateLeaveRequestI
 export function updateLeave(id: string, input: import('@somwave/shared').UpdateLeaveRequestInput) {
   return apiFetch(`/leave-requests/${id}`, { method: 'PATCH', body: JSON.stringify(input) });
 }
-export function listDocuments() {
-  return apiFetch<import('@somwave/shared').AdminDocument[]>('/documents');
+export function listDocuments(params: { page: number; pageSize: number; search?: string }) {
+  const query = new URLSearchParams({
+    page: String(params.page),
+    pageSize: String(params.pageSize),
+  });
+  if (params.search) query.set('search', params.search);
+  return apiFetchPaged<import('@somwave/shared').AdminDocument[]>(`/documents?${query.toString()}`);
 }
 export function createDocument(input: import('@somwave/shared').CreateDocumentInput) {
   return apiFetch('/documents', { method: 'POST', body: JSON.stringify(input) });
