@@ -2,7 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../lib/prisma', () => ({
   prisma: {
-    client: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
+    client: {
+      findMany: vi.fn(),
+      count: vi.fn(),
+      findFirst: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+    },
     project: { findMany: vi.fn() },
     invoice: { findMany: vi.fn() },
     supportTicket: { findMany: vi.fn() },
@@ -30,9 +36,11 @@ beforeEach(() => {
 describe('listClients', () => {
   it('returns ISO createdAt', async () => {
     vi.mocked(prisma.client.findMany).mockResolvedValue([row] as never);
+    vi.mocked(prisma.client.count).mockResolvedValue(1 as never);
     const result = await listClients();
-    expect(result[0]?.createdAt).toBe('2026-01-01T00:00:00.000Z');
-    expect(result[0]?.companyName).toBe('Acme');
+    expect(result.items[0]?.createdAt).toBe('2026-01-01T00:00:00.000Z');
+    expect(result.items[0]?.companyName).toBe('Acme');
+    expect(result.total).toBe(1);
   });
 });
 

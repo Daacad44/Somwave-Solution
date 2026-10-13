@@ -135,6 +135,15 @@ export async function listSystems(projectId: string, actor: Actor) {
   });
 }
 
+export async function listSystemHealth(systemId: string, actor: Actor) {
+  await systemAccess(systemId, actor);
+  return prisma.systemHealthCheck.findMany({
+    where: { systemId },
+    orderBy: { checkedAt: 'desc' },
+    take: 50,
+  });
+}
+
 export async function createSystem(
   projectId: string,
   actor: Actor,

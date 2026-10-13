@@ -6,6 +6,18 @@ import type { SearchType } from '@somwave/shared';
 import { searchRecords } from '../../features/search/api';
 
 const TYPE_LABELS: Record<SearchType, string> = {
+  project: 'Project',
+  task: 'Task',
+  client: 'Client',
+  lead: 'Lead',
+  ticket: 'Ticket',
+  invoice: 'Invoice',
+  user: 'User',
+  service: 'Service',
+  article: 'Article',
+  document: 'Document',
+};
+const SOMALI_TYPE_LABELS: Record<SearchType, string> = {
   project: 'Mashruuc',
   task: 'Hawl',
   client: 'Macmiil',
@@ -18,7 +30,8 @@ const TYPE_LABELS: Record<SearchType, string> = {
   document: 'Dukumeenti',
 };
 
-export function GlobalSearch(): ReactNode {
+export function GlobalSearch({ language = 'en' }: { language?: 'en' | 'so' }): ReactNode {
+  const t = (english: string, somali: string): string => (language === 'so' ? somali : english);
   const [value, setValue] = useState('');
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
@@ -63,7 +76,7 @@ export function GlobalSearch(): ReactNode {
   return (
     <div ref={boxRef} className="relative min-w-0 flex-1 sm:max-w-md">
       <label className="relative block">
-        <span className="sr-only">Raadi</span>
+        <span className="sr-only">{t('Search', 'Raadi')}</span>
         <Search
           className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
           aria-hidden="true"
@@ -72,7 +85,7 @@ export function GlobalSearch(): ReactNode {
           ref={inputRef}
           type="search"
           value={value}
-          placeholder="Raadi mashruuc, macmiil, tigidh…"
+          placeholder={t('Search projects, clients, tickets…', 'Raadi mashruuc, macmiil, tigidh…')}
           aria-expanded={showPanel}
           aria-controls={listId}
           aria-autocomplete="list"
@@ -91,17 +104,19 @@ export function GlobalSearch(): ReactNode {
         <div
           id={listId}
           role="listbox"
-          aria-label="Natiijooyinka raadinta"
+          aria-label={t('Search results', 'Natiijooyinka raadinta')}
           className="absolute start-0 top-12 z-40 max-h-80 w-full overflow-y-auto rounded-lg border border-border bg-surface p-1 shadow-md"
         >
           {results.isLoading ? (
-            <p className="px-3 py-3 text-sm text-muted">Waa la raadinayaa…</p>
+            <p className="px-3 py-3 text-sm text-muted">{t('Searching…', 'Waa la raadinayaa…')}</p>
           ) : results.isError ? (
             <p className="px-3 py-3 text-sm text-error">
-              Raadinta way fashilantay. Isku day mar kale.
+              {t('Search failed. Try again.', 'Raadinta way fashilantay. Isku day mar kale.')}
             </p>
           ) : (results.data?.length ?? 0) === 0 ? (
-            <p className="px-3 py-3 text-sm text-muted">Wax la mid ah lama helin.</p>
+            <p className="px-3 py-3 text-sm text-muted">
+              {t('No matching results.', 'Wax la mid ah lama helin.')}
+            </p>
           ) : (
             results.data?.map((hit) => (
               <Link
@@ -117,7 +132,7 @@ export function GlobalSearch(): ReactNode {
               >
                 <span className="text-sm font-medium text-ink">{hit.title}</span>
                 <span className="text-xs text-muted">
-                  {TYPE_LABELS[hit.type]}
+                  {(language === 'so' ? SOMALI_TYPE_LABELS : TYPE_LABELS)[hit.type]}
                   {hit.subtitle ? ` · ${hit.subtitle}` : ''}
                 </span>
               </Link>

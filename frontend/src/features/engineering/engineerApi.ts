@@ -28,6 +28,13 @@ export interface TeamEngineer {
   };
   activeTaskCount: number;
   estimatedOpenHours: number;
+  estimatedAllProjectsHours: number;
+  weeklyCapacity: Array<{
+    weekStart: string;
+    estimatedHours: number;
+    availableHours: number;
+    overbooked: boolean;
+  }>;
 }
 export interface AssignmentEvent {
   id: string;
@@ -65,4 +72,9 @@ export const engineerApi = {
     apiFetch<TeamEngineer[]>(`/engineering/projects/${projectId}/engineer-profiles`),
   history: (projectId: string) =>
     apiFetch<AssignmentEvent[]>(`/engineering/projects/${projectId}/assignment-history`),
+  reassignTasks: (projectId: string, fromUserId: string, toUserId: string) =>
+    apiFetch<{ reassignedCount: number }>(`/engineering/projects/${projectId}/reassign-tasks`, {
+      method: 'POST',
+      body: JSON.stringify({ fromUserId, toUserId }),
+    }),
 };

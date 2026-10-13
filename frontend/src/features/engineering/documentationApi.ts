@@ -10,9 +10,9 @@ const base = (projectId: string) => `/projects/${projectId}/documentation`;
 const doc = (projectId: string, documentId: string) => `${base(projectId)}/${documentId}`;
 
 export const documentationApi = {
-  list: (projectId: string, search: string, folder: string) =>
+  list: (projectId: string, search: string, folder: string, status = '') =>
     apiFetch<ProjectDocumentation[]>(
-      `${base(projectId)}?${new URLSearchParams({ ...(search ? { search } : {}), ...(folder ? { folder } : {}) })}`,
+      `${base(projectId)}?${new URLSearchParams({ ...(search ? { search } : {}), ...(folder ? { folder } : {}), ...(status ? { status } : {}) })}`,
     ),
   folders: (projectId: string) => apiFetch<string[]>(`${base(projectId)}/folders`),
   renameFolder: (projectId: string, from: string, to: string) =>

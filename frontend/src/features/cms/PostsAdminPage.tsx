@@ -78,7 +78,7 @@ export function PostsAdminPage(): ReactNode {
                   <Td className="text-muted">{post.category?.name ?? '—'}</Td>
                   <Td>
                     <Badge tone={post.isPublished ? 'success' : 'neutral'}>
-                      {post.isPublished ? 'La daabacay' : 'Qabyo'}
+                      {post.isPublished ? 'Published' : 'Draft'}
                     </Badge>
                   </Td>
                   <Td className="text-muted">{formatDate(post.publishedAt)}</Td>

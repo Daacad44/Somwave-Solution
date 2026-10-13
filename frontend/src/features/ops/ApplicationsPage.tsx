@@ -1,10 +1,5 @@
 import { type ReactNode } from 'react';
-import {
-  APPLICATION_STATUSES,
-  APPLICATION_STATUS_LABELS,
-  PERMISSIONS,
-  type ApplicationStatus,
-} from '@somwave/shared';
+import { APPLICATION_STATUSES, PERMISSIONS, type ApplicationStatus } from '@somwave/shared';
 import { Table, THead, TBody, Tr, Th, Td } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
 import { Select } from '../../components/ui/Select';
@@ -12,6 +7,14 @@ import { LoadingState, EmptyState, ErrorState } from '../../components/states';
 import { useHasPermission } from '../../lib/rbac';
 import { formatDate } from '../../lib/date';
 import { useApplications, useUpdateApplication } from './hooks';
+
+const APPLICATION_STATUS_LABELS: Record<ApplicationStatus, string> = {
+  NEW: 'New',
+  REVIEWING: 'Reviewing',
+  SHORTLISTED: 'Shortlisted',
+  REJECTED: 'Rejected',
+  HIRED: 'Hired',
+};
 
 export function ApplicationsPage(): ReactNode {
   const query = useApplications();
@@ -22,7 +25,7 @@ export function ApplicationsPage(): ReactNode {
   return (
     <section>
       <h1 className="text-2xl font-semibold text-ink">Job applications</h1>
-      <p className="mt-1 text-base text-muted">Applications from `/fursado-shaqo`.</p>
+      <p className="mt-1 text-base text-muted">Applications submitted through the careers page.</p>
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {query.isLoading ? (
           <LoadingState rows={6} label="Loading" />

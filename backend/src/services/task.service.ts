@@ -12,7 +12,7 @@ import { MAX_PAGE_SIZE } from '@somwave/shared';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
-import { projectScope } from './project.service';
+import { projectManageScope, projectScope } from './project.service';
 
 const adminTaskSelect = {
   id: true,
@@ -135,18 +135,13 @@ async function assertAssigneeExists(
 }
 
 export async function createTask(input: CreateTaskInput, actor?: AuthUser): Promise<AdminTask> {
+  if (!actor) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
   await assertProjectExists(input.projectId, actor);
-  if (
-    actor &&
-    actor.roles.some((role) => ['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER'].includes(role))
-  ) {
+  if (!actor.roles.some((role) => role === 'SUPER_ADMIN' || role === 'ADMIN')) {
     const manager = await prisma.project.findFirst({
       where: {
         id: input.projectId,
-        OR: [
-          { managerId: actor.id },
-          { members: { some: { userId: actor.id, role: 'MANAGER', removedAt: null } } },
-        ],
+        ...projectManageScope(actor),
       },
       select: { id: true },
     });
@@ -290,8 +285,9 @@ export async function updateTask(
 
 // Soft delete — task history is preserved (§7).
 export async function deleteTask(id: string, actor?: AuthUser): Promise<void> {
+  if (!actor) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
   const task = await prisma.task.findFirst({
-    where: { id, deletedAt: null, ...(actor ? { project: projectScope(actor) } : {}) },
+    where: { id, deletedAt: null, project: projectManageScope(actor) },
   });
   if (!task) throw new AppError('NOT_FOUND', 404, 'Task not found');
   await prisma.task.update({ where: { id }, data: { deletedAt: new Date() } });

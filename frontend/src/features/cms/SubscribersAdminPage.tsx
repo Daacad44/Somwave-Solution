@@ -58,7 +58,7 @@ export function SubscribersAdminPage(): ReactNode {
                   <Td className="text-muted">{formatDate(subscriber.createdAt)}</Td>
                   <Td>
                     <Badge tone={subscriber.isActive ? 'success' : 'neutral'}>
-                      {subscriber.isActive ? 'Active' : 'Joogsan'}
+                      {subscriber.isActive ? 'Active' : 'Inactive'}
                     </Badge>
                   </Td>
                   <Td>

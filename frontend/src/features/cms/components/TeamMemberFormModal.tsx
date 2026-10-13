@@ -95,8 +95,8 @@ export function TeamMemberFormModal({
   return (
     <Modal open={open} onClose={close} title={isEdit ? 'Edit team member' : 'New team member'}>
       <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
-        <Input label="Magaca" error={errors.name?.message} {...register('name')} />
-        <Input label="Jagada" error={errors.role?.message} {...register('role')} />
+        <Input label="Name" error={errors.name?.message} {...register('name')} />
+        <Input label="Role" error={errors.role?.message} {...register('role')} />
 
         <label className="flex flex-col gap-1">
           <span className="text-sm font-medium text-ink">Biography</span>
@@ -115,7 +115,7 @@ export function TeamMemberFormModal({
         />
         <div className="grid grid-cols-2 gap-3">
           <Input
-            label="LinkedIn (ikhtiyaari)"
+            label="LinkedIn (optional)"
             placeholder="https://"
             error={errors.linkedinUrl?.message}
             {...register('linkedinUrl')}
@@ -131,7 +131,7 @@ export function TeamMemberFormModal({
 
         <label className="flex items-center gap-2 text-base text-ink">
           <input type="checkbox" className="size-4 accent-primary" {...register('isPublished')} />
-          La daabaco (published)
+          Published
         </label>
 
         {serverError ? <p className="text-sm text-error">{serverError}</p> : null}

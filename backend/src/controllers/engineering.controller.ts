@@ -7,6 +7,9 @@ import type {
   CreateProjectPhaseInput,
   UpdateEngineerProfileInput,
   CreateEngineerAvailabilityInput,
+  InviteProjectEngineerInput,
+  RespondProjectInvitationInput,
+  ReassignProjectTasksInput,
 } from '@somwave/shared';
 import { AppError, sendData } from '../lib/http';
 import * as engineering from '../services/engineering.service';
@@ -178,6 +181,43 @@ export const createPhase = handle(
 );
 export const assignmentHistory = handle((req) =>
   engineering.listAssignmentHistory(projectId(req), actor(req)),
+);
+export const myInvitations = handle((req) => engineering.listMyProjectInvitations(actor(req)));
+export const projectInvitations = handle((req) =>
+  engineering.listProjectInvitations(projectId(req), actor(req)),
+);
+export const projectDependencies = handle((req) =>
+  engineering.listProjectDependencies(projectId(req), actor(req)),
+);
+export const inviteEngineer = handle(
+  (req) =>
+    engineering.inviteProjectEngineer(
+      projectId(req),
+      actor(req),
+      req.body as InviteProjectEngineerInput,
+    ),
+  201,
+);
+export const respondInvitation = handle((req) => {
+  const id = req.params.invitationId;
+  if (!id) throw new AppError('VALIDATION_ERROR', 400, 'Invitation ID is required');
+  return engineering.respondToProjectInvitation(
+    id,
+    actor(req),
+    req.body as RespondProjectInvitationInput,
+  );
+});
+export const cancelInvitation = handle((req) => {
+  const id = req.params.invitationId;
+  if (!id) throw new AppError('VALIDATION_ERROR', 400, 'Invitation ID is required');
+  return engineering.cancelProjectInvitation(projectId(req), id, actor(req));
+});
+export const reassignTasks = handle((req) =>
+  engineering.reassignProjectTasks(
+    projectId(req),
+    actor(req),
+    req.body as ReassignProjectTasksInput,
+  ),
 );
 export const analytics = handle((req) => getEngineeringAnalytics(actor(req)));
 export const engineerProfiles = handle((req) =>

@@ -32,6 +32,11 @@ engineeringOperationsRouter.post(
   controller.createSystem,
 );
 engineeringOperationsRouter.get(
+  '/systems/:systemId/health',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.listSystemHealth,
+);
+engineeringOperationsRouter.get(
   '/systems/:systemId/updates',
   rbac(PERMISSIONS.ENGINEERING_READ),
   controller.listUpdates,

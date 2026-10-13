@@ -8,6 +8,7 @@ import { useHasPermission } from '../../lib/rbac';
 import { useCurrentUser } from '../auth/hooks';
 import { listMilestones } from '../milestones/api';
 import { engineeringApi, type EngineeringTask } from './api';
+import { engineerApi } from './engineerApi';
 
 const TYPES = [
   'FEATURE',
@@ -27,16 +28,21 @@ const iso = (value: string) => (value ? new Date(value).toISOString() : null);
 
 function Timeline({
   tasks,
+  dependencies,
   canManage,
   moving,
   onMove,
+  onResize,
 }: {
   tasks: EngineeringTask[];
+  dependencies: Array<{ taskId: string; dependsOnId: string }>;
   canManage: boolean;
   moving: boolean;
   onMove: (task: EngineeringTask, days: number) => void;
+  onResize: (task: EngineeringTask, days: number) => void;
 }): ReactNode {
   const dragStartX = useRef<number | null>(null);
+  const resizeStartX = useRef<number | null>(null);
   const dated = tasks.filter((task) => task.dueDate);
   if (!dated.length) return <EmptyState title="Schedule tasks to see the timeline" />;
   const dates = dated.flatMap((task) => [
@@ -50,7 +56,8 @@ function Timeline({
     <div className="space-y-3 overflow-x-auto" aria-label="Project Gantt timeline">
       {canManage ? (
         <p className="text-xs text-muted">
-          Drag a bar or use its arrow keys to move a task by whole days.
+          Drag a bar to move it, or drag its right edge to resize. Use arrow keys to move and the
+          resize handle's arrow keys to change the due date.
         </p>
       ) : null}
       <div className="flex justify-between text-xs text-muted">
@@ -58,6 +65,10 @@ function Timeline({
         <span>{new Date(end).toLocaleDateString()}</span>
       </div>
       {dated.map((task) => {
+        const prerequisites = dependencies
+          .filter((edge) => edge.taskId === task.id)
+          .map((edge) => tasks.find((candidate) => candidate.id === edge.dependsOnId)?.title)
+          .filter(Boolean);
         const left = ((Date.parse(task.startDate ?? task.dueDate!) - start) / span) * 100;
         const width = Math.max(
           2,
@@ -71,7 +82,12 @@ function Timeline({
             className="grid min-w-96 grid-cols-[10rem_1fr] items-center gap-3 text-sm"
           >
             <span className="flex min-w-0 items-center gap-1" title={task.title}>
-              <span className="truncate">{task.title}</span>
+              <span className="min-w-0 truncate">
+                {task.title}
+                {prerequisites.length ? (
+                  <small className="block truncate text-muted">← {prerequisites.join(', ')}</small>
+                ) : null}
+              </span>
               {canManage ? (
                 <span className="ml-auto flex shrink-0 gap-1">
                   <button
@@ -126,6 +142,41 @@ function Timeline({
                   }
                 }}
               />
+              {canManage ? (
+                <button
+                  type="button"
+                  disabled={moving}
+                  className="absolute top-0 z-10 h-7 w-3 -translate-x-1/2 cursor-ew-resize rounded bg-brand/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand"
+                  style={{ left: `${Math.min(left + width, 100)}%`, touchAction: 'none' }}
+                  aria-label={`Resize ${task.title} due date`}
+                  title="Drag to resize; use left and right arrow keys for one-day changes"
+                  onPointerDown={(event) => {
+                    resizeStartX.current = event.clientX;
+                    event.currentTarget.setPointerCapture(event.pointerId);
+                  }}
+                  onPointerUp={(event) => {
+                    if (resizeStartX.current === null) return;
+                    const trackWidth =
+                      event.currentTarget.parentElement?.getBoundingClientRect().width ?? 0;
+                    if (trackWidth > 0) {
+                      const days = Math.round(
+                        (((event.clientX - resizeStartX.current) / trackWidth) * span) / 86400000,
+                      );
+                      if (days) onResize(task, days);
+                    }
+                    resizeStartX.current = null;
+                  }}
+                  onPointerCancel={() => {
+                    resizeStartX.current = null;
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                      event.preventDefault();
+                      onResize(task, event.key === 'ArrowLeft' ? -1 : 1);
+                    }
+                  }}
+                />
+              ) : null}
             </div>
           </div>
         );
@@ -204,6 +255,7 @@ function TaskDetail({
       'task-progress',
       'task-checklist',
       'task-dependencies',
+      'engineering-project-dependencies',
       'task-transitions',
       'task-hours',
       'task-attachments',
@@ -607,6 +659,16 @@ export function TaskPlanningPage(): ReactNode {
     queryFn: () => engineeringApi.members(selectedProjectId),
     enabled: Boolean(selectedProjectId),
   });
+  const projectDependencies = useQuery({
+    queryKey: ['engineering-project-dependencies', selectedProjectId],
+    queryFn: () => engineeringApi.projectDependencies(selectedProjectId),
+    enabled: Boolean(selectedProjectId),
+  });
+  const engineerCapacity = useQuery({
+    queryKey: ['engineer-team', selectedProjectId],
+    queryFn: () => engineerApi.team(selectedProjectId),
+    enabled: Boolean(selectedProjectId),
+  });
   const milestones = useQuery({
     queryKey: ['planning-milestones', selectedProjectId],
     queryFn: () => listMilestones({ page: 1, pageSize: 100, projectId: selectedProjectId }),
@@ -645,6 +707,21 @@ export function TaskPlanningPage(): ReactNode {
         task.id,
         shift(task.startDate ?? task.dueDate!),
         shift(task.dueDate!),
+        task.phaseId,
+      );
+    },
+    onSuccess: () =>
+      void client.invalidateQueries({ queryKey: ['engineering-tasks', selectedProjectId] }),
+    onError: (error: Error) => setMessage(error.message),
+  });
+  const resizeTimelineTask = useMutation({
+    mutationFn: ({ task, days }: { task: EngineeringTask; days: number }) => {
+      const earliest = Date.parse(task.startDate ?? task.dueDate!);
+      const adjusted = Math.max(earliest, Date.parse(task.dueDate!) + days * 86400000);
+      return engineeringApi.scheduleTask(
+        task.id,
+        task.startDate ?? task.dueDate,
+        new Date(adjusted).toISOString(),
         task.phaseId,
       );
     },
@@ -742,9 +819,11 @@ export function TaskPlanningPage(): ReactNode {
             ) : (
               <Timeline
                 tasks={tasks.data ?? []}
+                dependencies={projectDependencies.data ?? []}
                 canManage={canManage}
-                moving={moveTimelineTask.isPending}
+                moving={moveTimelineTask.isPending || resizeTimelineTask.isPending}
                 onMove={(task, days) => moveTimelineTask.mutate({ task, days })}
+                onResize={(task, days) => resizeTimelineTask.mutate({ task, days })}
               />
             )}
           </section>
@@ -757,6 +836,47 @@ export function TaskPlanningPage(): ReactNode {
                 </div>
               ))}
             </div>
+          </section>
+          <section className="rounded-lg border border-border bg-surface p-4">
+            <h2 className="text-lg font-semibold">Four-week capacity calendar</h2>
+            <p className="mt-1 text-sm text-muted">
+              Estimated hours across assigned projects compared with each engineer's weekly capacity
+              and time off.
+            </p>
+            {engineerCapacity.data?.length ? (
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full min-w-[38rem] text-left text-sm">
+                  <thead>
+                    <tr>
+                      <th className="p-2">Engineer</th>
+                      {engineerCapacity.data[0]?.weeklyCapacity.map((week) => (
+                        <th key={week.weekStart} className="p-2">
+                          {week.weekStart}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {engineerCapacity.data.map((member) => (
+                      <tr key={member.user.id} className="border-t border-border">
+                        <th className="p-2 font-medium">{member.user.name}</th>
+                        {member.weeklyCapacity.map((week) => (
+                          <td
+                            key={week.weekStart}
+                            className={`p-2 ${week.overbooked ? 'font-semibold text-error' : ''}`}
+                          >
+                            {week.estimatedHours} / {week.availableHours} h
+                            {week.overbooked ? ' · Over capacity' : ''}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="mt-2 text-sm text-muted">No engineer capacity data yet.</p>
+            )}
           </section>
           <div className="grid gap-4 lg:grid-cols-[20rem_1fr]">
             <aside className="rounded-lg border border-border bg-surface p-4">

@@ -39,6 +39,9 @@ function handle(action: Action, status = 200) {
 export const listSystems = handle((req) =>
   operations.listSystems(param(req, 'projectId'), actor(req)),
 );
+export const listSystemHealth = handle((req) =>
+  operations.listSystemHealth(param(req, 'systemId'), actor(req)),
+);
 export const createSystem = handle(
   (req) =>
     operations.createSystem(

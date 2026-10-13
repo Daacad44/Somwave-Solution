@@ -62,6 +62,27 @@ describe('engineering notification delivery', () => {
     expect(prisma.notification.create).not.toHaveBeenCalled();
   });
 
+  it('still queues the required invitation email when optional alerts are disabled', async () => {
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: 'user_1' } as never);
+    vi.mocked(prisma.notificationPreference.findUnique).mockResolvedValue({
+      inApp: false,
+      email: false,
+    } as never);
+    vi.mocked(prisma.notification.create).mockResolvedValue({ id: 'notification_1' } as never);
+    await emitNotification({
+      eventKey: 'project.assignment',
+      userId: 'user_1',
+      title: 'Invitation',
+      body: 'Accept your project invitation',
+      dedupeKey: 'invite:1',
+      requiredEmail: true,
+    });
+    expect(prisma.notificationDelivery.create).toHaveBeenCalledTimes(1);
+    expect(prisma.notificationDelivery.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ channel: 'EMAIL', dedupeKey: 'email:invite:1' }),
+    });
+  });
+
   it('marks a claimed email delivered after the mailer succeeds', async () => {
     vi.mocked(prisma.notificationDelivery.findMany).mockResolvedValue([
       {

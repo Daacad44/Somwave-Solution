@@ -15,6 +15,9 @@ import {
   taskAttachmentSchema,
   updateEngineerProfileSchema,
   createEngineerAvailabilitySchema,
+  inviteProjectEngineerSchema,
+  respondProjectInvitationSchema,
+  reassignProjectTasksSchema,
   PERMISSIONS,
 } from '@somwave/shared';
 import { requireAuth } from '../middleware/auth';
@@ -26,6 +29,17 @@ export const engineeringRouter: Router = Router();
 engineeringRouter.use(requireAuth);
 
 engineeringRouter.get('/projects', rbac(PERMISSIONS.ENGINEERING_READ), controller.myProjects);
+engineeringRouter.get(
+  '/invitations/me',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.myInvitations,
+);
+engineeringRouter.post(
+  '/invitations/:invitationId/respond',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  validate(respondProjectInvitationSchema),
+  controller.respondInvitation,
+);
 engineeringRouter.get(
   '/engineers/me/profile',
   rbac(PERMISSIONS.ENGINEERING_READ),
@@ -71,9 +85,36 @@ engineeringRouter.get(
   controller.members,
 );
 engineeringRouter.get(
+  '/projects/:projectId/dependencies',
+  rbac(PERMISSIONS.ENGINEERING_READ),
+  controller.projectDependencies,
+);
+engineeringRouter.get(
   '/projects/:projectId/eligible-engineers',
   rbac(PERMISSIONS.ENGINEERING_MANAGE),
   controller.eligibleEngineers,
+);
+engineeringRouter.get(
+  '/projects/:projectId/invitations',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  controller.projectInvitations,
+);
+engineeringRouter.post(
+  '/projects/:projectId/invitations',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  validate(inviteProjectEngineerSchema),
+  controller.inviteEngineer,
+);
+engineeringRouter.delete(
+  '/projects/:projectId/invitations/:invitationId',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  controller.cancelInvitation,
+);
+engineeringRouter.post(
+  '/projects/:projectId/reassign-tasks',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  validate(reassignProjectTasksSchema),
+  controller.reassignTasks,
 );
 engineeringRouter.post(
   '/projects/:projectId/members',

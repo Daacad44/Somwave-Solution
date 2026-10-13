@@ -27,6 +27,72 @@ const DOCUMENT_CATEGORIES = [
   'Handover',
 ];
 
+function MyInvitations(): ReactNode {
+  const client = useQueryClient();
+  const invitations = useQuery({
+    queryKey: ['my-project-invitations'],
+    queryFn: engineeringApi.myInvitations,
+  });
+  const [message, setMessage] = useState('');
+  const respond = useMutation({
+    mutationFn: ({ id, decision }: { id: string; decision: 'ACCEPT' | 'DECLINE' }) =>
+      engineeringApi.respondInvitation(id, decision),
+    onSuccess: (result) => {
+      setMessage(
+        result.status === 'ACCEPTED' ? 'Project invitation accepted.' : 'Invitation declined.',
+      );
+      void client.invalidateQueries({ queryKey: ['my-project-invitations'] });
+      void client.invalidateQueries({ queryKey: ['engineering-projects'] });
+      void client.invalidateQueries({ queryKey: ['engineering-metrics'] });
+    },
+    onError: (error: Error) => setMessage(error.message),
+  });
+  if (!invitations.data?.length && !message) return null;
+  return (
+    <section
+      className="rounded-lg border border-border bg-surface p-4"
+      aria-label="Project invitations"
+    >
+      <h2 className="text-lg font-semibold">Project invitations</h2>
+      {message ? (
+        <p role="status" className="mt-2 text-sm">
+          {message}
+        </p>
+      ) : null}
+      <ul className="mt-3 space-y-2">
+        {invitations.data?.map((invitation) => (
+          <li
+            key={invitation.id}
+            className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-surface-alt p-3"
+          >
+            <span>
+              <strong>{invitation.project.name}</strong> · {invitation.role.replaceAll('_', ' ')}
+              {invitation.responsibilities ? ` · ${invitation.responsibilities}` : ''}
+            </span>
+            <span className="flex gap-2">
+              <Button
+                size="sm"
+                disabled={respond.isPending}
+                onClick={() => respond.mutate({ id: invitation.id, decision: 'ACCEPT' })}
+              >
+                Accept
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={respond.isPending}
+                onClick={() => respond.mutate({ id: invitation.id, decision: 'DECLINE' })}
+              >
+                Decline
+              </Button>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function EngineeringWorkspacePage(): ReactNode {
   const client = useQueryClient();
   const { data: currentUser } = useCurrentUser();
@@ -49,7 +115,9 @@ export function EngineeringWorkspacePage(): ReactNode {
   const [message, setMessage] = useState('');
   const [systemId, setSystemId] = useState('');
   const [systemName, setSystemName] = useState('');
-  const [newMemberId, setNewMemberId] = useState('');
+  const [systemProductionUrl, setSystemProductionUrl] = useState('');
+  const [newMemberEmail, setNewMemberEmail] = useState('');
+  const [newMemberName, setNewMemberName] = useState('');
   const [newMemberRole, setNewMemberRole] = useState('ENGINEER');
   const [newMemberResponsibilities, setNewMemberResponsibilities] = useState('');
   const [bugTitle, setBugTitle] = useState('');
@@ -81,6 +149,11 @@ export function EngineeringWorkspacePage(): ReactNode {
   const eligibleEngineers = useQuery({
     queryKey: ['engineering-eligible-engineers', selectedId],
     queryFn: () => engineeringApi.eligibleEngineers(selectedId),
+    enabled: Boolean(selectedId && canManage),
+  });
+  const pendingInvitations = useQuery({
+    queryKey: ['engineering-invitations', selectedId],
+    queryFn: () => engineeringApi.projectInvitations(selectedId),
     enabled: Boolean(selectedId && canManage),
   });
   const documents = useQuery({
@@ -204,35 +277,40 @@ export function EngineeringWorkspacePage(): ReactNode {
     onError: (error: Error) => setMessage(error.message),
   });
   const systemAction = useMutation({
-    mutationFn: (name: string) => engineeringApi.createSystem(selectedId, name),
+    mutationFn: (name: string) =>
+      engineeringApi.createSystem(selectedId, name, systemProductionUrl),
     onSuccess: () => {
       setSystemName('');
+      setSystemProductionUrl('');
       setMessage('System added.');
       void client.invalidateQueries({ queryKey: ['engineering-systems', selectedId] });
     },
     onError: (error: Error) => setMessage(error.message),
   });
   const memberAction = useMutation({
-    mutationFn: async (
-      action:
-        | { kind: 'add'; userId: string; role: string; responsibilities: string }
-        | { kind: 'remove'; userId: string },
-    ) => {
-      if (action.kind === 'add')
-        await engineeringApi.addMember(
-          selectedId,
-          action.userId,
-          action.role,
-          action.responsibilities,
-        );
-      else await engineeringApi.removeMember(selectedId, action.userId);
-    },
+    mutationFn: (userId: string) => engineeringApi.removeMember(selectedId, userId),
     onSuccess: () => {
-      setNewMemberId('');
-      setNewMemberResponsibilities('');
       setMessage('Project team updated.');
       void client.invalidateQueries({ queryKey: ['engineering-members', selectedId] });
       void client.invalidateQueries({ queryKey: ['engineering-metrics'] });
+    },
+    onError: (error: Error) => setMessage(error.message),
+  });
+  const inviteAction = useMutation({
+    mutationFn: () =>
+      engineeringApi.inviteEngineer(
+        selectedId,
+        newMemberEmail,
+        newMemberName,
+        newMemberRole,
+        newMemberResponsibilities,
+      ),
+    onSuccess: () => {
+      setNewMemberEmail('');
+      setNewMemberName('');
+      setNewMemberResponsibilities('');
+      setMessage('Invitation queued for email. Project access begins after acceptance.');
+      void client.invalidateQueries({ queryKey: ['engineering-invitations', selectedId] });
     },
     onError: (error: Error) => setMessage(error.message),
   });
@@ -271,10 +349,13 @@ export function EngineeringWorkspacePage(): ReactNode {
   if (projects.isError) return <ErrorState onRetry={() => void projects.refetch()} />;
   if (!projects.data?.length)
     return (
-      <EmptyState
-        title="No assigned projects"
-        description="Ask a project manager to add you to a project."
-      />
+      <section className="space-y-4">
+        <MyInvitations />
+        <EmptyState
+          title="No assigned projects"
+          description="Accept a project invitation or ask a manager to invite you."
+        />
+      </section>
     );
 
   const createTask = (event: FormEvent): void => {
@@ -303,6 +384,7 @@ export function EngineeringWorkspacePage(): ReactNode {
 
   return (
     <section className="space-y-8">
+      <MyInvitations />
       <div>
         <h1 className="text-2xl font-semibold text-ink">Engineering Workspace</h1>
         <p className="mt-1 text-muted">
@@ -394,7 +476,7 @@ export function EngineeringWorkspacePage(): ReactNode {
                     size="sm"
                     variant="secondary"
                     disabled={memberAction.isPending}
-                    onClick={() => memberAction.mutate({ kind: 'remove', userId: member.user.id })}
+                    onClick={() => memberAction.mutate(member.user.id)}
                   >
                     Remove
                   </Button>
@@ -407,38 +489,69 @@ export function EngineeringWorkspacePage(): ReactNode {
         ) : (
           <p className="mt-2 text-sm text-muted">No team members assigned.</p>
         )}
+        {canManage && pendingInvitations.data?.length ? (
+          <div className="mt-4">
+            <h3 className="font-medium">Pending invitations</h3>
+            <ul className="mt-2 space-y-2 text-sm">
+              {pendingInvitations.data.map((invitation) => (
+                <li key={invitation.id} className="flex items-center justify-between gap-2">
+                  <span>
+                    {invitation.user.name} · {invitation.user.email} ·{' '}
+                    {invitation.role.replaceAll('_', ' ')}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      void engineeringApi
+                        .cancelInvitation(selectedId, invitation.id)
+                        .then(() => {
+                          void client.invalidateQueries({
+                            queryKey: ['engineering-invitations', selectedId],
+                          });
+                        })
+                        .catch((error: Error) => setMessage(error.message));
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         {canManage ? (
           <form
             className="mt-4 grid gap-3 sm:grid-cols-2"
             onSubmit={(event) => {
               event.preventDefault();
-              if (newMemberId)
-                memberAction.mutate({
-                  kind: 'add',
-                  userId: newMemberId,
-                  role: newMemberRole,
-                  responsibilities: newMemberResponsibilities,
-                });
+              if (newMemberEmail) inviteAction.mutate();
             }}
           >
-            <label className="text-sm font-medium">
-              Engineer
-              <select
-                className="mt-1 h-11 w-full rounded-md border border-border bg-surface px-3"
+            <div>
+              <Input
+                label="Engineer email"
+                type="email"
                 required
-                value={newMemberId}
-                onChange={(event) => setNewMemberId(event.target.value)}
-              >
-                <option value="">Select an engineer</option>
+                list="eligible-engineer-emails"
+                value={newMemberEmail}
+                onChange={(event) => setNewMemberEmail(event.target.value)}
+              />
+              <datalist id="eligible-engineer-emails">
                 {eligibleEngineers.data
                   ?.filter((user) => !members.data?.some((member) => member.user.id === user.id))
                   .map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name} · {user.email}
+                    <option key={user.id} value={user.email}>
+                      {user.name}
                     </option>
                   ))}
-              </select>
-            </label>
+              </datalist>
+            </div>
+            <Input
+              label="Engineer name (required for a new account)"
+              value={newMemberName}
+              onChange={(event) => setNewMemberName(event.target.value)}
+            />
             <label className="text-sm font-medium">
               Project role
               <select
@@ -459,8 +572,8 @@ export function EngineeringWorkspacePage(): ReactNode {
               onChange={(event) => setNewMemberResponsibilities(event.target.value)}
             />
             <div className="flex items-end">
-              <Button type="submit" disabled={memberAction.isPending || !newMemberId}>
-                Assign engineer
+              <Button type="submit" disabled={inviteAction.isPending || !newMemberEmail}>
+                Invite engineer
               </Button>
             </div>
           </form>
@@ -783,6 +896,12 @@ export function EngineeringWorkspacePage(): ReactNode {
               required
               value={systemName}
               onChange={(event) => setSystemName(event.target.value)}
+            />
+            <Input
+              label="Production HTTPS URL (optional)"
+              type="url"
+              value={systemProductionUrl}
+              onChange={(event) => setSystemProductionUrl(event.target.value)}
             />
             <Button type="submit" disabled={systemAction.isPending}>
               Add system

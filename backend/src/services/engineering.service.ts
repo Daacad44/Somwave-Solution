@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client';
+import { randomBytes } from 'node:crypto';
 import type {
   AddProjectMemberInput,
   CreateEngineeringTaskInput,
@@ -7,6 +8,9 @@ import type {
   CreateProjectPhaseInput,
   UpdateEngineerProfileInput,
   CreateEngineerAvailabilityInput,
+  InviteProjectEngineerInput,
+  RespondProjectInvitationInput,
+  ReassignProjectTasksInput,
 } from '@somwave/shared';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
@@ -14,6 +18,12 @@ import { logger } from '../lib/logger';
 import { emitNotification, type NotificationInput } from './notification-delivery.service';
 import { decodeProjectFile } from './project-documentation.service';
 import { putObject, readObject } from '../lib/storage';
+import { env } from '../lib/env';
+import { calculateWeeklyCapacity } from './engineering-capacity.service';
+import { hashPassword } from '../lib/password';
+import { generateRefreshToken, hashRefreshToken } from '../lib/tokens';
+import { sendMail } from '../lib/mailer';
+import { ENGINEER_ACCOUNT_INVITE_V1 } from '../mail/templates';
 
 async function notifyAfterWrite(input: NotificationInput): Promise<void> {
   try {
@@ -224,6 +234,276 @@ export async function listEligibleEngineers(
   });
 }
 
+export async function listMyProjectInvitations(actor: EngineeringActor) {
+  return prisma.projectInvitation.findMany({
+    where: { userId: actor.id, status: 'PENDING', project: { deletedAt: null } },
+    select: {
+      id: true,
+      projectId: true,
+      role: true,
+      responsibilities: true,
+      status: true,
+      invitedAt: true,
+      project: { select: { name: true } },
+    },
+    orderBy: { invitedAt: 'desc' },
+  });
+}
+
+export async function listProjectInvitations(projectId: string, actor: EngineeringActor) {
+  await requireManager(projectId, actor);
+  return prisma.projectInvitation.findMany({
+    where: { projectId, status: 'PENDING' },
+    select: {
+      id: true,
+      role: true,
+      responsibilities: true,
+      invitedAt: true,
+      user: { select: { id: true, name: true, email: true } },
+    },
+    orderBy: { invitedAt: 'desc' },
+  });
+}
+
+async function createEngineerAccount(email: string, name: string) {
+  if (!env.SMTP_HOST || !env.SMTP_FROM || !env.APP_PUBLIC_URL)
+    throw new AppError(
+      'SERVICE_UNAVAILABLE',
+      503,
+      'SMTP and APP_PUBLIC_URL must be configured before inviting a new engineer account',
+    );
+  const engineerRole = await prisma.role.findUnique({
+    where: { name: 'ENGINEER' },
+    select: { id: true },
+  });
+  if (!engineerRole)
+    throw new AppError('SERVICE_UNAVAILABLE', 503, 'ENGINEER role is not configured');
+  const token = generateRefreshToken();
+  const user = await prisma.user.create({
+    data: {
+      email,
+      name,
+      passwordHash: await hashPassword(randomBytes(32).toString('hex')),
+      roles: { create: { roleId: engineerRole.id } },
+      passwordResets: {
+        create: {
+          tokenHash: hashRefreshToken(token),
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        },
+      },
+    },
+    select: { id: true, name: true, email: true },
+  });
+  const setupUrl = new URL('/reset-password', env.APP_PUBLIC_URL);
+  setupUrl.searchParams.set('token', token);
+  return { user, setupUrl: setupUrl.toString() };
+}
+
+export async function inviteProjectEngineer(
+  projectId: string,
+  actor: EngineeringActor,
+  input: InviteProjectEngineerInput,
+) {
+  const { project } = await requireManager(projectId, actor);
+  let setupUrl: string | null = null;
+  let newAccountId: string | null = null;
+  let user = await prisma.user.findFirst({
+    where: {
+      email: { equals: input.email, mode: 'insensitive' },
+      isActive: true,
+      deletedAt: null,
+      roles: { some: { role: { name: { in: ['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER'] } } } },
+    },
+    select: { id: true, name: true, email: true },
+  });
+  if (!user) {
+    const anyAccount = await prisma.user.findFirst({
+      where: { email: { equals: input.email, mode: 'insensitive' } },
+      select: { id: true },
+    });
+    if (anyAccount)
+      throw new AppError('CONFLICT', 409, 'Email belongs to an inactive or non-engineer account');
+    if (!input.name)
+      throw new AppError('VALIDATION_ERROR', 400, 'Name is required for a new engineer account');
+    const created = await createEngineerAccount(input.email, input.name);
+    user = created.user;
+    setupUrl = created.setupUrl;
+    newAccountId = user.id;
+  }
+  const existing = await prisma.projectMember.findUnique({
+    where: { projectId_userId: { projectId, userId: user.id } },
+    select: { removedAt: true, role: true },
+  });
+  if (existing && !existing.removedAt && ENGINEER_ROLES.has(existing.role))
+    throw new AppError('CONFLICT', 409, 'Engineer is already assigned to this project');
+
+  let invitation: { id: string; invitedAt: Date };
+  try {
+    invitation = await prisma.$transaction(async (tx) => {
+      const row = await tx.projectInvitation.upsert({
+        where: { projectId_userId: { projectId, userId: user.id } },
+        create: {
+          projectId,
+          userId: user.id,
+          role: input.role,
+          responsibilities: input.responsibilities ?? null,
+        },
+        update: {
+          role: input.role,
+          responsibilities: input.responsibilities ?? null,
+          status: 'PENDING',
+          invitedAt: new Date(),
+          respondedAt: null,
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorId: actor.id,
+          action: 'project.invitation.send',
+          subjectType: 'ProjectInvitation',
+          subjectId: row.id,
+        },
+      });
+      await tx.projectAssignmentEvent.create({
+        data: {
+          projectId,
+          userId: user.id,
+          actorId: actor.id,
+          action: 'INVITED',
+          role: input.role,
+        },
+      });
+      return row;
+    });
+  } catch (error) {
+    if (newAccountId) await prisma.user.delete({ where: { id: newAccountId } });
+    throw error;
+  }
+  if (setupUrl) {
+    try {
+      const result = await sendMail({
+        to: user.email,
+        template: ENGINEER_ACCOUNT_INVITE_V1,
+        vars: { setupUrl, projectName: project.name },
+      });
+      if (!result.sent) throw new Error('Setup email was not sent');
+    } catch (error) {
+      logger.error({ err: error }, 'Engineer account setup email failed');
+      if (newAccountId) await prisma.user.delete({ where: { id: newAccountId } });
+      throw new AppError('SERVICE_UNAVAILABLE', 503, 'Could not send engineer account setup email');
+    }
+  }
+  const appLink = env.APP_PUBLIC_URL
+    ? ` Open ${new URL('/engineering', env.APP_PUBLIC_URL).toString()} to accept or decline.`
+    : ' Sign in to Somwave and open Engineering to accept or decline.';
+  try {
+    await emitNotification({
+      eventKey: 'project.assignment',
+      userId: user.id,
+      title: `Project invitation: ${project.name}`,
+      body: `You have been invited to join ${project.name} as ${input.role.replaceAll('_', ' ').toLowerCase()}.${appLink}`,
+      dedupeKey: `project-invitation:${invitation.id}:${invitation.invitedAt.toISOString()}`,
+      requiredEmail: true,
+    });
+  } catch (error) {
+    if (!setupUrl) throw error;
+    logger.error(
+      { err: error, invitationId: invitation.id },
+      'Additional invitation notification enqueue failed',
+    );
+  }
+  return { id: invitation.id, projectId, userId: user.id, email: user.email, status: 'PENDING' };
+}
+
+export async function respondToProjectInvitation(
+  invitationId: string,
+  actor: EngineeringActor,
+  input: RespondProjectInvitationInput,
+) {
+  const invitation = await prisma.projectInvitation.findFirst({
+    where: {
+      id: invitationId,
+      userId: actor.id,
+      status: 'PENDING',
+      project: { deletedAt: null },
+    },
+  });
+  if (!invitation) throw new AppError('NOT_FOUND', 404, 'Pending invitation not found');
+  const status = input.decision === 'ACCEPT' ? 'ACCEPTED' : 'DECLINED';
+  return prisma.$transaction(async (tx) => {
+    const claimed = await tx.projectInvitation.updateMany({
+      where: { id: invitation.id, userId: actor.id, status: 'PENDING' },
+      data: { status, respondedAt: new Date() },
+    });
+    if (!claimed.count) throw new AppError('CONFLICT', 409, 'Invitation was already answered');
+    if (status === 'ACCEPTED') {
+      if (invitation.role === 'LEAD_ENGINEER') {
+        await tx.projectMember.updateMany({
+          where: { projectId: invitation.projectId, role: 'LEAD_ENGINEER', removedAt: null },
+          data: { role: 'ENGINEER' },
+        });
+      }
+      await tx.projectMember.upsert({
+        where: {
+          projectId_userId: { projectId: invitation.projectId, userId: actor.id },
+        },
+        create: {
+          projectId: invitation.projectId,
+          userId: actor.id,
+          role: invitation.role,
+          responsibilities: invitation.responsibilities,
+        },
+        update: {
+          role: invitation.role,
+          responsibilities: invitation.responsibilities,
+          removedAt: null,
+          assignedAt: new Date(),
+        },
+      });
+    }
+    await tx.auditLog.create({
+      data: {
+        actorId: actor.id,
+        action: status === 'ACCEPTED' ? 'project.invitation.accept' : 'project.invitation.decline',
+        subjectType: 'ProjectInvitation',
+        subjectId: invitation.id,
+      },
+    });
+    await tx.projectAssignmentEvent.create({
+      data: {
+        projectId: invitation.projectId,
+        userId: actor.id,
+        actorId: actor.id,
+        action: status,
+        role: invitation.role,
+      },
+    });
+    return { id: invitation.id, projectId: invitation.projectId, status };
+  });
+}
+
+export async function cancelProjectInvitation(
+  projectId: string,
+  invitationId: string,
+  actor: EngineeringActor,
+) {
+  await requireManager(projectId, actor);
+  const claimed = await prisma.projectInvitation.updateMany({
+    where: { id: invitationId, projectId, status: 'PENDING' },
+    data: { status: 'CANCELLED', respondedAt: new Date() },
+  });
+  if (!claimed.count) throw new AppError('NOT_FOUND', 404, 'Pending invitation not found');
+  await prisma.auditLog.create({
+    data: {
+      actorId: actor.id,
+      action: 'project.invitation.cancel',
+      subjectType: 'ProjectInvitation',
+      subjectId: invitationId,
+    },
+  });
+  return { success: true };
+}
+
 export async function addProjectMember(
   projectId: string,
   actor: EngineeringActor,
@@ -232,9 +512,16 @@ export async function addProjectMember(
   await requireManager(projectId, actor);
   const user = await prisma.user.findFirst({
     where: { id: input.userId, isActive: true, deletedAt: null },
-    select: { id: true },
+    select: { id: true, email: true },
   });
   if (!user) throw new AppError('VALIDATION_ERROR', 400, 'Active user not found');
+  if (ENGINEER_ROLES.has(input.role)) {
+    return inviteProjectEngineer(projectId, actor, {
+      email: user.email,
+      role: input.role as 'ENGINEER' | 'LEAD_ENGINEER' | 'QA_ENGINEER',
+      responsibilities: input.responsibilities,
+    });
+  }
   const member = await prisma.$transaction(async (tx) => {
     if (input.role === 'LEAD_ENGINEER') {
       await tx.projectMember.updateMany({
@@ -306,6 +593,8 @@ export async function updateProjectMember(
   });
   if (!existing || existing.removedAt)
     throw new AppError('NOT_FOUND', 404, 'Project member not found');
+  if (input.role && ENGINEER_ROLES.has(input.role) && !ENGINEER_ROLES.has(existing.role))
+    throw new AppError('CONFLICT', 409, 'Invite this engineer and wait for acceptance');
   return prisma.$transaction(async (tx) => {
     if (input.role === 'LEAD_ENGINEER') {
       await tx.projectMember.updateMany({
@@ -470,7 +759,7 @@ export async function removeMyAvailability(actor: EngineeringActor, slotId: stri
 }
 
 export async function listProjectEngineerProfiles(projectId: string, actor: EngineeringActor) {
-  await requireView(projectId, actor);
+  const { manage } = await requireView(projectId, actor);
   const members = await prisma.projectMember.findMany({
     where: {
       projectId,
@@ -497,16 +786,118 @@ export async function listProjectEngineerProfiles(projectId: string, actor: Engi
     orderBy: { assignedAt: 'asc' },
   });
   const tasks = await prisma.task.findMany({
-    where: { projectId, deletedAt: null, status: { notIn: ['DONE', 'CANCELLED'] } },
-    select: { assigneeId: true, estimatedHours: true },
+    where: {
+      assigneeId: { in: members.map((member) => member.user.id) },
+      ...(!manage ? { projectId } : {}),
+      deletedAt: null,
+      status: { notIn: ['DONE', 'CANCELLED'] },
+    },
+    select: {
+      projectId: true,
+      assigneeId: true,
+      estimatedHours: true,
+      startDate: true,
+      dueDate: true,
+    },
   });
   return members.map((member) => ({
     ...member,
-    activeTaskCount: tasks.filter((task) => task.assigneeId === member.user.id).length,
+    user: {
+      ...member.user,
+      availabilitySlots: manage || member.user.id === actor.id ? member.user.availabilitySlots : [],
+    },
+    activeTaskCount: tasks.filter(
+      (task) => task.projectId === projectId && task.assigneeId === member.user.id,
+    ).length,
     estimatedOpenHours: tasks
+      .filter((task) => task.projectId === projectId && task.assigneeId === member.user.id)
+      .reduce((sum, task) => sum + Number(task.estimatedHours ?? 0), 0),
+    estimatedAllProjectsHours: tasks
       .filter((task) => task.assigneeId === member.user.id)
       .reduce((sum, task) => sum + Number(task.estimatedHours ?? 0), 0),
+    weeklyCapacity: calculateWeeklyCapacity(
+      tasks
+        .filter((task) => task.assigneeId === member.user.id)
+        .map((task) => ({
+          startDate: task.startDate,
+          dueDate: task.dueDate,
+          estimatedHours: Number(task.estimatedHours ?? 0),
+        })),
+      manage || member.user.id === actor.id ? member.user.availabilitySlots : [],
+      Number(member.user.engineerProfile?.weeklyCapacityHours ?? 40),
+      member.user.engineerProfile?.availability ?? 'AVAILABLE',
+    ),
   }));
+}
+
+export async function reassignProjectTasks(
+  projectId: string,
+  actor: EngineeringActor,
+  input: ReassignProjectTasksInput,
+) {
+  const { project } = await requireManager(projectId, actor);
+  if (input.fromUserId === input.toUserId)
+    throw new AppError('VALIDATION_ERROR', 400, 'Choose a different engineer');
+  const members = await prisma.projectMember.findMany({
+    where: {
+      projectId,
+      userId: { in: [input.fromUserId, input.toUserId] },
+      removedAt: null,
+      role: { in: ['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER'] },
+      user: { isActive: true, deletedAt: null },
+    },
+    select: { userId: true },
+  });
+  if (members.length !== 2)
+    throw new AppError('VALIDATION_ERROR', 400, 'Both engineers must be active project members');
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.task.updateMany({
+      where: {
+        projectId,
+        assigneeId: input.fromUserId,
+        deletedAt: null,
+        status: { notIn: ['DONE', 'CANCELLED'] },
+      },
+      data: { assigneeId: input.toUserId },
+    });
+    await tx.auditLog.create({
+      data: {
+        actorId: actor.id,
+        action: 'project.tasks.reassign',
+        subjectType: 'Project',
+        subjectId: projectId,
+      },
+    });
+    await tx.projectAssignmentEvent.create({
+      data: {
+        projectId,
+        userId: input.toUserId,
+        actorId: actor.id,
+        action: 'TASKS_REASSIGNED',
+        role: 'ENGINEER',
+      },
+    });
+    await tx.projectAssignmentEvent.create({
+      data: {
+        projectId,
+        userId: input.fromUserId,
+        actorId: actor.id,
+        action: 'TASKS_TRANSFERRED_OUT',
+        role: 'ENGINEER',
+      },
+    });
+    return result.count;
+  });
+  if (updated) {
+    await notifyAfterWrite({
+      eventKey: 'task.assignment',
+      userId: input.toUserId,
+      title: `Tasks reassigned in ${project.name}`,
+      body: `${updated} open task${updated === 1 ? '' : 's'} were reassigned to you in ${project.name}.`,
+      dedupeKey: `project-reassignment:${projectId}:${input.toUserId}:${Date.now()}`,
+    });
+  }
+  return { reassignedCount: updated };
 }
 
 export async function listProjectEngineeringTasks(projectId: string, actor: EngineeringActor) {
@@ -602,6 +993,14 @@ export async function createEngineeringTask(
     });
     if (count !== uniqueIds.length)
       throw new AppError('VALIDATION_ERROR', 400, 'Dependencies must belong to this project');
+    if (input.startDate) {
+      const prerequisites = await prisma.task.findMany({
+        where: { id: { in: uniqueIds }, projectId, deletedAt: null },
+        select: { dueDate: true },
+      });
+      if (prerequisites.some((task) => task.dueDate && task.dueDate > new Date(input.startDate!)))
+        throw new AppError('CONFLICT', 409, 'Prerequisite must finish before task starts');
+    }
   }
   return prisma.task.create({
     data: {
@@ -943,6 +1342,17 @@ export async function listTaskDependencies(taskId: string, actor: EngineeringAct
   });
 }
 
+export async function listProjectDependencies(projectId: string, actor: EngineeringActor) {
+  await requireView(projectId, actor);
+  return prisma.taskDependency.findMany({
+    where: {
+      task: { projectId, deletedAt: null },
+      dependsOn: { projectId, deletedAt: null },
+    },
+    select: { taskId: true, dependsOnId: true },
+  });
+}
+
 export async function addTaskDependency(
   taskId: string,
   actor: EngineeringActor,
@@ -954,9 +1364,12 @@ export async function addTaskDependency(
     throw new AppError('VALIDATION_ERROR', 400, 'A task cannot depend on itself');
   const prerequisite = await prisma.task.findFirst({
     where: { id: dependsOnId, projectId: task.projectId, deletedAt: null },
-    select: { id: true },
+    select: { id: true, dueDate: true },
   });
   if (!prerequisite) throw new AppError('NOT_FOUND', 404, 'Prerequisite task not found');
+  if (prerequisite.dueDate && task.startDate && prerequisite.dueDate > task.startDate) {
+    throw new AppError('CONFLICT', 409, 'Prerequisite task must finish before this task starts');
+  }
   const edges = await prisma.taskDependency.findMany({
     where: { task: { projectId: task.projectId } },
     select: { taskId: true, dependsOnId: true },
@@ -1017,6 +1430,12 @@ export async function verifyTaskQa(taskId: string, actor: EngineeringActor) {
     throw new AppError('FORBIDDEN', 403, 'An independent QA reviewer is required');
   if (task.status !== 'TESTING' || task.approvalStatus !== 'APPROVED')
     throw new AppError('CONFLICT', 409, 'Task must be approved and in testing');
+  const checkRuns = await prisma.gitHubTaskLink.findMany({
+    where: { taskId, kind: 'CHECK_RUN' },
+    select: { state: true },
+  });
+  if (checkRuns.some((check) => check.state !== 'SUCCESS'))
+    throw new AppError('CONFLICT', 409, 'Linked CI checks must succeed before QA verification');
   const changed = await prisma.task.updateMany({
     where: { id: taskId, status: 'TESTING', qaVerifiedAt: null },
     data: { qaVerifiedAt: new Date(), qaVerifiedById: actor.id },
@@ -1051,11 +1470,41 @@ export async function scheduleTask(
     });
     if (!phase) throw new AppError('VALIDATION_ERROR', 400, 'Phase must belong to this project');
   }
+  const startDate = input.startDate ? new Date(input.startDate) : null;
+  const dueDate = input.dueDate ? new Date(input.dueDate) : null;
+  const [prerequisites, dependents] = await Promise.all([
+    prisma.taskDependency.findMany({
+      where: { taskId },
+      select: { dependsOn: { select: { title: true, dueDate: true } } },
+    }),
+    prisma.taskDependency.findMany({
+      where: { dependsOnId: taskId },
+      select: { task: { select: { title: true, startDate: true } } },
+    }),
+  ]);
+  const latePrerequisite = prerequisites.find(
+    (edge) => startDate && edge.dependsOn.dueDate && edge.dependsOn.dueDate > startDate,
+  );
+  if (latePrerequisite)
+    throw new AppError(
+      'CONFLICT',
+      409,
+      `Prerequisite ${latePrerequisite.dependsOn.title} must finish before this task starts`,
+    );
+  const earlyDependent = dependents.find(
+    (edge) => dueDate && edge.task.startDate && dueDate > edge.task.startDate,
+  );
+  if (earlyDependent)
+    throw new AppError(
+      'CONFLICT',
+      409,
+      `This task must finish before dependent ${earlyDependent.task.title} starts`,
+    );
   const updated = await prisma.task.update({
     where: { id: taskId },
     data: {
-      startDate: input.startDate ? new Date(input.startDate) : null,
-      dueDate: input.dueDate ? new Date(input.dueDate) : null,
+      startDate,
+      dueDate,
       ...(input.phaseId !== undefined ? { phaseId: input.phaseId } : {}),
     },
   });

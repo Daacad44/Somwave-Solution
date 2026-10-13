@@ -245,7 +245,7 @@ export function AppShell(): ReactNode {
           >
             <Menu className="h-5 w-5" aria-hidden="true" />
           </button>
-          <GlobalSearch />
+          <GlobalSearch language={user?.roles.includes('CLIENT') ? 'so' : 'en'} />
           <div className="ms-auto flex items-center gap-2">
             <button
               type="button"

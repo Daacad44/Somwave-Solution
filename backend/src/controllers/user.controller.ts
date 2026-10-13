@@ -40,7 +40,7 @@ export async function get(req: Request, res: Response, next: NextFunction): Prom
 
 export async function create(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const user = await userService.createUser(req.body as CreateUserInput);
+    const user = await userService.createUser(req.body as CreateUserInput, req.authUser!);
     sendData(res, user, 201);
   } catch (err) {
     next(err);
@@ -51,7 +51,7 @@ export async function update(req: Request, res: Response, next: NextFunction): P
   try {
     const { id } = req.params;
     if (!id) throw new AppError('NOT_FOUND', 404, 'User not found');
-    const user = await userService.updateUser(id, req.body as UpdateUserInput);
+    const user = await userService.updateUser(id, req.body as UpdateUserInput, req.authUser!);
     sendData(res, user);
   } catch (err) {
     next(err);
@@ -62,7 +62,7 @@ export async function remove(req: Request, res: Response, next: NextFunction): P
   try {
     const { id } = req.params;
     if (!id) throw new AppError('NOT_FOUND', 404, 'User not found');
-    await userService.deactivateUser(id, req.authUser!.id);
+    await userService.deactivateUser(id, req.authUser!);
     sendData(res, { success: true });
   } catch (err) {
     next(err);

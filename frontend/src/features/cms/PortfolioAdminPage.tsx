@@ -39,7 +39,7 @@ export function PortfolioAdminPage(): ReactNode {
     <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-ink">Shaqooyinka (CMS)</h1>
+          <h1 className="text-2xl font-semibold text-ink">Portfolio (CMS)</h1>
           <p className="mt-1 text-base text-muted">Manage portfolio items shown on the website.</p>
         </div>
         {canCreate ? <Button onClick={openCreate}>New portfolio item</Button> : null}
@@ -79,7 +79,7 @@ export function PortfolioAdminPage(): ReactNode {
                   <Td>{item.order}</Td>
                   <Td>
                     <Badge tone={item.isPublished ? 'success' : 'neutral'}>
-                      {item.isPublished ? 'La daabacay' : 'Qabyo'}
+                      {item.isPublished ? 'Published' : 'Draft'}
                     </Badge>
                   </Td>
                   <Td>

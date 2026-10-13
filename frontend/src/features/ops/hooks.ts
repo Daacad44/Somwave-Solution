@@ -19,6 +19,7 @@ import {
   listApplications,
   updateApplication,
   listClients,
+  listClientsPage,
   createClient,
   getClientProfile,
   listTimesheets,
@@ -100,6 +101,12 @@ export function useClients(options?: { enabled?: boolean }) {
     queryKey: ['clients'],
     queryFn: listClients,
     enabled: options?.enabled ?? true,
+  });
+}
+export function useClientsPage(params: { page: number; pageSize: number; search?: string }) {
+  return useQuery({
+    queryKey: ['clients', 'page', params],
+    queryFn: () => listClientsPage(params),
   });
 }
 export function useClientProfile(id: string | undefined) {
@@ -328,8 +335,8 @@ export function useUpdateLeave() {
     onSuccess: () => client.invalidateQueries({ queryKey: ['leave'] }),
   });
 }
-export function useDocuments() {
-  return useQuery({ queryKey: ['documents'], queryFn: listDocuments });
+export function useDocuments(params: { page: number; pageSize: number; search?: string }) {
+  return useQuery({ queryKey: ['documents', params], queryFn: () => listDocuments(params) });
 }
 export function useCreateDocument() {
   const client = useQueryClient();

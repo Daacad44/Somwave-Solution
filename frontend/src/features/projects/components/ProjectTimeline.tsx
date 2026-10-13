@@ -12,9 +12,9 @@ type Mark = {
 };
 
 const KIND_LABEL: Record<Mark['kind'], string> = {
-  project: 'Mashruuc',
-  task: 'Hawl',
-  milestone: 'Marxalad',
+  project: 'Project',
+  task: 'Task',
+  milestone: 'Milestone',
 };
 
 function parseTime(value: string | null | undefined): number | null {
@@ -27,11 +27,14 @@ export function ProjectTimeline({
   project,
   tasks,
   milestones,
+  language = 'en',
 }: {
   project: { name: string; startDate: string | null; dueDate: string | null };
   tasks: readonly AdminTask[];
   milestones: readonly AdminMilestone[];
+  language?: 'en' | 'so';
 }): ReactNode {
+  const t = (english: string, somali: string): string => (language === 'so' ? somali : english);
   const marks: Mark[] = [];
   const projectStart = parseTime(project.startDate);
   const projectEnd = parseTime(project.dueDate);
@@ -64,8 +67,11 @@ export function ProjectTimeline({
   if (marks.length === 0) {
     return (
       <EmptyState
-        title="Jadwal ma jiro"
-        description="Ku dar taariikh billow ama dhammaad mashruuca, hawlaha, ama marxaladaha si ay halkan uga muuqdaan."
+        title={t('No schedule yet', 'Jadwal ma jiro')}
+        description={t(
+          'Add start or due dates to the project, tasks, or milestones to see them here.',
+          'Ku dar taariikh billow ama dhammaad mashruuca, hawlaha, ama marxaladaha si ay halkan uga muuqdaan.',
+        )}
       />
     );
   }
@@ -90,7 +96,12 @@ export function ProjectTimeline({
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-ink">{mark.label}</p>
                   <p className="text-xs text-muted">
-                    {KIND_LABEL[mark.kind]} · {formatLongDate(new Date(mark.end).toISOString())}
+                    {language === 'so'
+                      ? ({ project: 'Mashruuc', task: 'Hawl', milestone: 'Marxalad' } as const)[
+                          mark.kind
+                        ]
+                      : KIND_LABEL[mark.kind]}{' '}
+                    · {formatLongDate(new Date(mark.end).toISOString())}
                   </p>
                 </div>
                 <div className="relative h-8 rounded-md bg-canvas">
@@ -115,7 +126,10 @@ export function ProjectTimeline({
       </div>
       {unscheduled.length > 0 ? (
         <p className="mt-4 text-sm text-muted">
-          {unscheduled.length} hawlood oo aan lahayn taariikh dhammaad ah kuma jiraan jadwalka.
+          {t(
+            `${unscheduled.length} tasks without due dates are not shown on the timeline.`,
+            `${unscheduled.length} hawlood oo aan lahayn taariikh dhammaad ah kuma jiraan jadwalka.`,
+          )}
         </p>
       ) : null}
     </div>

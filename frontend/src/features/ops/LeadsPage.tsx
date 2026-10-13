@@ -51,7 +51,7 @@ export function LeadsPage(): ReactNode {
               <Tr>
                 <Th>Name</Th>
                 <Th>Email</Th>
-                <Th>Fariin</Th>
+                <Th>Message</Th>
                 <Th>Date</Th>
                 <Th>Status</Th>
                 <Th className="text-end">Action</Th>
@@ -89,7 +89,7 @@ export function LeadsPage(): ReactNode {
                         to={`/clients/${row.convertedClientId}`}
                         className="text-sm font-medium text-brand hover:underline"
                       >
-                        Macmiilka
+                        Client
                       </Link>
                     ) : canUpdate && canCreateClient ? (
                       <Button
@@ -101,14 +101,12 @@ export function LeadsPage(): ReactNode {
                           convert.mutate(row.id, {
                             onError: (err) =>
                               setConvertError(
-                                err instanceof ApiError
-                                  ? err.message
-                                  : 'Lead-ka lama beddeli karin.',
+                                err instanceof ApiError ? err.message : 'Could not convert lead.',
                               ),
                           });
                         }}
                       >
-                        U beddel macmiil
+                        Convert to client
                       </Button>
                     ) : (
                       '—'

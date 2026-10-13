@@ -19,6 +19,7 @@ export const NOTIFICATION_EVENTS = [
   'maintenance.schedule',
   'sla.breach',
   'system.update',
+  'system.health',
 ] as const;
 
 export type NotificationEvent = (typeof NOTIFICATION_EVENTS)[number];
@@ -30,6 +31,8 @@ export interface NotificationInput {
   body: string;
   /** Stable key for the business event and recipient; repeated calls are ignored. */
   dedupeKey: string;
+  /** Transactional invitations must reach email even when optional alerts are disabled. */
+  requiredEmail?: boolean;
 }
 
 export async function emitNotification(input: NotificationInput): Promise<void> {
@@ -42,9 +45,10 @@ export async function emitNotification(input: NotificationInput): Promise<void> 
       where: { userId_eventKey: { userId: input.userId, eventKey: input.eventKey } },
     }),
   ]);
-  if (!user || (preference?.inApp === false && preference.email === false)) return;
+  if (!user || (preference?.inApp === false && preference.email === false && !input.requiredEmail))
+    return;
   const inApp = preference?.inApp ?? true;
-  const email = preference?.email ?? true;
+  const email = input.requiredEmail || (preference?.email ?? true);
   try {
     await prisma.$transaction(async (tx) => {
       const notification = await tx.notification.create({

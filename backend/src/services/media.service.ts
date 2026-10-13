@@ -1,7 +1,7 @@
 import type { AdminMediaAsset, CreateMediaAssetInput } from '@somwave/shared';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
-import { decodeUpload, getObject, putObject } from '../lib/storage';
+import { decodeUpload, readObject, putObject } from '../lib/storage';
 
 function toAdmin(row: {
   id: string;
@@ -45,7 +45,7 @@ export async function getMediaFile(
 ): Promise<{ bytes: Buffer; mimeType: string; fileName: string }> {
   const row = await prisma.mediaAsset.findUnique({ where: { id } });
   if (!row) throw new AppError('NOT_FOUND', 404, 'Image not found');
-  const bytes = getObject(row.storageKey);
+  const bytes = await readObject(row.storageKey);
   if (!bytes) throw new AppError('NOT_FOUND', 404, 'Image not found');
   return { bytes, mimeType: row.mimeType, fileName: row.fileName };
 }

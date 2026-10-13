@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Prisma } from '@prisma/client';
+import type { AuthUser } from '@somwave/shared';
 
 vi.mock('../lib/prisma', () => ({
   prisma: {
@@ -25,7 +26,20 @@ import {
   updateProject,
   deleteProject,
   listProjects,
+  getProjectWorkspace,
 } from './project.service';
+
+const admin: AuthUser = {
+  id: 'admin_1',
+  name: 'Admin',
+  email: 'admin@example.com',
+  roles: ['ADMIN'],
+  permissions: [],
+  clientId: null,
+  twoFactorEnabled: false,
+  twoFactorRequired: false,
+};
+const viewer: AuthUser = { ...admin, id: 'viewer_1', roles: ['MANAGER'] };
 
 const row = {
   id: 'prj_1',
@@ -68,7 +82,7 @@ describe('createProject', () => {
 describe('updateProject', () => {
   it('throws NOT_FOUND when the project is missing', async () => {
     vi.mocked(prisma.project.findFirst).mockResolvedValue(null as never);
-    await expect(updateProject('missing', { name: 'X' })).rejects.toMatchObject({
+    await expect(updateProject('missing', { name: 'X' }, admin)).rejects.toMatchObject({
       code: 'NOT_FOUND',
     });
   });
@@ -77,8 +91,26 @@ describe('updateProject', () => {
     vi.mocked(prisma.project.findFirst).mockResolvedValue({ id: 'prj_1' } as never);
     vi.mocked(prisma.project.update).mockResolvedValue({ ...row, status: 'ACTIVE' } as never);
 
-    const result = await updateProject('prj_1', { status: 'ACTIVE' });
+    const result = await updateProject('prj_1', { status: 'ACTIVE' }, admin);
     expect(result.status).toBe('ACTIVE');
+  });
+
+  it('does not allow a global manager with viewer membership to change another project', async () => {
+    vi.mocked(prisma.project.findFirst).mockResolvedValue(null as never);
+    await expect(updateProject('prj_1', { budget: '100.00' }, viewer)).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    });
+    expect(prisma.project.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: [
+            { managerId: viewer.id },
+            { members: { some: { userId: viewer.id, role: 'MANAGER', removedAt: null } } },
+          ],
+        }),
+      }),
+    );
+    expect(prisma.project.update).not.toHaveBeenCalled();
   });
 });
 
@@ -87,7 +119,7 @@ describe('deleteProject', () => {
     vi.mocked(prisma.project.findFirst).mockResolvedValue({ id: 'prj_1' } as never);
     vi.mocked(prisma.project.update).mockResolvedValue({} as never);
 
-    await deleteProject('prj_1');
+    await deleteProject('prj_1', admin);
 
     expect(prisma.project.update).toHaveBeenCalledWith({
       where: { id: 'prj_1' },
@@ -97,7 +129,20 @@ describe('deleteProject', () => {
 
   it('throws NOT_FOUND when the project is missing', async () => {
     vi.mocked(prisma.project.findFirst).mockResolvedValue(null as never);
-    await expect(deleteProject('missing')).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await expect(deleteProject('missing', admin)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+});
+
+describe('getProjectWorkspace', () => {
+  it('requires the same project scope as the project detail endpoint', async () => {
+    vi.mocked(prisma.project.findFirst).mockResolvedValue(null as never);
+    await expect(getProjectWorkspace('private_1', { actor: viewer })).resolves.toBeNull();
+    expect(prisma.project.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: 'private_1', OR: expect.any(Array) }),
+      }),
+    );
+    expect(prisma.task.findMany).not.toHaveBeenCalled();
   });
 });
 

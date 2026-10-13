@@ -3,11 +3,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   createLeaveRequestSchema,
-  LEAVE_STATUS_LABELS,
-  LEAVE_TYPE_LABELS,
   LEAVE_TYPES,
   PERMISSIONS,
   type CreateLeaveRequestInput,
+  type LeaveStatus,
+  type LeaveType,
 } from '@somwave/shared';
 import { Table, THead, TBody, Tr, Th, Td } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
@@ -21,6 +21,18 @@ import { useHasPermission } from '../../lib/rbac';
 import { formatDate } from '../../lib/date';
 import { ApiError } from '../../lib/apiClient';
 import { useCreateLeave, useEmployees, useLeave, useUpdateLeave } from './hooks';
+
+const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
+  ANNUAL: 'Annual',
+  SICK: 'Sick',
+  UNPAID: 'Unpaid',
+  OTHER: 'Other',
+};
+const LEAVE_STATUS_LABELS: Record<LeaveStatus, string> = {
+  PENDING: 'Pending',
+  APPROVED: 'Approved',
+  REJECTED: 'Rejected',
+};
 
 export function LeavePage(): ReactNode {
   const query = useLeave();
@@ -76,10 +88,10 @@ export function LeavePage(): ReactNode {
           <Table>
             <THead>
               <Tr>
-                <Th>Shaqaalaha</Th>
+                <Th>Employee</Th>
                 <Th>Type</Th>
-                <Th>Bilow</Th>
-                <Th>Dhammaad</Th>
+                <Th>Start</Th>
+                <Th>End</Th>
                 <Th>Status</Th>
                 <Th className="text-end">Actions</Th>
               </Tr>
@@ -114,7 +126,7 @@ export function LeavePage(): ReactNode {
                             update.mutate({ id: row.id, input: { status: 'APPROVED' } })
                           }
                         >
-                          Ansixi
+                          Approve
                         </Button>
                         <Button
                           size="sm"
@@ -137,7 +149,7 @@ export function LeavePage(): ReactNode {
       <Modal open={open} onClose={() => setOpen(false)} title="Leave request">
         <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
           <Select
-            label="Shaqaalaha"
+            label="Employee"
             options={[
               { value: '', label: 'Select an employee' },
               ...(employees.data ?? []).map((row) => ({
@@ -154,23 +166,23 @@ export function LeavePage(): ReactNode {
             {...form.register('type')}
           />
           <DatePicker
-            label="Bilowga"
+            label="Start date"
             error={form.formState.errors.startDate?.message}
             {...form.register('startDate')}
           />
           <DatePicker
-            label="Dhammaadka"
+            label="End date"
             error={form.formState.errors.endDate?.message}
             {...form.register('endDate')}
           />
-          <Input label="Sababta" {...form.register('reason')} />
+          <Input label="Reason" {...form.register('reason')} />
           {serverError ? <p className="text-sm text-error">{serverError}</p> : null}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
               Cancel
             </Button>
             <Button type="submit" isLoading={form.formState.isSubmitting || create.isPending}>
-              Dir
+              Submit
             </Button>
           </div>
         </form>
@@ -185,7 +197,7 @@ export function LeavePage(): ReactNode {
         </p>
         <div className="mt-4">
           <Input
-            label="Sababta diidmada"
+            label="Rejection reason"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />

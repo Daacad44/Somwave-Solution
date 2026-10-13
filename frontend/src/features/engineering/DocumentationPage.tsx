@@ -13,6 +13,8 @@ import { engineeringApi } from './api';
 import { documentationApi } from './documentationApi';
 import { listMilestones } from '../milestones/api';
 
+const DOCUMENTS_PER_PAGE = 20;
+
 function RichEditor({
   initial,
   onChange,
@@ -199,6 +201,8 @@ export function DocumentationPage(): ReactNode {
   const [projectId, setProjectId] = useState('');
   const [search, setSearch] = useState('');
   const [folder, setFolder] = useState('');
+  const [status, setStatus] = useState('');
+  const [page, setPage] = useState(1);
   const [renameFrom, setRenameFrom] = useState('');
   const [renameTo, setRenameTo] = useState('');
   const [documentId, setDocumentId] = useState('');
@@ -212,8 +216,8 @@ export function DocumentationPage(): ReactNode {
   });
   const selectedProjectId = projectId || projects.data?.[0]?.id || '';
   const documents = useQuery({
-    queryKey: ['documentation', selectedProjectId, search, folder],
-    queryFn: () => documentationApi.list(selectedProjectId, search, folder),
+    queryKey: ['documentation', selectedProjectId, search, folder, status],
+    queryFn: () => documentationApi.list(selectedProjectId, search, folder, status),
     enabled: Boolean(selectedProjectId),
   });
   const folders = useQuery({
@@ -222,6 +226,12 @@ export function DocumentationPage(): ReactNode {
     enabled: Boolean(selectedProjectId),
   });
   const selected = documents.data?.find((row) => row.id === documentId) ?? null;
+  const documentCount = documents.data?.length ?? 0;
+  const pageCount = Math.max(1, Math.ceil(documentCount / DOCUMENTS_PER_PAGE));
+  const visibleDocuments = documents.data?.slice(
+    (Math.min(page, pageCount) - 1) * DOCUMENTS_PER_PAGE,
+    Math.min(page, pageCount) * DOCUMENTS_PER_PAGE,
+  );
   const comments = useQuery({
     queryKey: ['documentation-comments', selectedProjectId, documentId],
     queryFn: () => documentationApi.comments(selectedProjectId, documentId),
@@ -324,7 +334,7 @@ export function DocumentationPage(): ReactNode {
         <EmptyState title="No accessible projects" />
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <label className="text-sm">
               Project
               <select
@@ -332,6 +342,7 @@ export function DocumentationPage(): ReactNode {
                 value={selectedProjectId}
                 onChange={(event) => {
                   setProjectId(event.target.value);
+                  setPage(1);
                   setDocumentId('');
                   setEditing(false);
                 }}
@@ -346,14 +357,20 @@ export function DocumentationPage(): ReactNode {
             <Input
               label="Search documents"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
             />
             <label className="text-sm">
               Folder
               <select
                 className="mt-1 w-full rounded border border-border bg-surface p-3"
                 value={folder}
-                onChange={(event) => setFolder(event.target.value)}
+                onChange={(event) => {
+                  setFolder(event.target.value);
+                  setPage(1);
+                }}
               >
                 <option value="">All folders</option>
                 {folders.data?.map((value) => (
@@ -361,6 +378,23 @@ export function DocumentationPage(): ReactNode {
                     {value}
                   </option>
                 ))}
+              </select>
+            </label>
+            <label className="text-sm">
+              Status
+              <select
+                className="mt-1 w-full rounded border border-border bg-surface p-3"
+                value={status}
+                onChange={(event) => {
+                  setStatus(event.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="">All statuses</option>
+                <option value="DRAFT">Draft</option>
+                <option value="IN_REVIEW">In review</option>
+                <option value="APPROVED">Approved</option>
+                <option value="ARCHIVED">Archived</option>
               </select>
             </label>
           </div>
@@ -425,7 +459,7 @@ export function DocumentationPage(): ReactNode {
                 />
               ) : documents.data?.length ? (
                 <ul className="mt-3 space-y-1">
-                  {documents.data.map((row) => (
+                  {visibleDocuments?.map((row) => (
                     <li key={row.id}>
                       <button
                         className={`w-full rounded p-3 text-left ${documentId === row.id ? 'bg-surface-alt' : ''}`}
@@ -446,6 +480,34 @@ export function DocumentationPage(): ReactNode {
               ) : (
                 <EmptyState title="No documents match" />
               )}
+              {documentCount > DOCUMENTS_PER_PAGE ? (
+                <nav
+                  aria-label="Documentation pages"
+                  className="mt-3 flex items-center justify-between gap-2 text-xs text-muted"
+                >
+                  <span>
+                    Page {Math.min(page, pageCount)} of {pageCount} · {documentCount} documents
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={page <= 1}
+                      onClick={() => setPage((current) => Math.max(1, current - 1))}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={page >= pageCount}
+                      onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </nav>
+              ) : null}
             </aside>
             <div className="space-y-4">
               {editing ? (

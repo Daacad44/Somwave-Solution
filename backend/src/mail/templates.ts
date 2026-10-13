@@ -2,12 +2,14 @@ export const INVOICE_SENT_V1 = 'invoice-sent.v1' as const;
 export const ENQUIRY_NOTIFY_V1 = 'enquiry-notify.v1' as const;
 export const PASSWORD_RESET_V1 = 'password-reset.v1' as const;
 export const ENGINEERING_NOTIFICATION_V1 = 'engineering-notification.v1' as const;
+export const ENGINEER_ACCOUNT_INVITE_V1 = 'engineer-account-invite.v1' as const;
 
 export type MailTemplateId =
   | typeof INVOICE_SENT_V1
   | typeof ENQUIRY_NOTIFY_V1
   | typeof PASSWORD_RESET_V1
-  | typeof ENGINEERING_NOTIFICATION_V1;
+  | typeof ENGINEERING_NOTIFICATION_V1
+  | typeof ENGINEER_ACCOUNT_INVITE_V1;
 
 export function renderMail(
   template: MailTemplateId,
@@ -17,6 +19,22 @@ export function renderMail(
     return {
       subject: vars.subject ?? 'Somwave engineering notification',
       text: [vars.message ?? '', ...(vars.url ? ['', vars.url] : []), '', 'Somwave'].join('\n'),
+    };
+  }
+  if (template === ENGINEER_ACCOUNT_INVITE_V1) {
+    return {
+      subject: `Set up your Somwave engineer account`,
+      text: [
+        'Hello,',
+        '',
+        `You have been invited to work on ${vars.projectName ?? 'a Somwave project'}.`,
+        `Set your password within 24 hours: ${vars.setupUrl ?? ''}`,
+        'Then sign in and accept your project invitation in Engineering.',
+        '',
+        'If you did not expect this invitation, you can ignore this email.',
+        '',
+        'Somwave',
+      ].join('\n'),
     };
   }
   if (template === PASSWORD_RESET_V1) {

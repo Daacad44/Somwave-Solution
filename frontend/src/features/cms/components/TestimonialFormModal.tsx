@@ -99,14 +99,14 @@ export function TestimonialFormModal({
   return (
     <Modal open={open} onClose={close} title={isEdit ? 'Edit testimonial' : 'New testimonial'}>
       <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
-        <Input label="Qoraaga" error={errors.author?.message} {...register('author')} />
+        <Input label="Author" error={errors.author?.message} {...register('author')} />
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Jagada" error={errors.role?.message} {...register('role')} />
-          <Input label="Shirkadda" error={errors.company?.message} {...register('company')} />
+          <Input label="Role" error={errors.role?.message} {...register('role')} />
+          <Input label="Company" error={errors.company?.message} {...register('company')} />
         </div>
 
         <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-ink">Marag-furka</span>
+          <span className="text-sm font-medium text-ink">Testimonial</span>
           <textarea
             className="min-h-28 rounded-md border border-border bg-surface px-3 py-2 text-base text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             rows={4}
@@ -124,9 +124,9 @@ export function TestimonialFormModal({
 
         <div className="grid grid-cols-2 gap-3">
           <Select
-            label="Qiimeyn (1–5)"
+            label="Rating (1–5)"
             options={[
-              { value: '', label: 'Midna' },
+              { value: '', label: 'None' },
               { value: '1', label: '1' },
               { value: '2', label: '2' },
               { value: '3', label: '3' },
@@ -149,7 +149,7 @@ export function TestimonialFormModal({
 
         <label className="flex items-center gap-2 text-base text-ink">
           <input type="checkbox" className="size-4 accent-primary" {...register('isPublished')} />
-          La daabaco (published)
+          Published
         </label>
 
         {serverError ? <p className="text-sm text-error">{serverError}</p> : null}

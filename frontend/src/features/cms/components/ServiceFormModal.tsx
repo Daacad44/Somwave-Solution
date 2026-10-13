@@ -85,11 +85,11 @@ export function ServiceFormModal({ open, onClose, service }: ServiceFormModalPro
         <Input label="Title" error={errors.title?.message} {...register('title')} />
         <Input
           label="Slug (URL)"
-          placeholder="horumarinta-websaydka"
+          placeholder="website-development"
           error={errors.slug?.message}
           {...register('slug')}
         />
-        <Input label="Kooban" error={errors.summary?.message} {...register('summary')} />
+        <Input label="Summary" error={errors.summary?.message} {...register('summary')} />
 
         <label className="flex flex-col gap-1">
           <span className="text-sm font-medium text-ink">Description</span>
@@ -111,7 +111,7 @@ export function ServiceFormModal({ open, onClose, service }: ServiceFormModalPro
           />
           <label className="mb-2 flex items-center gap-2 text-base text-ink">
             <input type="checkbox" className="size-4 accent-primary" {...register('isPublished')} />
-            La daabaco (published)
+            Published
           </label>
         </div>
 

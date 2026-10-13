@@ -445,15 +445,20 @@ function repositoryFromWebhook(value: unknown): GitHubRepositoryInfo | null {
 }
 
 async function updateLinkedItem(
-  repositoryId: string,
+  repository: { id: string; projectId: string | null },
   kind: CreateGitHubTaskLinkInput['kind'],
   externalId: string | null,
   state: string,
   item: JsonRecord | null,
 ): Promise<void> {
-  if (!externalId) return;
+  if (!externalId || !repository.projectId) return;
   await prisma.gitHubTaskLink.updateMany({
-    where: { repositoryId, kind, externalId },
+    where: {
+      repositoryId: repository.id,
+      kind,
+      externalId,
+      task: { projectId: repository.projectId },
+    },
     data: {
       state: state.slice(0, 100),
       ...(typeof item?.title === 'string' ? { title: item.title.slice(0, 500) } : {}),
@@ -556,7 +561,7 @@ async function applyWebhookEvent(eventType: string, payload: JsonRecord): Promis
         : typeof pull?.state === 'string'
           ? pull.state.toUpperCase()
           : action.toUpperCase();
-    await updateLinkedItem(mapped.id, 'PULL_REQUEST', number, state, pull);
+    await updateLinkedItem(mapped, 'PULL_REQUEST', number, state, pull);
     if (action === 'closed' && pull?.merged === true && mapped.projectId && number) {
       const project = await prisma.project.findUnique({
         where: { id: mapped.projectId },
@@ -614,7 +619,7 @@ async function applyWebhookEvent(eventType: string, payload: JsonRecord): Promis
   } else if (eventType === 'issues') {
     const issue = record(payload.issue);
     await updateLinkedItem(
-      mapped.id,
+      mapped,
       'ISSUE',
       id(issue?.number),
       typeof issue?.state === 'string' ? issue.state.toUpperCase() : action.toUpperCase(),
@@ -628,7 +633,40 @@ async function applyWebhookEvent(eventType: string, payload: JsonRecord): Promis
         : typeof check?.status === 'string'
           ? check.status.toUpperCase()
           : action.toUpperCase();
-    await updateLinkedItem(mapped.id, 'CHECK_RUN', id(check?.id), state, check);
+    await updateLinkedItem(mapped, 'CHECK_RUN', id(check?.id), state, check);
+    if (mapped.projectId && action === 'completed' && state !== 'SUCCESS' && id(check?.id)) {
+      const affected = await prisma.gitHubTaskLink.findMany({
+        where: {
+          repositoryId: mapped.id,
+          kind: 'CHECK_RUN',
+          externalId: id(check?.id)!,
+          task: { projectId: mapped.projectId },
+        },
+        select: { taskId: true, task: { select: { project: { select: { managerId: true } } } } },
+      });
+      for (const link of affected) {
+        const revoked = await prisma.task.updateMany({
+          where: { id: link.taskId, status: 'TESTING', qaVerifiedAt: { not: null } },
+          data: { qaVerifiedAt: null, qaVerifiedById: null },
+        });
+        if (!revoked.count) continue;
+        await prisma.auditLog.create({
+          data: {
+            action: 'task.qa.revoked_by_ci',
+            subjectType: 'Task',
+            subjectId: link.taskId,
+          },
+        });
+        if (link.task.project.managerId)
+          await emitNotification({
+            userId: link.task.project.managerId,
+            eventKey: 'github.ci',
+            dedupeKey: `qa-revoked:${link.taskId}:${id(check?.id)}:${state}`,
+            title: 'QA verification needs review',
+            body: `A linked CI check changed to ${state.toLowerCase()}; QA verification was cleared.`,
+          });
+      }
+    }
     if (action === 'completed' && (state === 'FAILURE' || state === 'SUCCESS')) {
       const project = mapped.projectId
         ? await prisma.project.findUnique({
@@ -647,11 +685,11 @@ async function applyWebhookEvent(eventType: string, payload: JsonRecord): Promis
     }
   } else if (eventType === 'release') {
     const release = record(payload.release);
-    await updateLinkedItem(mapped.id, 'RELEASE', id(release?.id), action.toUpperCase(), release);
+    await updateLinkedItem(mapped, 'RELEASE', id(release?.id), action.toUpperCase(), release);
   } else if (eventType === 'create' || eventType === 'delete') {
     if (payload.ref_type === 'branch' && typeof payload.ref === 'string') {
       await updateLinkedItem(
-        mapped.id,
+        mapped,
         'BRANCH',
         payload.ref,
         eventType === 'delete' ? 'DELETED' : 'CREATED',
@@ -661,7 +699,7 @@ async function applyWebhookEvent(eventType: string, payload: JsonRecord): Promis
   } else if (eventType === 'push') {
     if (typeof payload.ref === 'string' && payload.ref.startsWith('refs/heads/')) {
       await updateLinkedItem(
-        mapped.id,
+        mapped,
         'BRANCH',
         payload.ref.slice('refs/heads/'.length),
         'PUSHED',
@@ -669,7 +707,7 @@ async function applyWebhookEvent(eventType: string, payload: JsonRecord): Promis
       );
     }
     if (typeof payload.after === 'string' && /^[a-f0-9]{40}$/i.test(payload.after)) {
-      await updateLinkedItem(mapped.id, 'COMMIT', payload.after, 'PUSHED', null);
+      await updateLinkedItem(mapped, 'COMMIT', payload.after, 'PUSHED', null);
     }
   }
   // A merged pull request only updates its link. Task completion stays a user action.

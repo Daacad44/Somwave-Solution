@@ -89,7 +89,7 @@ export function UsersPage(): ReactNode {
           <Table>
             <THead>
               <Tr>
-                <Th>Magaca</Th>
+                <Th>Name</Th>
                 <Th>Email</Th>
                 <Th>Roles</Th>
                 <Th>Status</Th>
@@ -152,7 +152,7 @@ export function UsersPage(): ReactNode {
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
-              Hore
+              Previous
             </Button>
             <Button
               size="sm"
@@ -160,7 +160,7 @@ export function UsersPage(): ReactNode {
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             >
-              Xiga
+              Next
             </Button>
           </div>
         </div>

@@ -1,7 +1,13 @@
-import type { AdminDocument, CreateDocumentInput } from '@somwave/shared';
+import {
+  DEFAULT_PAGE,
+  DEFAULT_PAGE_SIZE,
+  MAX_PAGE_SIZE,
+  type AdminDocument,
+  type CreateDocumentInput,
+} from '@somwave/shared';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
-import { decodeUpload, getObject, putObject } from '../lib/storage';
+import { decodeUpload, readObject, putObject } from '../lib/storage';
 import { writeAudit } from '../lib/audit';
 
 function toAdmin(row: {
@@ -19,12 +25,27 @@ function ownerWhere(id: string, clientId?: string | null) {
   return { id, deletedAt: null, ...(clientId ? { clientId } : {}) };
 }
 
-export async function listDocuments(clientId?: string | null): Promise<AdminDocument[]> {
-  const rows = await prisma.clientDocument.findMany({
-    where: { deletedAt: null, ...(clientId ? { clientId } : {}) },
-    orderBy: { createdAt: 'desc' },
-  });
-  return rows.map(toAdmin);
+export async function listDocuments(
+  clientId?: string | null,
+  params: { page?: number; pageSize?: number; search?: string } = {},
+) {
+  const page = params.page ?? DEFAULT_PAGE;
+  const pageSize = Math.min(params.pageSize ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
+  const where = {
+    deletedAt: null,
+    ...(clientId ? { clientId } : {}),
+    ...(params.search ? { title: { contains: params.search, mode: 'insensitive' as const } } : {}),
+  };
+  const [rows, total] = await Promise.all([
+    prisma.clientDocument.findMany({
+      where,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.clientDocument.count({ where }),
+  ]);
+  return { items: rows.map(toAdmin), page, pageSize, total };
 }
 
 export async function createDocument(
@@ -63,7 +84,7 @@ export async function getDocumentFile(
 ): Promise<{ bytes: Buffer; mimeType: string; fileName: string }> {
   const row = await prisma.clientDocument.findFirst({ where: ownerWhere(id, clientId) });
   if (!row) throw new AppError('NOT_FOUND', 404, 'Document not found');
-  const bytes = getObject(row.storageKey);
+  const bytes = await readObject(row.storageKey);
   if (!bytes) throw new AppError('NOT_FOUND', 404, 'Document not found');
   return { bytes, mimeType: row.mimeType, fileName: row.title };
 }

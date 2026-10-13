@@ -39,7 +39,7 @@ export function TestimonialsAdminPage(): ReactNode {
     <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-ink">Marag-furka (CMS)</h1>
+          <h1 className="text-2xl font-semibold text-ink">Testimonials (CMS)</h1>
           <p className="mt-1 text-base text-muted">
             Manage client testimonials shown on the website.
           </p>
@@ -61,9 +61,9 @@ export function TestimonialsAdminPage(): ReactNode {
           <Table>
             <THead>
               <Tr>
-                <Th>Qoraaga</Th>
-                <Th>Shirkadda</Th>
-                <Th>Qiimeyn</Th>
+                <Th>Author</Th>
+                <Th>Company</Th>
+                <Th>Rating</Th>
                 <Th>Status</Th>
                 <Th className="text-end">Actions</Th>
               </Tr>
@@ -76,7 +76,7 @@ export function TestimonialsAdminPage(): ReactNode {
                   <Td>{testimonial.rating ? `${testimonial.rating}/5` : '—'}</Td>
                   <Td>
                     <Badge tone={testimonial.isPublished ? 'success' : 'neutral'}>
-                      {testimonial.isPublished ? 'La daabacay' : 'Qabyo'}
+                      {testimonial.isPublished ? 'Published' : 'Draft'}
                     </Badge>
                   </Td>
                   <Td>

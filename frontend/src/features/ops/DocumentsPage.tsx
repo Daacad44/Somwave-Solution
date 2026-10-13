@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useMemo, useState } from 'react';
+import { type FormEvent, type ReactNode, useState } from 'react';
 import { PERMISSIONS } from '@somwave/shared';
 import { Table, THead, TBody, Tr, Th, Td } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
@@ -16,7 +16,10 @@ import { useCreateDocument, useDeleteDocument, useDocuments, useDownloadDocument
 const PAGE_SIZE = 20;
 
 export function DocumentsPage(): ReactNode {
-  const query = useDocuments();
+  const [search, setSearch] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const query = useDocuments({ page, pageSize: PAGE_SIZE, search: appliedSearch });
   const create = useCreateDocument();
   const del = useDeleteDocument();
   const download = useDownloadDocument();
@@ -26,18 +29,13 @@ export function DocumentsPage(): ReactNode {
   const clients = useClients({ enabled: canPickClient });
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState<{ id: string; title: string } | null>(null);
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
   const [title, setTitle] = useState('');
   const [clientId, setClientId] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
-  const rows = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return (query.data ?? []).filter((row) => !q || row.title.toLowerCase().includes(q));
-  }, [query.data, search]);
-  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
-  const pageRows = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const rows = query.data?.data ?? [];
+  const total = query.data?.meta.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const onSubmit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
@@ -76,6 +74,7 @@ export function DocumentsPage(): ReactNode {
         onSubmit={(e) => {
           e.preventDefault();
           setPage(1);
+          setAppliedSearch(search.trim());
         }}
         className="mt-6 flex max-w-md gap-2"
       >
@@ -106,13 +105,13 @@ export function DocumentsPage(): ReactNode {
               <Tr>
                 <Th>Title</Th>
                 <Th>Type</Th>
-                <Th>Cabbir</Th>
+                <Th>Size</Th>
                 <Th>Date</Th>
                 <Th className="text-end">Actions</Th>
               </Tr>
             </THead>
             <TBody>
-              {pageRows.map((row) => (
+              {rows.map((row) => (
                 <Tr key={row.id}>
                   <Td className="font-medium">{row.title}</Td>
                   <Td>{row.mimeType}</Td>
@@ -144,10 +143,10 @@ export function DocumentsPage(): ReactNode {
           </Table>
         )}
       </div>
-      {rows.length > PAGE_SIZE ? (
+      {total > PAGE_SIZE ? (
         <div className="mt-4 flex items-center justify-between text-sm text-muted">
           <span>
-            Page {page} / {totalPages} · {rows.length} documents
+            Page {page} / {totalPages} · {total} documents
           </span>
           <div className="flex gap-2">
             <Button
@@ -156,7 +155,7 @@ export function DocumentsPage(): ReactNode {
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
             >
-              Hore
+              Previous
             </Button>
             <Button
               size="sm"
@@ -164,7 +163,7 @@ export function DocumentsPage(): ReactNode {
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
             >
-              Xiga
+              Next
             </Button>
           </div>
         </div>

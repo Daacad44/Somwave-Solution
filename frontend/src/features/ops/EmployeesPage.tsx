@@ -1,12 +1,7 @@
 import { type FormEvent, type ReactNode, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  createEmployeeSchema,
-  EMPLOYEE_STATUS_LABELS,
-  PERMISSIONS,
-  type CreateEmployeeInput,
-} from '@somwave/shared';
+import { createEmployeeSchema, PERMISSIONS, type CreateEmployeeInput } from '@somwave/shared';
 import { Table, THead, TBody, Tr, Th, Td } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -67,7 +62,7 @@ export function EmployeesPage(): ReactNode {
     <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-ink">Shaqaalaha</h1>
+          <h1 className="text-2xl font-semibold text-ink">Employees</h1>
           <p className="mt-1 text-base text-muted">Internal employee records.</p>
         </div>
         {canCreate ? <Button onClick={() => setOpen(true)}>New employee</Button> : null}
@@ -99,10 +94,10 @@ export function EmployeesPage(): ReactNode {
             <THead>
               <Tr>
                 <Th>Name</Th>
-                <Th>Lambarka</Th>
-                <Th>Jagada</Th>
+                <Th>Number</Th>
+                <Th>Position</Th>
                 <Th>Department</Th>
-                <Th>Shaqo-gal</Th>
+                <Th>Hire date</Th>
                 <Th>Status</Th>
               </Tr>
             </THead>
@@ -116,7 +111,11 @@ export function EmployeesPage(): ReactNode {
                   <Td>{formatDate(row.hiredAt)}</Td>
                   <Td>
                     <Badge tone={row.status === 'ACTIVE' ? 'success' : 'neutral'}>
-                      {EMPLOYEE_STATUS_LABELS[row.status]}
+                      {row.status === 'ACTIVE'
+                        ? 'Active'
+                        : row.status === 'ON_LEAVE'
+                          ? 'On leave'
+                          : 'Terminated'}
                     </Badge>
                   </Td>
                 </Tr>
@@ -137,7 +136,7 @@ export function EmployeesPage(): ReactNode {
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
-              Hore
+              Previous
             </Button>
             <Button
               size="sm"
@@ -145,7 +144,7 @@ export function EmployeesPage(): ReactNode {
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             >
-              Xiga
+              Next
             </Button>
           </div>
         </div>
@@ -169,7 +168,7 @@ export function EmployeesPage(): ReactNode {
             error={form.formState.errors.employeeNo?.message}
             {...form.register('employeeNo')}
           />
-          <Input label="Jagada" {...form.register('position')} />
+          <Input label="Position" {...form.register('position')} />
           <Input label="Department" {...form.register('department')} />
           <DatePicker label="Hire date" {...form.register('hiredAt')} />
           {serverError ? <p className="text-sm text-error">{serverError}</p> : null}

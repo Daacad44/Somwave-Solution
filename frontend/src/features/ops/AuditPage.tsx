@@ -89,7 +89,7 @@ export function AuditPage(): ReactNode {
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
             >
-              Hore
+              Previous
             </Button>
             <Button
               size="sm"
@@ -97,7 +97,7 @@ export function AuditPage(): ReactNode {
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
             >
-              Xiga
+              Next
             </Button>
           </div>
         </div>

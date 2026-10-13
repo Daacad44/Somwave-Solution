@@ -1,7 +1,13 @@
 // User & role management service (I1). The only layer that touches Prisma (§5).
 // Every user shape returned here is the safe AdminUser projection — never the
 // password hash or 2FA secret (§13).
-import type { AdminUser, AdminRole, CreateUserInput, UpdateUserInput } from '@somwave/shared';
+import type {
+  AdminUser,
+  AdminRole,
+  AuthUser,
+  CreateUserInput,
+  UpdateUserInput,
+} from '@somwave/shared';
 import { MAX_PAGE_SIZE } from '@somwave/shared';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
@@ -104,8 +110,19 @@ async function assertRolesExist(roleIds: string[]): Promise<void> {
   }
 }
 
-export async function createUser(input: CreateUserInput): Promise<AdminUser> {
+async function assertRoleAssignmentAllowed(roleIds: string[], actor: AuthUser): Promise<void> {
+  if (actor.roles.includes('SUPER_ADMIN') || roleIds.length === 0) return;
+  const privileged = await prisma.role.findFirst({
+    where: { id: { in: roleIds }, name: 'SUPER_ADMIN' },
+    select: { id: true },
+  });
+  if (privileged)
+    throw new AppError('FORBIDDEN', 403, 'Only a super administrator can assign this role');
+}
+
+export async function createUser(input: CreateUserInput, actor: AuthUser): Promise<AdminUser> {
   await assertRolesExist(input.roleIds);
+  await assertRoleAssignmentAllowed(input.roleIds, actor);
 
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
   if (existing) {
@@ -124,11 +141,26 @@ export async function createUser(input: CreateUserInput): Promise<AdminUser> {
   return toAdminUser(row);
 }
 
-export async function updateUser(id: string, input: UpdateUserInput): Promise<AdminUser> {
-  const user = await prisma.user.findFirst({ where: { id, deletedAt: null } });
+export async function updateUser(
+  id: string,
+  input: UpdateUserInput,
+  actor: AuthUser,
+): Promise<AdminUser> {
+  const user = await prisma.user.findFirst({
+    where: { id, deletedAt: null },
+    select: { id: true, roles: { select: { role: { select: { name: true } } } } },
+  });
   if (!user) throw new AppError('NOT_FOUND', 404, 'User not found');
+  if (
+    user.roles.some(({ role }) => role.name === 'SUPER_ADMIN') &&
+    !actor.roles.includes('SUPER_ADMIN')
+  )
+    throw new AppError('FORBIDDEN', 403, 'Only a super administrator can update this account');
 
-  if (input.roleIds) await assertRolesExist(input.roleIds);
+  if (input.roleIds) {
+    await assertRolesExist(input.roleIds);
+    await assertRoleAssignmentAllowed(input.roleIds, actor);
+  }
 
   const row = await prisma.user.update({
     where: { id },
@@ -154,12 +186,20 @@ export async function updateUser(id: string, input: UpdateUserInput): Promise<Ad
 }
 
 // Soft delete — users are never hard-deleted (§7). Also revokes live sessions.
-export async function deactivateUser(id: string, actingUserId: string): Promise<void> {
-  if (id === actingUserId) {
+export async function deactivateUser(id: string, actor: AuthUser): Promise<void> {
+  if (id === actor.id) {
     throw new AppError('VALIDATION_ERROR', 400, 'You cannot remove your own account');
   }
-  const user = await prisma.user.findFirst({ where: { id, deletedAt: null } });
+  const user = await prisma.user.findFirst({
+    where: { id, deletedAt: null },
+    select: { id: true, roles: { select: { role: { select: { name: true } } } } },
+  });
   if (!user) throw new AppError('NOT_FOUND', 404, 'User not found');
+  if (
+    user.roles.some(({ role }) => role.name === 'SUPER_ADMIN') &&
+    !actor.roles.includes('SUPER_ADMIN')
+  )
+    throw new AppError('FORBIDDEN', 403, 'Only a super administrator can remove this account');
 
   await prisma.$transaction([
     prisma.user.update({

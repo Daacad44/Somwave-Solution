@@ -4,6 +4,7 @@ vi.mock('../lib/prisma', () => ({
   prisma: {
     clientDocument: {
       findMany: vi.fn(),
+      count: vi.fn(),
       findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
@@ -15,10 +16,11 @@ vi.mock('../lib/prisma', () => ({
 vi.mock('../lib/storage', () => ({
   decodeUpload: vi.fn(() => Buffer.from('%PDF')),
   putObject: vi.fn(async () => 'obj/test'),
-  getObject: vi.fn(() => Buffer.from('%PDF')),
+  readObject: vi.fn(async () => Buffer.from('%PDF')),
 }));
 
 import { prisma } from '../lib/prisma';
+import { readObject } from '../lib/storage';
 import { getDocumentFile, listDocuments } from './document.service';
 
 beforeEach(() => {
@@ -28,6 +30,7 @@ beforeEach(() => {
 describe('listDocuments', () => {
   it('scopes to a client when clientId is provided', async () => {
     vi.mocked(prisma.clientDocument.findMany).mockResolvedValue([] as never);
+    vi.mocked(prisma.clientDocument.count).mockResolvedValue(0 as never);
     await listDocuments('cl_1');
     expect(prisma.clientDocument.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { deletedAt: null, clientId: 'cl_1' } }),
@@ -36,6 +39,17 @@ describe('listDocuments', () => {
 });
 
 describe('getDocumentFile', () => {
+  it('loads stored bytes through the S3-capable storage reader', async () => {
+    vi.mocked(prisma.clientDocument.findFirst).mockResolvedValue({
+      id: 'doc_1',
+      storageKey: 'obj/test',
+      mimeType: 'application/pdf',
+      title: 'Report',
+    } as never);
+    const file = await getDocumentFile('doc_1');
+    expect(readObject).toHaveBeenCalledWith('obj/test');
+    expect(file.bytes.toString()).toBe('%PDF');
+  });
   it('returns 404 for another client', async () => {
     vi.mocked(prisma.clientDocument.findFirst).mockResolvedValue(null as never);
     await expect(getDocumentFile('doc_1', 'cl_other')).rejects.toMatchObject({
