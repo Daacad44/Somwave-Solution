@@ -18,6 +18,12 @@ export const adminMilestoneSchema = z.object({
   title: z.string(),
   description: z.string().nullable(),
   status: milestoneStatusSchema,
+  clientVisible: z.boolean(),
+  owner: z.object({ id: z.string(), name: z.string() }).nullable(),
+  verifiedBy: z.object({ id: z.string(), name: z.string() }).nullable(),
+  verifiedAt: z.string().nullable(),
+  linkedTaskCount: z.number().int().optional(),
+  progressPercent: z.number().nullable().optional(),
   dueDate: z.string().nullable(), // ISO 8601
   completedAt: z.string().nullable(),
   order: z.number().int(),
@@ -37,6 +43,8 @@ export const createMilestoneSchema = z.object({
   title: z.string().trim().min(1, 'Title is required').max(200),
   description: z.string().trim().max(5000).optional(),
   status: milestoneStatusSchema.default('PENDING'),
+  clientVisible: z.boolean().default(false),
+  ownerId: z.string().nullable().optional(),
   dueDate: isoDate,
   order: z.number().int().min(0).default(0),
 });
@@ -49,6 +57,8 @@ export const updateMilestoneSchema = z
     title: z.string().trim().min(1, 'Title is required').max(200).optional(),
     description: z.string().trim().max(5000).nullable().optional(),
     status: milestoneStatusSchema.optional(),
+    clientVisible: z.boolean().optional(),
+    ownerId: z.string().nullable().optional(),
     dueDate: isoDate.nullable(),
     order: z.number().int().min(0).optional(),
   })

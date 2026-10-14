@@ -41,6 +41,7 @@ import {
   listPortalProjects,
   getPortalProject,
   listPortalMilestones,
+  listPortalDocuments,
   listEmployees,
   listEmployeeCandidates,
   createEmployee,
@@ -273,6 +274,13 @@ export function usePortalProject(id: string | undefined) {
 }
 export function usePortalMilestones() {
   return useQuery({ queryKey: ['portal-milestones'], queryFn: listPortalMilestones });
+}
+export function usePortalDocuments(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ['portal-project-documents', projectId],
+    queryFn: () => listPortalDocuments(projectId ?? ''),
+    enabled: Boolean(projectId),
+  });
 }
 
 export function useEmployees() {

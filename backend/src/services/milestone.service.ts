@@ -12,6 +12,7 @@ import { MAX_PAGE_SIZE } from '@somwave/shared';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
+import { writeAudit } from '../lib/audit';
 import { projectManageScope, projectScope } from './project.service';
 
 const adminMilestoneSelect = {
@@ -19,6 +20,10 @@ const adminMilestoneSelect = {
   title: true,
   description: true,
   status: true,
+  clientVisible: true,
+  owner: { select: { id: true, name: true } },
+  verifiedBy: { select: { id: true, name: true } },
+  verifiedAt: true,
   dueDate: true,
   completedAt: true,
   order: true,
@@ -31,6 +36,10 @@ type MilestoneRow = {
   title: string;
   description: string | null;
   status: MilestoneStatus;
+  clientVisible: boolean;
+  owner: { id: string; name: string } | null;
+  verifiedBy: { id: string; name: string } | null;
+  verifiedAt: Date | null;
   dueDate: Date | null;
   completedAt: Date | null;
   order: number;
@@ -38,12 +47,25 @@ type MilestoneRow = {
   project: { id: string; name: string };
 };
 
-function toAdminMilestone(row: MilestoneRow): AdminMilestone {
+function toAdminMilestone(
+  row: MilestoneRow,
+  taskCount?: { total: number; done: number },
+): AdminMilestone {
   return {
     id: row.id,
     title: row.title,
     description: row.description,
     status: row.status,
+    clientVisible: row.clientVisible ?? false,
+    owner: row.owner,
+    verifiedBy: row.verifiedBy,
+    verifiedAt: row.verifiedAt?.toISOString() ?? null,
+    linkedTaskCount: taskCount?.total,
+    progressPercent: taskCount
+      ? taskCount.total
+        ? Math.round((taskCount.done / taskCount.total) * 100)
+        : null
+      : undefined,
     dueDate: row.dueDate?.toISOString() ?? null,
     completedAt: row.completedAt?.toISOString() ?? null,
     order: row.order,
@@ -95,7 +117,33 @@ export async function listMilestones({
     prisma.milestone.count({ where }),
   ]);
 
-  return { items: rows.map(toAdminMilestone), page: Math.max(page, 1), pageSize: take, total };
+  const taskCounts = await milestoneTaskCounts(rows.map((row) => row.id));
+  return {
+    items: rows.map((row) => toAdminMilestone(row, taskCounts.get(row.id))),
+    page: Math.max(page, 1),
+    pageSize: take,
+    total,
+  };
+}
+
+async function milestoneTaskCounts(
+  ids: string[],
+): Promise<Map<string, { total: number; done: number }>> {
+  const result = new Map<string, { total: number; done: number }>();
+  if (!ids.length) return result;
+  const groups = await prisma.task.groupBy({
+    by: ['milestoneId', 'status'],
+    where: { milestoneId: { in: ids }, deletedAt: null, approvalStatus: 'APPROVED' },
+    _count: { _all: true },
+  });
+  for (const group of groups) {
+    if (!group.milestoneId) continue;
+    const count = result.get(group.milestoneId) ?? { total: 0, done: 0 };
+    count.total += group._count._all;
+    if (group.status === 'DONE') count.done += group._count._all;
+    result.set(group.milestoneId, count);
+  }
+  return result;
 }
 
 export async function getMilestone(id: string, actor?: AuthUser): Promise<AdminMilestone | null> {
@@ -103,7 +151,11 @@ export async function getMilestone(id: string, actor?: AuthUser): Promise<AdminM
     where: { id, deletedAt: null, ...(actor ? { project: projectScope(actor) } : {}) },
     select: adminMilestoneSelect,
   });
-  return row ? toAdminMilestone(row) : null;
+  if (!row) return null;
+  return toAdminMilestone(
+    row,
+    (await milestoneTaskCounts([row.id])).get(row.id) ?? { total: 0, done: 0 },
+  );
 }
 
 async function assertManageableProject(projectId: string, actor: AuthUser): Promise<void> {
@@ -112,6 +164,21 @@ async function assertManageableProject(projectId: string, actor: AuthUser): Prom
     select: { id: true },
   });
   if (!project) throw new AppError('NOT_FOUND', 404, 'Project not found');
+}
+
+async function assertOwner(projectId: string, ownerId: string | null | undefined): Promise<void> {
+  if (!ownerId) return;
+  const member = await prisma.projectMember.findFirst({
+    where: {
+      projectId,
+      userId: ownerId,
+      removedAt: null,
+      user: { isActive: true, deletedAt: null },
+    },
+    select: { id: true },
+  });
+  if (!member)
+    throw new AppError('VALIDATION_ERROR', 400, 'Milestone owner must be an active project member');
 }
 
 // completedAt tracks the COMPLETED status: set on reaching it, cleared on leaving.
@@ -130,6 +197,7 @@ export async function createMilestone(
 ): Promise<AdminMilestone> {
   if (!actor) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
   await assertManageableProject(input.projectId, actor);
+  await assertOwner(input.projectId, input.ownerId);
 
   const row = await prisma.milestone.create({
     data: {
@@ -137,11 +205,22 @@ export async function createMilestone(
       title: input.title,
       description: input.description ?? null,
       status: input.status,
+      clientVisible: input.clientVisible,
+      ownerId: input.ownerId ?? null,
+      verifiedById: input.status === 'COMPLETED' ? actor.id : null,
+      verifiedAt: input.status === 'COMPLETED' ? new Date() : null,
       dueDate: input.dueDate ? new Date(input.dueDate) : null,
       order: input.order,
       completedAt: input.status === 'COMPLETED' ? new Date() : null,
     },
     select: adminMilestoneSelect,
+  });
+  await writeAudit({
+    actorId: actor.id,
+    action: 'milestone.create',
+    subjectType: 'Milestone',
+    subjectId: row.id,
+    after: { projectId: input.projectId, title: row.title, status: row.status },
   });
   return toAdminMilestone(row);
 }
@@ -154,9 +233,22 @@ export async function updateMilestone(
   if (!actor) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
   const milestone = await prisma.milestone.findFirst({
     where: { id, deletedAt: null, project: projectManageScope(actor) },
-    select: { id: true, status: true },
+    select: { id: true, status: true, projectId: true },
   });
   if (!milestone) throw new AppError('NOT_FOUND', 404, 'Milestone not found');
+  await assertOwner(milestone.projectId, input.ownerId);
+  if (input.status === 'COMPLETED' && milestone.status !== 'COMPLETED') {
+    const openTasks = await prisma.task.count({
+      where: {
+        milestoneId: id,
+        deletedAt: null,
+        approvalStatus: 'APPROVED',
+        status: { notIn: ['DONE', 'CANCELLED'] },
+      },
+    });
+    if (openTasks)
+      throw new AppError('CONFLICT', 409, 'Complete linked tasks before verifying the milestone');
+  }
 
   const stamp = completionStamp(input.status, milestone.status === 'COMPLETED');
 
@@ -166,6 +258,14 @@ export async function updateMilestone(
       ...(input.title !== undefined ? { title: input.title } : {}),
       ...(input.description !== undefined ? { description: input.description } : {}),
       ...(input.status !== undefined ? { status: input.status } : {}),
+      ...(input.clientVisible !== undefined ? { clientVisible: input.clientVisible } : {}),
+      ...(input.ownerId !== undefined ? { ownerId: input.ownerId } : {}),
+      ...(input.status !== undefined && input.status !== milestone.status
+        ? {
+            verifiedById: input.status === 'COMPLETED' ? actor.id : null,
+            verifiedAt: input.status === 'COMPLETED' ? new Date() : null,
+          }
+        : {}),
       ...(input.dueDate !== undefined
         ? { dueDate: input.dueDate ? new Date(input.dueDate) : null }
         : {}),
@@ -173,6 +273,14 @@ export async function updateMilestone(
       ...(stamp !== undefined ? { completedAt: stamp } : {}),
     },
     select: adminMilestoneSelect,
+  });
+  await writeAudit({
+    actorId: actor.id,
+    action: 'milestone.update',
+    subjectType: 'Milestone',
+    subjectId: id,
+    before: { projectId: milestone.projectId, status: milestone.status },
+    after: { projectId: milestone.projectId, status: row.status, clientVisible: row.clientVisible },
   });
   return toAdminMilestone(row);
 }
@@ -185,4 +293,11 @@ export async function deleteMilestone(id: string, actor?: AuthUser): Promise<voi
   });
   if (!milestone) throw new AppError('NOT_FOUND', 404, 'Milestone not found');
   await prisma.milestone.update({ where: { id }, data: { deletedAt: new Date() } });
+  await writeAudit({
+    actorId: actor.id,
+    action: 'milestone.delete',
+    subjectType: 'Milestone',
+    subjectId: id,
+    after: { projectId: milestone.projectId },
+  });
 }

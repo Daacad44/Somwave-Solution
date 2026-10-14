@@ -5,6 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
   createProjectSchema,
   PROJECT_STATUSES,
+  TASK_PRIORITIES,
+  PERMISSIONS,
   type AdminProject,
   type CreateProjectInput,
 } from '@somwave/shared';
@@ -14,6 +16,7 @@ import { DatePicker } from '../../../components/ui/DatePicker';
 import { Select } from '../../../components/ui/Select';
 import { Button } from '../../../components/ui/Button';
 import { ApiError } from '../../../lib/apiClient';
+import { useHasPermission } from '../../../lib/rbac';
 import { useCreateProject, useUpdateProject } from '../hooks';
 import { INTERNAL_PROJECT_STATUS } from '../../../lib/internalLabels';
 
@@ -34,6 +37,7 @@ const orUndefined = (value: string | undefined): string | undefined =>
   value && value.trim() !== '' ? value.trim() : undefined;
 
 export function ProjectFormModal({ open, onClose, project }: ProjectFormModalProps): ReactNode {
+  const canEditBudget = useHasPermission(PERMISSIONS.INVOICES_UPDATE);
   const isEdit = Boolean(project);
   const createMutation = useCreateProject();
   const updateMutation = useUpdateProject();
@@ -50,6 +54,7 @@ export function ProjectFormModal({ open, onClose, project }: ProjectFormModalPro
       name: project?.name ?? '',
       description: project?.description ?? '',
       status: project?.status ?? 'PLANNING',
+      priority: project?.priority ?? 'MEDIUM',
       startDate: dateValue(project?.startDate) || undefined,
       dueDate: dateValue(project?.dueDate) || undefined,
       budget: project?.budget ?? undefined,
@@ -67,10 +72,11 @@ export function ProjectFormModal({ open, onClose, project }: ProjectFormModalPro
     const payload = {
       name: values.name,
       status: values.status,
+      priority: values.priority,
       description: orUndefined(values.description),
       startDate: orUndefined(values.startDate),
       dueDate: orUndefined(values.dueDate),
-      budget: orUndefined(values.budget),
+      ...(!isEdit && canEditBudget ? { budget: orUndefined(values.budget) } : {}),
     };
     try {
       if (isEdit && project) {
@@ -81,7 +87,6 @@ export function ProjectFormModal({ open, onClose, project }: ProjectFormModalPro
             description: payload.description ?? null,
             startDate: payload.startDate ?? null,
             dueDate: payload.dueDate ?? null,
-            budget: payload.budget ?? null,
           },
         });
       } else {
@@ -117,6 +122,14 @@ export function ProjectFormModal({ open, onClose, project }: ProjectFormModalPro
           error={errors.status?.message}
           {...register('status')}
         />
+        <Select
+          label="Priority"
+          options={TASK_PRIORITIES.map((value) => ({
+            value,
+            label: value[0] + value.slice(1).toLowerCase(),
+          }))}
+          {...register('priority')}
+        />
 
         <div className="grid grid-cols-2 gap-3">
           <DatePicker
@@ -127,13 +140,15 @@ export function ProjectFormModal({ open, onClose, project }: ProjectFormModalPro
           <DatePicker label="End date" error={errors.dueDate?.message} {...register('dueDate')} />
         </div>
 
-        <Input
-          label="Budget (USD)"
-          inputMode="decimal"
-          placeholder="0.00"
-          error={errors.budget?.message}
-          {...register('budget')}
-        />
+        {!isEdit && canEditBudget ? (
+          <Input
+            label="Budget (USD)"
+            inputMode="decimal"
+            placeholder="0.00"
+            error={errors.budget?.message}
+            {...register('budget')}
+          />
+        ) : null}
 
         {serverError ? <p className="text-sm text-error">{serverError}</p> : null}
 

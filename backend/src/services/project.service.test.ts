@@ -17,8 +17,8 @@ vi.mock('../lib/prisma', () => ({
       update: vi.fn(),
     },
     user: { findFirst: vi.fn() },
-    task: { findMany: vi.fn(), count: vi.fn() },
-    milestone: { findMany: vi.fn(), count: vi.fn() },
+    task: { findMany: vi.fn(), count: vi.fn(), groupBy: vi.fn() },
+    milestone: { findMany: vi.fn(), count: vi.fn(), groupBy: vi.fn() },
     projectMember: { findMany: vi.fn(), findFirst: vi.fn() },
     auditLog: { create: vi.fn() },
     $transaction: vi.fn((ops: unknown[] | ((tx: unknown) => unknown)) =>
@@ -43,6 +43,7 @@ import {
   listProjects,
   getProjectWorkspace,
   updateProjectHealthNote,
+  getProjectPortfolio,
 } from './project.service';
 
 const admin: AuthUser = {
@@ -62,6 +63,7 @@ const row = {
   name: 'Website',
   description: null,
   status: 'PLANNING' as const,
+  priority: 'MEDIUM' as const,
   startDate: null,
   dueDate: null,
   budget: new Prisma.Decimal('25000.00'),
@@ -79,7 +81,12 @@ describe('createProject', () => {
   it('creates a project and surfaces budget as a decimal string', async () => {
     vi.mocked(prisma.project.create).mockResolvedValue(row as never);
 
-    const result = await createProject({ name: 'Website', status: 'PLANNING', budget: '25000.00' });
+    const result = await createProject({
+      name: 'Website',
+      status: 'PLANNING',
+      priority: 'MEDIUM',
+      budget: '25000.00',
+    });
 
     expect(result.budget).toBe('25000');
     expect(result.createdAt).toBe('2026-01-01T00:00:00.000Z');
@@ -90,7 +97,12 @@ describe('createProject', () => {
     vi.mocked(prisma.user.findFirst).mockResolvedValue(null as never);
 
     await expect(
-      createProject({ name: 'Website', status: 'PLANNING', managerId: 'ghost' }),
+      createProject({
+        name: 'Website',
+        status: 'PLANNING',
+        priority: 'MEDIUM',
+        managerId: 'ghost',
+      }),
     ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
     expect(prisma.project.create).not.toHaveBeenCalled();
   });
@@ -98,10 +110,61 @@ describe('createProject', () => {
   it('does not assign a suspended user as project manager', async () => {
     vi.mocked(prisma.user.findFirst).mockResolvedValue(null as never);
     await expect(
-      createProject({ name: 'Website', status: 'PLANNING', managerId: 'suspended' }),
+      createProject({
+        name: 'Website',
+        status: 'PLANNING',
+        priority: 'MEDIUM',
+        managerId: 'suspended',
+      }),
     ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
     expect(prisma.user.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 'suspended', isActive: true, deletedAt: null } }),
+    );
+  });
+});
+
+describe('project portfolio', () => {
+  it('derives portfolio KPIs and filters from scoped project, task and membership data', async () => {
+    vi.mocked(prisma.project.findMany).mockResolvedValue([
+      { ...row, id: 'late', status: 'ACTIVE', dueDate: new Date('2020-01-01'), client: null },
+      { ...row, id: 'finished', name: 'Finished', status: 'COMPLETED', client: null },
+    ] as never);
+    vi.mocked(prisma.task.groupBy)
+      .mockResolvedValueOnce([
+        { projectId: 'late', status: 'TODO', _count: { _all: 2 } },
+        { projectId: 'late', status: 'DONE', _count: { _all: 1 } },
+      ] as never)
+      .mockResolvedValueOnce([{ projectId: 'late', _count: { _all: 1 } }] as never)
+      .mockResolvedValueOnce([] as never)
+      .mockResolvedValueOnce([] as never);
+    vi.mocked(prisma.milestone.groupBy).mockResolvedValue([] as never);
+    vi.mocked(prisma.projectMember.findMany).mockResolvedValue([
+      { projectId: 'late', userId: 'engineer', user: { name: 'Engineer' } },
+    ] as never);
+    const result = await getProjectPortfolio({
+      actor: viewer,
+      page: 1,
+      pageSize: 20,
+      health: 'OVERDUE',
+    });
+    expect(result.total).toBe(1);
+    expect(result.items[0]).toMatchObject({
+      id: 'late',
+      health: 'OVERDUE',
+      progress: 33,
+      assignedEngineers: 1,
+    });
+    expect(result.summary).toMatchObject({
+      totalProjects: 2,
+      completedProjects: 1,
+      delayedProjects: 1,
+      assignedEngineers: 1,
+      overdueTasks: 1,
+    });
+    expect(prisma.project.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ OR: expect.any(Array) }),
+      }),
     );
   });
 });
@@ -120,6 +183,14 @@ describe('updateProject', () => {
 
     const result = await updateProject('prj_1', { status: 'ACTIVE' }, admin);
     expect(result.status).toBe('ACTIVE');
+  });
+
+  it('requires budget changes to use the revision action', async () => {
+    vi.mocked(prisma.project.findFirst).mockResolvedValue({ ...row, managerId: admin.id } as never);
+    await expect(updateProject('prj_1', { budget: '30000.00' }, admin)).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+    });
+    expect(prisma.project.update).not.toHaveBeenCalled();
   });
 
   it('does not allow a global manager with viewer membership to change another project', async () => {
@@ -219,6 +290,18 @@ describe('getProjectWorkspace', () => {
     const result = await getProjectWorkspace('prj_1', { clientId: 'client_1' });
     expect(result?.healthNote).toBeNull();
     expect(result?.canEditHealthNote).toBe(false);
+    expect(result?.project.budget).toBeNull();
+    expect(result?.tasks).toEqual([]);
+    expect(prisma.task.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: { in: [] } }),
+      }),
+    );
+    expect(prisma.milestone.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ clientVisible: true }),
+      }),
+    );
   });
 });
 

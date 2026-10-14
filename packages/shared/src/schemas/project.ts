@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { taskPrioritySchema } from './task';
 
 // Projects (I2.1). Projects originate in Internal; the Portal reads them (Gate 1).
 // Shared by the internal admin UI resolver and the backend validate() (§11, §16).
@@ -34,6 +35,7 @@ export const adminProjectSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
   status: projectStatusSchema,
+  priority: taskPrioritySchema,
   startDate: z.string().nullable(), // ISO 8601
   dueDate: z.string().nullable(),
   budget: z.string().nullable(), // decimal string
@@ -54,6 +56,7 @@ export const createProjectSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(200),
   description: z.string().trim().max(5000).optional(),
   status: projectStatusSchema.default('PLANNING'),
+  priority: taskPrioritySchema.default('MEDIUM'),
   startDate: isoDate,
   dueDate: isoDate,
   budget: moneyString,
@@ -68,6 +71,7 @@ export const updateProjectSchema = z
     name: z.string().trim().min(1, 'Name is required').max(200).optional(),
     description: z.string().trim().max(5000).nullable().optional(),
     status: projectStatusSchema.optional(),
+    priority: taskPrioritySchema.optional(),
     startDate: isoDate.nullable(),
     dueDate: isoDate.nullable(),
     budget: moneyString.nullable(),

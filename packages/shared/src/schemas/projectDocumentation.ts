@@ -81,6 +81,7 @@ export const projectDocumentationSchema = z.object({
   mimeType: z.string().nullable(),
   sizeBytes: z.number().int().nullable(),
   status: documentationStatusSchema,
+  clientVisible: z.boolean(),
   currentVersion: z.number().int(),
   ownerId: z.string().nullable(),
   createdById: z.string(),

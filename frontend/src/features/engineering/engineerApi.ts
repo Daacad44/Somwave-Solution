@@ -4,6 +4,7 @@ export interface EngineerProfile {
   userId: string;
   headline: string | null;
   skills: string[];
+  specialization?: string | null;
   availability: 'AVAILABLE' | 'LIMITED' | 'UNAVAILABLE';
   weeklyCapacityHours: string | number;
   timezone: string;
@@ -27,6 +28,9 @@ export interface TeamEngineer {
     availabilitySlots: AvailabilitySlot[];
   };
   activeTaskCount: number;
+  assignedTaskCount: number;
+  completedTaskCount: number;
+  lastActivity: string | null;
   estimatedOpenHours: number;
   estimatedAllProjectsHours: number;
   weeklyCapacity: Array<{

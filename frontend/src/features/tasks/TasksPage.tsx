@@ -43,7 +43,10 @@ function formatDate(iso: string | null): string {
   return iso ? iso.slice(0, 10) : '—';
 }
 
-export function TasksPage(): ReactNode {
+export function TasksPage({
+  projectId: fixedProjectId,
+  projectName,
+}: { projectId?: string; projectName?: string } = {}): ReactNode {
   const [page, setPage] = useState(1);
   const [projectId, setProjectId] = useState('');
   const [status, setStatus] = useState<TaskStatus | ''>('');
@@ -55,12 +58,14 @@ export function TasksPage(): ReactNode {
 
   // Projects populate the filter and the create form's project picker.
   const projectsQuery = useProjects({ page: 1, pageSize: 100 });
-  const projects = (projectsQuery.data?.data ?? []).map((p) => ({ id: p.id, name: p.name }));
+  const projects = fixedProjectId
+    ? [{ id: fixedProjectId, name: projectName ?? 'Current project' }]
+    : (projectsQuery.data?.data ?? []).map((p) => ({ id: p.id, name: p.name }));
 
   const query = useTasks({
     page: view === 'kanban' ? 1 : page,
     pageSize: view === 'kanban' ? 100 : PAGE_SIZE,
-    projectId: projectId || undefined,
+    projectId: fixedProjectId || projectId || undefined,
     status: view === 'kanban' ? undefined : status || undefined,
   });
   const del = useDeleteTask();
@@ -107,18 +112,20 @@ export function TasksPage(): ReactNode {
       </div>
 
       <div className="mt-6 flex flex-wrap items-end gap-2">
-        <Select
-          aria-label="Filter by project"
-          options={[
-            { value: '', label: 'All projects' },
-            ...projects.map((p) => ({ value: p.id, label: p.name })),
-          ]}
-          value={projectId}
-          onChange={(e) => {
-            setPage(1);
-            setProjectId(e.target.value);
-          }}
-        />
+        {!fixedProjectId ? (
+          <Select
+            aria-label="Filter by project"
+            options={[
+              { value: '', label: 'All projects' },
+              ...projects.map((p) => ({ value: p.id, label: p.name })),
+            ]}
+            value={projectId}
+            onChange={(e) => {
+              setPage(1);
+              setProjectId(e.target.value);
+            }}
+          />
+        ) : null}
         {view === 'list' ? (
           <Select
             aria-label="Filter by status"

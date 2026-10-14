@@ -121,6 +121,16 @@ export const portalRouter: Router = Router();
 portalRouter.use(requireAuth);
 portalRouter.get('/projects', rbac(PERMISSIONS.PORTAL_READ), portalController.listProjects);
 portalRouter.get('/projects/:id', rbac(PERMISSIONS.PORTAL_READ), portalController.getProject);
+portalRouter.get(
+  '/projects/:id/documents',
+  rbac(PERMISSIONS.PORTAL_READ),
+  portalController.listDocuments,
+);
+portalRouter.get(
+  '/projects/:id/documents/:documentId/file',
+  rbac(PERMISSIONS.PORTAL_READ),
+  portalController.downloadDocument,
+);
 portalRouter.get('/milestones', rbac(PERMISSIONS.PORTAL_READ), portalController.listMilestones);
 
 export const paymentsRouter: Router = Router();

@@ -11,6 +11,7 @@ vi.mock('../lib/prisma', () => ({
     },
     project: { findFirst: vi.fn() },
     user: { findFirst: vi.fn() },
+    auditLog: { create: vi.fn() },
     $transaction: vi.fn((ops: unknown[]) => Promise.all(ops)),
   },
 }));

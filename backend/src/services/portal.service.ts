@@ -2,12 +2,14 @@ import type { AdminProject, AdminMilestone, ProjectWorkspace } from '@somwave/sh
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
 import { getProjectWorkspace } from './project.service';
+import { readObject } from '../lib/storage';
 
 function toProject(row: {
   id: string;
   name: string;
   description: string | null;
   status: AdminProject['status'];
+  priority: AdminProject['priority'];
   startDate: Date | null;
   dueDate: Date | null;
   budget: { toString(): string } | null;
@@ -20,9 +22,10 @@ function toProject(row: {
     name: row.name,
     description: row.description,
     status: row.status,
+    priority: row.priority,
     startDate: row.startDate?.toISOString() ?? null,
     dueDate: row.dueDate?.toISOString() ?? null,
-    budget: row.budget ? row.budget.toString() : null,
+    budget: null,
     clientId: row.clientId,
     manager: row.manager,
     createdAt: row.createdAt.toISOString(),
@@ -57,13 +60,14 @@ export async function getPortalProject(
 export async function listPortalMilestones(clientId: string | null): Promise<AdminMilestone[]> {
   if (!clientId) throw new AppError('NOT_FOUND', 404, 'Milestone not found');
   const rows = await prisma.milestone.findMany({
-    where: { deletedAt: null, project: { clientId, deletedAt: null } },
+    where: { deletedAt: null, clientVisible: true, project: { clientId, deletedAt: null } },
     orderBy: [{ order: 'asc' }, { createdAt: 'desc' }],
     select: {
       id: true,
       title: true,
       description: true,
       status: true,
+      clientVisible: true,
       dueDate: true,
       completedAt: true,
       order: true,
@@ -76,10 +80,62 @@ export async function listPortalMilestones(clientId: string | null): Promise<Adm
     title: row.title,
     description: row.description,
     status: row.status,
+    clientVisible: row.clientVisible,
+    owner: null,
+    verifiedBy: null,
+    verifiedAt: null,
     dueDate: row.dueDate?.toISOString() ?? null,
     completedAt: row.completedAt?.toISOString() ?? null,
     order: row.order,
     project: row.project,
     createdAt: row.createdAt.toISOString(),
   }));
+}
+
+export async function listPortalDocuments(clientId: string | null, projectId: string) {
+  if (!clientId) throw new AppError('NOT_FOUND', 404, 'Project not found');
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, clientId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!project) throw new AppError('NOT_FOUND', 404, 'Project not found');
+  const rows = await prisma.projectDocumentation.findMany({
+    where: { projectId, status: 'APPROVED', clientVisible: true, deletedAt: null },
+    orderBy: { updatedAt: 'desc' },
+    select: {
+      id: true,
+      title: true,
+      category: true,
+      format: true,
+      content: true,
+      fileName: true,
+      mimeType: true,
+      sizeBytes: true,
+      updatedAt: true,
+    },
+  });
+  return rows.map(({ updatedAt, ...row }) => ({ ...row, updatedAt: updatedAt.toISOString() }));
+}
+
+export async function getPortalDocumentFile(
+  clientId: string | null,
+  projectId: string,
+  documentId: string,
+) {
+  if (!clientId) throw new AppError('NOT_FOUND', 404, 'Document not found');
+  const row = await prisma.projectDocumentation.findFirst({
+    where: {
+      id: documentId,
+      projectId,
+      status: 'APPROVED',
+      clientVisible: true,
+      deletedAt: null,
+      project: { clientId, deletedAt: null },
+    },
+    select: { storageKey: true, mimeType: true, fileName: true, title: true },
+  });
+  if (!row?.storageKey || !row.mimeType) throw new AppError('NOT_FOUND', 404, 'Document not found');
+  const bytes = await readObject(row.storageKey);
+  if (!bytes) throw new AppError('NOT_FOUND', 404, 'Document not found');
+  return { bytes, mimeType: row.mimeType, fileName: row.fileName ?? row.title };
 }

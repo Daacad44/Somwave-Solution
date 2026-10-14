@@ -27,7 +27,10 @@ function formatDate(iso: string | null): string {
   return iso ? iso.slice(0, 10) : '—';
 }
 
-export function MilestonesPage(): ReactNode {
+export function MilestonesPage({
+  projectId: fixedProjectId,
+  projectName,
+}: { projectId?: string; projectName?: string } = {}): ReactNode {
   const [page, setPage] = useState(1);
   const [projectId, setProjectId] = useState('');
   const [status, setStatus] = useState<MilestoneStatus | ''>('');
@@ -37,12 +40,14 @@ export function MilestonesPage(): ReactNode {
   const canDelete = useHasPermission(PERMISSIONS.MILESTONES_DELETE);
 
   const projectsQuery = useProjects({ page: 1, pageSize: 100 });
-  const projects = (projectsQuery.data?.data ?? []).map((p) => ({ id: p.id, name: p.name }));
+  const projects = fixedProjectId
+    ? [{ id: fixedProjectId, name: projectName ?? 'Current project' }]
+    : (projectsQuery.data?.data ?? []).map((p) => ({ id: p.id, name: p.name }));
 
   const query = useMilestones({
     page,
     pageSize: PAGE_SIZE,
-    projectId: projectId || undefined,
+    projectId: fixedProjectId || projectId || undefined,
     status: status || undefined,
   });
   const del = useDeleteMilestone();
@@ -75,18 +80,20 @@ export function MilestonesPage(): ReactNode {
       </div>
 
       <div className="mt-6 flex flex-wrap items-end gap-2">
-        <Select
-          aria-label="Filter by project"
-          options={[
-            { value: '', label: 'All projects' },
-            ...projects.map((p) => ({ value: p.id, label: p.name })),
-          ]}
-          value={projectId}
-          onChange={(e) => {
-            setPage(1);
-            setProjectId(e.target.value);
-          }}
-        />
+        {!fixedProjectId ? (
+          <Select
+            aria-label="Filter by project"
+            options={[
+              { value: '', label: 'All projects' },
+              ...projects.map((p) => ({ value: p.id, label: p.name })),
+            ]}
+            value={projectId}
+            onChange={(e) => {
+              setPage(1);
+              setProjectId(e.target.value);
+            }}
+          />
+        ) : null}
         <Select
           aria-label="Filter by status"
           options={[
@@ -119,6 +126,9 @@ export function MilestonesPage(): ReactNode {
                 <Th>Title</Th>
                 <Th>Project</Th>
                 <Th>Status</Th>
+                <Th>Owner</Th>
+                <Th>Completion verification</Th>
+                <Th>Task progress</Th>
                 <Th>Due date</Th>
                 <Th className="text-end">Actions</Th>
               </Tr>
@@ -132,6 +142,19 @@ export function MilestonesPage(): ReactNode {
                     <Badge tone={STATUS_TONE[milestone.status]}>
                       {INTERNAL_MILESTONE_STATUS[milestone.status]}
                     </Badge>
+                  </Td>
+                  <Td>{milestone.owner?.name ?? 'Unassigned'}</Td>
+                  <Td>
+                    {milestone.verifiedBy && milestone.verifiedAt
+                      ? `${milestone.verifiedBy.name} · ${formatDate(milestone.verifiedAt)}`
+                      : milestone.status === 'COMPLETED'
+                        ? 'Legacy completion'
+                        : 'Pending'}
+                  </Td>
+                  <Td>
+                    {milestone.progressPercent === null || milestone.progressPercent === undefined
+                      ? 'No linked tasks'
+                      : `${milestone.progressPercent}% (${milestone.linkedTaskCount} tasks)`}
                   </Td>
                   <Td className="text-muted">{formatDate(milestone.dueDate)}</Td>
                   <Td>

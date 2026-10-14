@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const txMocks = vi.hoisted(() => ({
+  updateMany: vi.fn(),
+  findUniqueOrThrow: vi.fn(),
+  createVersion: vi.fn(),
+}));
+
 vi.mock('../lib/prisma', () => ({
   prisma: {
     project: { findFirst: vi.fn() },
@@ -18,6 +24,15 @@ vi.mock('../lib/prisma', () => ({
       deleteMany: vi.fn(),
     },
     auditLog: { create: vi.fn() },
+    $transaction: vi.fn((callback: (tx: unknown) => Promise<unknown>) =>
+      callback({
+        projectDocumentation: {
+          updateMany: txMocks.updateMany,
+          findUniqueOrThrow: txMocks.findUniqueOrThrow,
+        },
+        documentationVersion: { create: txMocks.createVersion },
+      }),
+    ),
   },
 }));
 vi.mock('../lib/storage', () => ({ putObject: vi.fn(), readObject: vi.fn() }));
@@ -30,6 +45,8 @@ import {
   listProjectDocumentation,
   addDocumentationAttachment,
   listDocumentationAttachments,
+  setClientDocumentationVisibility,
+  updateProjectDocumentation,
 } from './project-documentation.service';
 
 const engineer = {
@@ -86,6 +103,65 @@ describe('project documentation isolation', () => {
     expect(prisma.projectDocumentation.findFirst).toHaveBeenCalledWith({
       where: { id: 'doc-a', projectId: 'project-a', deletedAt: null },
     });
+  });
+});
+
+describe('client publication', () => {
+  it('requires a project manager before a document can be shared', async () => {
+    await expect(
+      setClientDocumentationVisibility('project-a', 'doc-a', engineer, true),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    expect(prisma.projectDocumentation.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('rejects publication of an unapproved document', async () => {
+    vi.mocked(prisma.projectMember.findUnique).mockResolvedValue({
+      role: 'MANAGER',
+      removedAt: null,
+    } as never);
+    vi.mocked(prisma.projectDocumentation.findFirst).mockResolvedValue({
+      status: 'DRAFT',
+      clientVisible: false,
+    } as never);
+    await expect(
+      setClientDocumentationVisibility('project-a', 'doc-a', engineer, true),
+    ).rejects.toMatchObject({
+      code: 'CONFLICT',
+    });
+  });
+
+  it('unpublishes an approved document when an editor changes its content', async () => {
+    const old = {
+      id: 'doc-a',
+      projectId: 'project-a',
+      title: 'Spec',
+      status: 'APPROVED',
+      clientVisible: true,
+      format: 'MARKDOWN',
+      currentVersion: 1,
+      storageKey: null,
+    };
+    vi.mocked(prisma.projectDocumentation.findFirst).mockResolvedValue(old as never);
+    txMocks.updateMany.mockResolvedValue({ count: 1 });
+    txMocks.findUniqueOrThrow.mockResolvedValue({
+      ...old,
+      status: 'DRAFT',
+      clientVisible: false,
+      currentVersion: 2,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await updateProjectDocumentation('project-a', 'doc-a', engineer, {
+      expectedVersion: 1,
+      content: 'Changed',
+    });
+    expect(txMocks.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'DRAFT', clientVisible: false }),
+      }),
+    );
   });
 });
 

@@ -140,6 +140,9 @@ export interface EligibleEngineer {
   id: string;
   name: string;
   email: string;
+  skills: string[];
+  specialization: string | null;
+  availability: 'AVAILABLE' | 'LIMITED' | 'UNAVAILABLE';
   weeklyCapacityHours: number;
   availableHoursThisWeek: number;
   estimatedHoursThisWeek: number;
@@ -320,6 +323,15 @@ export const engineeringApi = {
   removeMember: (projectId: string, userId: string) =>
     apiFetch<{ success: boolean }>(`/engineering/projects/${projectId}/members/${userId}`, {
       method: 'DELETE',
+    }),
+  updateMember: (
+    projectId: string,
+    userId: string,
+    input: { role?: string; responsibilities?: string | null },
+  ) =>
+    apiFetch<EngineeringMember>(`/engineering/projects/${projectId}/members/${userId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
     }),
   systems: (projectId: string) =>
     apiFetch<ManagedSystem[]>(`/engineering/projects/${projectId}/systems`),

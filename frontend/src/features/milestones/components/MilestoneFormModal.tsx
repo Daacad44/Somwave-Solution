@@ -2,6 +2,7 @@
 // The project is chosen on create and fixed thereafter.
 import { type ReactNode, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useQuery } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   createMilestoneSchema,
@@ -16,6 +17,7 @@ import { Button } from '../../../components/ui/Button';
 import { ApiError } from '../../../lib/apiClient';
 import { useCreateMilestone, useUpdateMilestone } from '../hooks';
 import { INTERNAL_MILESTONE_STATUS } from '../../../lib/internalLabels';
+import { engineeringApi } from '../../engineering/api';
 
 export interface MilestoneFormModalProps {
   open: boolean;
@@ -48,6 +50,7 @@ export function MilestoneFormModal({
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<CreateMilestoneInput>({
     resolver: zodResolver(createMilestoneSchema),
@@ -56,9 +59,17 @@ export function MilestoneFormModal({
       title: milestone?.title ?? '',
       description: milestone?.description ?? '',
       status: milestone?.status ?? 'PENDING',
+      clientVisible: milestone?.clientVisible ?? false,
+      ownerId: milestone?.owner?.id ?? '',
       dueDate: dateValue(milestone?.dueDate) || undefined,
       order: milestone?.order ?? 0,
     },
+  });
+  const selectedProjectId = watch('projectId');
+  const members = useQuery({
+    queryKey: ['engineering-members', selectedProjectId],
+    queryFn: () => engineeringApi.members(selectedProjectId),
+    enabled: Boolean(selectedProjectId),
   });
 
   const close = (): void => {
@@ -77,6 +88,8 @@ export function MilestoneFormModal({
             title: values.title,
             description: orUndefined(values.description) ?? null,
             status: values.status,
+            clientVisible: values.clientVisible,
+            ownerId: values.ownerId || null,
             dueDate: orUndefined(values.dueDate) ?? null,
             order: values.order,
           },
@@ -86,6 +99,8 @@ export function MilestoneFormModal({
           projectId: values.projectId,
           title: values.title,
           status: values.status,
+          clientVisible: values.clientVisible,
+          ownerId: values.ownerId || null,
           order: values.order,
           description: orUndefined(values.description),
           dueDate: orUndefined(values.dueDate),
@@ -113,6 +128,17 @@ export function MilestoneFormModal({
           {...register('projectId')}
         />
         <Input label="Title" error={errors.title?.message} {...register('title')} />
+        <Select
+          label="Milestone owner"
+          options={[
+            { value: '', label: 'Unassigned' },
+            ...(members.data ?? []).map((member) => ({
+              value: member.user.id,
+              label: member.user.name,
+            })),
+          ]}
+          {...register('ownerId')}
+        />
 
         <label className="flex flex-col gap-1">
           <span className="text-sm font-medium text-ink">Description</span>
@@ -140,6 +166,10 @@ export function MilestoneFormModal({
           error={errors.order?.message}
           {...register('order', { valueAsNumber: true })}
         />
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" {...register('clientVisible')} /> Share this milestone with the
+          client
+        </label>
 
         {serverError ? <p className="text-sm text-error">{serverError}</p> : null}
 
