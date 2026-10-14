@@ -78,8 +78,18 @@ test('engineer directory filters and registration form are usable', async ({ pag
   await expect(dialog.getByLabel('Full name')).toBeVisible();
   await expect(dialog.getByLabel('Email address')).toBeVisible();
   await expect(dialog.getByLabel('Weekly working hours')).toBeVisible();
-  await dialog.getByRole('button', { name: 'Send invitation' }).click();
-  await expect(dialog.getByLabel('Full name')).toBeFocused();
+  const sendInvitation = dialog.getByRole('button', { name: 'Send invitation' });
+  await expect(
+    dialog.getByText(/Resend settings are present|Email is not configured/),
+  ).toBeVisible();
+  if (await sendInvitation.isEnabled()) {
+    await sendInvitation.click();
+    await expect(dialog.getByLabel('Full name')).toBeFocused();
+  } else {
+    await expect(dialog.getByRole('alert')).toContainText(
+      /RESEND_API_KEY|EMAIL_FROM|APP_PUBLIC_URL/,
+    );
+  }
   await dialog.getByRole('button', { name: 'Cancel' }).click();
   await expect(dialog).toBeHidden();
 

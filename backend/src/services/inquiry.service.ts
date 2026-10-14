@@ -87,6 +87,7 @@ export async function createInquiry(
       to: notifyTo,
       template: ENQUIRY_NOTIFY_V1,
       vars: { name: input.name, email: input.email, message: input.message },
+      idempotencyKey: `enquiry:${inquiry.id}`,
     });
   }
   return inquiry;

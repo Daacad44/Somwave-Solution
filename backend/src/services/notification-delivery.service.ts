@@ -1,8 +1,8 @@
 import { Prisma } from '@prisma/client';
+import { createHash } from 'node:crypto';
 import { prisma } from '../lib/prisma';
-import { env } from '../lib/env';
 import { logger } from '../lib/logger';
-import { sendMail } from '../lib/mailer';
+import { emailReadiness, sendMail } from '../lib/mailer';
 import { ENGINEERING_NOTIFICATION_V1 } from '../mail/templates';
 
 export const NOTIFICATION_EVENTS = [
@@ -81,7 +81,17 @@ export async function emitNotification(input: NotificationInput): Promise<void> 
       }
     });
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') return;
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      // An administrator may retry an invitation after fixing a rejected sender/key.
+      // The original delivery retains its idempotency key and audit trail.
+      if (input.requiredEmail) {
+        await prisma.notificationDelivery.updateMany({
+          where: { dedupeKey: `email:${input.dedupeKey}`, channel: 'EMAIL', status: 'FAILED' },
+          data: { status: 'RETRY', attempts: 0, nextAttemptAt: new Date(), error: null },
+        });
+      }
+      return;
+    }
     throw error;
   }
 }
@@ -116,6 +126,7 @@ export async function listNotificationDeliveries(userId: string) {
       status: true,
       attempts: true,
       sentAt: true,
+      providerMessageId: true,
       error: true,
       notification: { select: { title: true, createdAt: true } },
     },
@@ -131,7 +142,7 @@ export async function processPendingNotificationEmails(now = new Date()): Promis
       channel: 'EMAIL',
       OR: [
         { status: { in: ['PENDING', 'RETRY', 'SENDING'] }, nextAttemptAt: { lte: now } },
-        ...(env.SMTP_HOST && env.SMTP_FROM ? [{ status: 'WAITING_CONFIG' }] : []),
+        ...(emailReadiness().configured ? [{ status: 'WAITING_CONFIG' }] : []),
       ],
     },
     include: {
@@ -166,16 +177,38 @@ export async function processPendingNotificationEmails(now = new Date()): Promis
         to: row.notification.user.email,
         template: ENGINEERING_NOTIFICATION_V1,
         vars: { subject: row.notification.title, message: row.notification.body },
+        idempotencyKey: `notification:${createHash('sha256')
+          .update(row.dedupeKey ?? row.id)
+          .digest('hex')}`,
       });
       if (result.sent) {
         await prisma.notificationDelivery.update({
           where: { id: row.id },
-          data: { status: 'SENT', sentAt: new Date(), nextAttemptAt: null, error: null },
+          data: {
+            status: 'ACCEPTED',
+            sentAt: new Date(),
+            providerMessageId: result.providerMessageId ?? null,
+            nextAttemptAt: null,
+            error: null,
+          },
         });
       } else if (result.reason === 'not_configured') {
         await prisma.notificationDelivery.update({
           where: { id: row.id },
-          data: { status: 'WAITING_CONFIG', nextAttemptAt: null, error: 'SMTP is not configured' },
+          data: {
+            status: 'WAITING_CONFIG',
+            nextAttemptAt: null,
+            error: 'Resend is not configured',
+          },
+        });
+      } else if (result.reason === 'invalid_credentials' || result.reason === 'invalid_sender') {
+        await prisma.notificationDelivery.update({
+          where: { id: row.id },
+          data: {
+            status: 'FAILED',
+            nextAttemptAt: null,
+            error: 'Resend rejected the email configuration',
+          },
         });
       } else {
         const attempts = row.attempts + 1;

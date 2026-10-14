@@ -39,6 +39,7 @@ export interface EngineerAccount {
     lastSentAt: string | null;
     verifiedAt: string | null;
     activatedAt: string | null;
+    providerMessageId: string | null;
   } | null;
 }
 
@@ -77,10 +78,17 @@ export interface EngineeringTeamOverview {
   projectsAtRisk: number;
 }
 
+export interface EngineerEmailReadiness {
+  provider: 'resend';
+  configured: boolean;
+  missing: string[];
+}
+
 const base = '/engineering/accounts';
 
 export const accountsApi = {
   overview: () => apiFetch<EngineeringTeamOverview>('/engineering/team-overview'),
+  emailReadiness: () => apiFetch<EngineerEmailReadiness>(`${base}/email-readiness`),
   list: () => apiFetch<EngineerAccount[]>(base),
   detail: (id: string) => apiFetch<EngineerAccount>(`${base}/${id}`),
   activity: (id: string) => apiFetch<EngineerActivity[]>(`${base}/${id}/activity`),

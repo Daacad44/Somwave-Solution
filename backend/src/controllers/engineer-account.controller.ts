@@ -28,6 +28,9 @@ function handle(fn: (req: Request) => Promise<unknown>, status = 200) {
 }
 
 export const list = handle((req) => accounts.listEngineerAccounts(actor(req)));
+export const emailReadiness = handle((req) =>
+  Promise.resolve(accounts.engineerEmailReadiness(actor(req))),
+);
 export const detail = handle((req) => accounts.getEngineerAccount(actor(req), userId(req)));
 export const create = handle(
   (req) => accounts.createEngineerAccount(actor(req), req.body as CreateEngineerAccountInput),

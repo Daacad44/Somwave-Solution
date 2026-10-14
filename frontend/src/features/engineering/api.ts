@@ -128,7 +128,12 @@ export interface PendingProjectInvitation {
   expiresAt: string | null;
   status: string;
   invitedAt: string;
-  user: { id: string; name: string; email: string };
+  user: { id: string; name: string; email: string; isActive: boolean };
+  emailDelivery: {
+    status: string;
+    providerMessageId: string | null;
+    error: string | null;
+  } | null;
 }
 
 export interface EligibleEngineer {

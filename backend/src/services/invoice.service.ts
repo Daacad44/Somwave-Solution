@@ -201,6 +201,7 @@ export async function sendInvoice(id: string, clientId?: string | null): Promise
     await sendMail({
       to: recipient.email,
       template: INVOICE_SENT_V1,
+      idempotencyKey: `invoice:${existing.id}`,
       vars: {
         number: detail.number,
         total: detail.total,

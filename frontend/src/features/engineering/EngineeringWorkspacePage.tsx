@@ -615,6 +615,19 @@ export function EngineeringWorkspacePage(): ReactNode {
                     {invitation.expiresAt
                       ? ` · Expires ${new Date(invitation.expiresAt).toLocaleDateString()}`
                       : ''}
+                    <span className="block text-muted">
+                      Email:{' '}
+                      {invitation.emailDelivery
+                        ? invitation.emailDelivery.status === 'ACCEPTED'
+                          ? 'Accepted by Resend'
+                          : invitation.emailDelivery.status.replaceAll('_', ' ').toLowerCase()
+                        : invitation.user.isActive
+                          ? 'Not queued — retry the invitation'
+                          : 'Queued after account activation'}
+                      {invitation.emailDelivery?.error
+                        ? ` · ${invitation.emailDelivery.error}`
+                        : ''}
+                    </span>
                   </span>
                   {invitation.status === 'PENDING' ? (
                     <Button

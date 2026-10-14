@@ -44,6 +44,8 @@ const label = (value: string): string =>
     .replaceAll('_', ' ')
     .toLowerCase()
     .replace(/^./, (letter) => letter.toUpperCase());
+const deliveryLabel = (value: string): string =>
+  value === 'ACCEPTED' ? 'Accepted by Resend' : label(value);
 
 export function EngineerDirectory(): ReactNode {
   const client = useQueryClient();
@@ -81,6 +83,12 @@ export function EngineerDirectory(): ReactNode {
   });
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
+  const emailStatus = useQuery({
+    queryKey: ['engineer-email-readiness'],
+    queryFn: accountsApi.emailReadiness,
+    enabled: open,
+    staleTime: 0,
+  });
   const [input, setInput] = useState<EngineerAccountInput>(initialInput);
   const [skillsText, setSkillsText] = useState('');
   const [message, setMessage] = useState('');
@@ -135,12 +143,18 @@ export function EngineerDirectory(): ReactNode {
       setInput(initialInput);
       setSkillsText('');
       setMessage(
-        `Engineer invitation created. Email delivery: ${label(result.engineerAccountInvitation?.deliveryStatus ?? 'PENDING')}.`,
+        result.engineerAccountInvitation?.deliveryStatus === 'ACCEPTED'
+          ? 'Engineer invitation accepted by Resend. The engineer can verify and activate their account using the email link.'
+          : `Engineer invitation created. Email status: ${deliveryLabel(result.engineerAccountInvitation?.deliveryStatus ?? 'PENDING')}.`,
       );
       void client.invalidateQueries({ queryKey: ['engineer-accounts'] });
       void client.invalidateQueries({ queryKey: ['engineering-team-overview'] });
     },
-    onError: (error: Error) => setMessage(error.message),
+    onError: (error: Error) => {
+      setMessage(error.message);
+      void client.invalidateQueries({ queryKey: ['engineer-accounts'] });
+      void client.invalidateQueries({ queryKey: ['engineering-team-overview'] });
+    },
   });
   const submit = (event: FormEvent): void => {
     event.preventDefault();
@@ -422,7 +436,7 @@ export function EngineerDirectory(): ReactNode {
                       </td>
                       <td className="p-2">
                         {account.engineerAccountInvitation
-                          ? label(account.engineerAccountInvitation.deliveryStatus)
+                          ? deliveryLabel(account.engineerAccountInvitation.deliveryStatus)
                           : '—'}
                       </td>
                       <td className="p-2">
@@ -495,6 +509,32 @@ export function EngineerDirectory(): ReactNode {
           <p className="text-sm text-muted">
             An invitation will be sent to the engineer’s unique email address.
           </p>
+          {emailStatus.isLoading ? (
+            <p role="status" className="text-sm text-muted">
+              Checking Resend configuration…
+            </p>
+          ) : emailStatus.isError ? (
+            <div role="alert" className="text-sm text-error">
+              Could not check email configuration.{' '}
+              <button
+                type="button"
+                className="underline"
+                onClick={() => void emailStatus.refetch()}
+              >
+                Try again
+              </button>
+            </div>
+          ) : emailStatus.data?.configured ? (
+            <p role="status" className="text-sm text-muted">
+              Resend settings are present. Provider acceptance is confirmed after submission;
+              mailbox delivery may take longer.
+            </p>
+          ) : (
+            <p role="alert" className="text-sm text-error">
+              Email is not configured. Backend settings needed:{' '}
+              {emailStatus.data?.missing.join(', ')}.
+            </p>
+          )}
           <Input
             label="Full name"
             required
@@ -616,7 +656,11 @@ export function EngineerDirectory(): ReactNode {
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" isLoading={create.isPending}>
+            <Button
+              type="submit"
+              isLoading={create.isPending}
+              disabled={!emailStatus.data?.configured || emailStatus.isFetching}
+            >
               Send invitation
             </Button>
           </div>
