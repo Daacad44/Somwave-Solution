@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../lib/prisma', () => ({
   prisma: {
-    user: { findFirst: vi.fn(), update: vi.fn() },
+    user: { findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
     refreshToken: { create: vi.fn(), updateMany: vi.fn() },
     twoFactorBackupCode: {
       deleteMany: vi.fn(),
@@ -19,6 +19,7 @@ vi.mock('../lib/password', () => ({
   verifyPassword: vi.fn(),
   hashPassword: vi.fn(),
 }));
+vi.mock('../lib/password-policy', () => ({ assertNewPasswordAllowed: vi.fn() }));
 
 vi.mock('../lib/totp', () => ({
   createTotpSecret: vi.fn(() => 'TESTSECRET'),
@@ -32,6 +33,7 @@ vi.mock('../lib/mailer', () => ({
 
 import { prisma } from '../lib/prisma';
 import { verifyPassword } from '../lib/password';
+import { assertNewPasswordAllowed } from '../lib/password-policy';
 import { verifyTotp } from '../lib/totp';
 import { sendMail } from '../lib/mailer';
 import {
@@ -40,6 +42,7 @@ import {
   confirmTwoFactorEnrolment,
   disableTwoFactor,
   requestPasswordReset,
+  resetPassword,
 } from './auth.service';
 
 const user = {
@@ -94,6 +97,19 @@ describe('login', () => {
     } as never);
     vi.mocked(verifyPassword).mockResolvedValue(true);
     const result = await login('a@b.com', 'secret');
+    expect(result.kind).toBe('twoFactor');
+    expect(prisma.refreshToken.create).not.toHaveBeenCalled();
+  });
+
+  it('preserves the Super Admin two-factor login path', async () => {
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({
+      ...user,
+      roles: [{ role: { name: 'SUPER_ADMIN', permissions: [] } }],
+      twoFactorEnabled: true,
+      twoFactorSecret: 'stored',
+    } as never);
+    vi.mocked(verifyPassword).mockResolvedValue(true);
+    const result = await login('a@b.com', 'legacy-password');
     expect(result.kind).toBe('twoFactor');
     expect(prisma.refreshToken.create).not.toHaveBeenCalled();
   });
@@ -171,5 +187,22 @@ describe('password reset', () => {
     await requestPasswordReset('a@b.com');
     expect(prisma.passwordResetToken.create).toHaveBeenCalledOnce();
     expect(sendMail).toHaveBeenCalledOnce();
+  });
+
+  it('leaves the reset token unused when the new password fails safety checks', async () => {
+    vi.mocked(prisma.passwordResetToken.findUnique).mockResolvedValue({
+      id: 'reset_1',
+      userId: user.id,
+      usedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+    } as never);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      name: user.name,
+      email: user.email,
+    } as never);
+    vi.mocked(assertNewPasswordAllowed).mockRejectedValue(new Error('weak password'));
+    await expect(resetPassword('reset-token', 'weak')).rejects.toThrow('weak password');
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.passwordResetToken.update).not.toHaveBeenCalled();
   });
 });

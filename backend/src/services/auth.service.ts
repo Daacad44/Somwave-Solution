@@ -7,6 +7,7 @@ import { isTwoFactorRequired, permissionKeysFor } from '@somwave/shared';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
 import { hashPassword, verifyPassword } from '../lib/password';
+import { assertNewPasswordAllowed } from '../lib/password-policy';
 import {
   generateRefreshToken,
   hashRefreshToken,
@@ -315,6 +316,12 @@ export async function resetPassword(token: string, password: string): Promise<vo
   if (!row || row.usedAt || row.expiresAt.getTime() <= Date.now()) {
     throw new AppError('NOT_FOUND', 404, 'Password reset link has expired');
   }
+  const user = await prisma.user.findUnique({
+    where: { id: row.userId },
+    select: { name: true, email: true },
+  });
+  if (!user) throw new AppError('NOT_FOUND', 404, 'Account not found');
+  await assertNewPasswordAllowed(password, user);
   await prisma.$transaction([
     prisma.user.update({
       where: { id: row.userId },

@@ -1,7 +1,7 @@
 import { type ReactNode, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import {
   loginSchema,
@@ -17,6 +17,8 @@ import { AuthLayout } from './AuthLayout';
 
 export function LoginPage(): ReactNode {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const nextPath = searchParams.get('next') === '/engineering' ? '/engineering' : '/';
   const loginMutation = useLogin();
   const verifyMutation = useVerifyTwoFactor();
   const [challengeToken, setChallengeToken] = useState<string | null>(null);
@@ -36,7 +38,7 @@ export function LoginPage(): ReactNode {
         codeForm.setValue('challengeToken', result.challengeToken);
         return;
       }
-      navigate('/', { replace: true });
+      navigate(nextPath, { replace: true });
     } catch {
       // Mutation error is rendered below; do not let RHF treat it as unhandled.
     }
@@ -45,7 +47,7 @@ export function LoginPage(): ReactNode {
   const onVerify = codeForm.handleSubmit(async (values) => {
     try {
       await verifyMutation.mutateAsync(values);
-      navigate('/', { replace: true });
+      navigate(nextPath, { replace: true });
     } catch {
       // Mutation error is rendered below.
     }

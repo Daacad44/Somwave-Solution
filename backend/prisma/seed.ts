@@ -19,7 +19,11 @@ async function main(): Promise<void> {
     await prisma.role.upsert({
       where: { name },
       update: {},
-      create: { name, isSystem: true },
+      create: {
+        name,
+        isSystem: true,
+        ...(name === ROLES.ENGINEER ? { description: 'Engineering team member' } : {}),
+      },
     });
   }
 
@@ -116,7 +120,6 @@ async function main(): Promise<void> {
       'engineering.read',
       'engineering.tasks.create',
       'project-documentation.read',
-      'github.read',
       'notifications.read',
     ],
     [ROLES.QA_ENGINEER]: [

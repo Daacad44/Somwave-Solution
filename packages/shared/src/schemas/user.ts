@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { newPasswordSchema } from './password';
 
 // User & role management (I1). Shared between the internal admin UI (React Hook
 // Form resolver) and the backend validate() middleware (SYSTEM_PROMPT §11, §16).
@@ -48,11 +49,7 @@ export const adminUserSchema = z.object({
 
 export type AdminUser = z.infer<typeof adminUserSchema>;
 
-// Passwords: min 12 chars (§13 posture — long over complex). Reused by create.
-export const passwordSchema = z
-  .string()
-  .min(12, 'Password must be at least 12 characters')
-  .max(200);
+export const passwordSchema = newPasswordSchema;
 
 export const createUserSchema = z.object({
   email: z.string().trim().email('Enter a valid email address'),
