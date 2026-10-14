@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { PASSWORD_MIN_LENGTH } from '../constants/limits';
 import { TWO_FACTOR_REQUIRED_ROLES, type RoleName } from '../constants/roles';
+import { newPasswordSchema } from './password';
 
 export const loginSchema = z.object({
   email: z.string().email('Enter a valid email address'),
@@ -24,9 +24,7 @@ export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 
 export const resetPasswordSchema = z.object({
   token: z.string().min(1, 'Please use the link in the email'),
-  password: z
-    .string()
-    .min(PASSWORD_MIN_LENGTH, `Password must be at least ${PASSWORD_MIN_LENGTH} xaraf`),
+  password: newPasswordSchema,
 });
 
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

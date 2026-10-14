@@ -35,7 +35,7 @@ Administrator account management is under `/api/v1/engineering/accounts`; reques
 | `POST /api/v1/engineering/accounts/:userId/suspend` | M, admin scope | Suspend engineer access. |
 | `POST /api/v1/engineering/accounts/:userId/reactivate` | M, admin scope | Reactivate a suspended account. |
 | `POST /api/v1/auth/engineer-invitations/verify` | Public, rate limited | `{ "token": "..." }`; consume email verification token and return a short-lived activation token and profile summary. |
-| `POST /api/v1/auth/engineer-invitations/activate` | Public, rate limited | `{ "activationToken": "...", "password": "..." }` plus optional profile completion fields; activates the engineer identity. Existing identities provide their current password. |
+| `POST /api/v1/auth/engineer-invitations/activate` | Public, rate limited | New identities send `{ "activationToken": "...", "password": "...", "confirmPassword": "..." }` plus profile fields; existing identities send their current password without confirmation. Activation grants the ENGINEER role only after the token, password and profile checks succeed. |
 
 ## Engineering projects, membership, and profiles
 

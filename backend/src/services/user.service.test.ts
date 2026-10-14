@@ -17,6 +17,7 @@ vi.mock('../lib/prisma', () => ({
   },
 }));
 vi.mock('../lib/password', () => ({ hashPassword: vi.fn().mockResolvedValue('hashed') }));
+vi.mock('../lib/password-policy', () => ({ assertNewPasswordAllowed: vi.fn() }));
 
 import { prisma } from '../lib/prisma';
 import { createUser, updateUser, deactivateUser, listUsers } from './user.service';

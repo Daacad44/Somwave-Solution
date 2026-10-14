@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { passwordSchema } from './user';
 
 export const engineerExperienceLevels = ['JUNIOR', 'MID', 'SENIOR', 'PRINCIPAL'] as const;
 export const engineerEmploymentTypes = ['FULL_TIME', 'PART_TIME', 'CONTRACT'] as const;
@@ -57,7 +56,10 @@ export type ResendEngineerVerificationInput = z.infer<typeof resendEngineerVerif
 
 export const activateEngineerInvitationSchema = z.object({
   activationToken: z.string().min(32).max(256),
-  password: passwordSchema,
+  // Existing accounts enter their current password, which may predate this policy.
+  // New-account passwords are checked by the activation service against the policy.
+  password: z.string().min(1).max(1024),
+  confirmPassword: z.string().max(128).optional(),
   phone: profileFields.phone,
   jobTitle: profileFields.jobTitle.optional(),
   specialization: profileFields.specialization.optional(),

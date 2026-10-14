@@ -6,7 +6,7 @@ describe('createUserSchema', () => {
     const parsed = createUserSchema.parse({
       email: 'cali@example.com',
       name: 'Cali Axmed',
-      password: 'a-strong-password',
+      password: 'Mosaic!7River8',
     });
     expect(parsed.roleIds).toEqual([]);
   });
@@ -23,7 +23,7 @@ describe('createUserSchema', () => {
 
   it('rejects a bad email', () => {
     expect(
-      createUserSchema.safeParse({ email: 'nope', name: 'Cali', password: 'a-strong-password' })
+      createUserSchema.safeParse({ email: 'nope', name: 'Cali', password: 'Mosaic!7River8' })
         .success,
     ).toBe(false);
   });

@@ -12,6 +12,7 @@ import { MAX_PAGE_SIZE } from '@somwave/shared';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
 import { hashPassword } from '../lib/password';
+import { assertNewPasswordAllowed } from '../lib/password-policy';
 
 const adminUserSelect = {
   id: true,
@@ -128,6 +129,7 @@ export async function createUser(input: CreateUserInput, actor: AuthUser): Promi
   if (existing) {
     throw new AppError('CONFLICT', 409, 'This email address is already in use');
   }
+  await assertNewPasswordAllowed(input.password, { name: input.name, email: input.email });
 
   const row = await prisma.user.create({
     data: {

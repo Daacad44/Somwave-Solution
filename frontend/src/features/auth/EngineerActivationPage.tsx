@@ -2,6 +2,7 @@ import { type FormEvent, type ReactNode, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Eye, EyeOff } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { newPasswordSchema, passwordPolicyStatus } from '@somwave/shared';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { apiFetch } from '../../lib/apiClient';
@@ -37,6 +38,19 @@ export function EngineerActivationPage(): ReactNode {
   const [resendOpen, setResendOpen] = useState(false);
   const [resendEmail, setResendEmail] = useState('');
   const [message, setMessage] = useState('');
+  const newAccount = verified !== null && !verified.existingAccount;
+  const passwordStatus = passwordPolicyStatus(password, {
+    name: verified?.name,
+    email: verified?.email,
+  });
+  const satisfied = Object.values(passwordStatus).filter(Boolean).length;
+  const strength = !password
+    ? 'Not set'
+    : satisfied < 5
+      ? 'Weak'
+      : satisfied < 7
+        ? 'Fair'
+        : 'Strong';
   const verify = useMutation({
     mutationFn: () =>
       apiFetch<VerifiedInvitation>('/auth/engineer-invitations/verify', {
@@ -65,6 +79,7 @@ export function EngineerActivationPage(): ReactNode {
         body: JSON.stringify({
           activationToken: verified?.activationToken,
           password,
+          ...(!verified?.existingAccount ? { confirmPassword: confirmation } : {}),
           jobTitle,
           specialization,
           experienceLevel,
@@ -98,13 +113,20 @@ export function EngineerActivationPage(): ReactNode {
   });
   const submitActivation = (event: FormEvent): void => {
     event.preventDefault();
-    if (password.length < 12 || password.length > 200) {
-      setMessage('Password must be between 12 and 200 characters.');
-      return;
-    }
-    if (!verified?.existingAccount && password !== confirmation) {
-      setMessage('The passwords do not match.');
-      return;
+    if (newAccount) {
+      const parsed = newPasswordSchema.safeParse(password);
+      if (!parsed.success) {
+        setMessage(parsed.error.issues[0]?.message ?? 'Choose a stronger password.');
+        return;
+      }
+      if (!passwordStatus.private) {
+        setMessage('Do not use your name or email in the password.');
+        return;
+      }
+      if (password !== confirmation) {
+        setMessage('Passwords do not match.');
+        return;
+      }
     }
     setMessage('');
     activate.mutate();
@@ -194,13 +216,14 @@ export function EngineerActivationPage(): ReactNode {
               </select>
             </label>
             <Input
-              label={verified.existingAccount ? 'Current password' : 'New password'}
+              label={verified.existingAccount ? 'Current password' : 'Create password'}
               type={showPassword ? 'text' : 'password'}
               autoComplete={verified.existingAccount ? 'current-password' : 'new-password'}
-              minLength={12}
-              maxLength={200}
+              minLength={newAccount ? 12 : undefined}
+              maxLength={newAccount ? 128 : 1024}
               required
               value={password}
+              aria-describedby={newAccount ? 'engineer-password-requirements' : undefined}
               onChange={(event) => setPassword(event.target.value)}
               trailing={
                 <button
@@ -213,17 +236,49 @@ export function EngineerActivationPage(): ReactNode {
                 </button>
               }
             />
-            {!verified.existingAccount ? (
-              <Input
-                label="Confirm password"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="new-password"
-                minLength={12}
-                maxLength={200}
-                required
-                value={confirmation}
-                onChange={(event) => setConfirmation(event.target.value)}
-              />
+            {newAccount ? (
+              <>
+                <div
+                  id="engineer-password-requirements"
+                  className="rounded-md border border-border p-3 text-sm"
+                >
+                  <p className="font-medium">Password requirements</p>
+                  <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+                    {(
+                      [
+                        ['length', 'Use 12 to 128 characters'],
+                        ['uppercase', 'Include an uppercase letter'],
+                        ['lowercase', 'Include a lowercase letter'],
+                        ['number', 'Include a number'],
+                        ['special', 'Include a special character'],
+                        ['uncommon', 'Avoid common passwords'],
+                        ['private', 'Avoid your name or email'],
+                      ] as const
+                    ).map(([key, label]) => (
+                      <li key={key} className={passwordStatus[key] ? 'text-ink' : 'text-muted'}>
+                        {passwordStatus[key] ? '✓' : '○'} {label}
+                      </li>
+                    ))}
+                  </ul>
+                  <p role="status" aria-live="polite" className="mt-2 font-medium">
+                    Password strength: {strength}
+                  </p>
+                </div>
+                <Input
+                  label="Confirm password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  maxLength={128}
+                  required
+                  value={confirmation}
+                  error={
+                    confirmation && confirmation !== password
+                      ? 'Passwords do not match.'
+                      : undefined
+                  }
+                  onChange={(event) => setConfirmation(event.target.value)}
+                />
+              </>
             ) : null}
             <p className="text-xs text-muted">
               This activation step expires {new Date(verified.expiresAt).toLocaleString()}.
@@ -271,8 +326,11 @@ export function EngineerActivationPage(): ReactNode {
             ) : null}
           </div>
         ) : null}
-        <Link className="block text-sm text-brand hover:underline" to="/login">
-          Back to sign in
+        <Link
+          className="block text-sm text-brand hover:underline"
+          to={done ? '/login?next=%2Fengineering' : '/login'}
+        >
+          {done ? 'Sign in to Engineering Workspace' : 'Back to sign in'}
         </Link>
       </div>
     </AuthLayout>

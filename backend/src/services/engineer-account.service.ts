@@ -10,6 +10,7 @@ import { AppError } from '../lib/http';
 import { env } from '../lib/env';
 import { logger } from '../lib/logger';
 import { hashPassword, verifyPassword } from '../lib/password';
+import { assertNewPasswordAllowed } from '../lib/password-policy';
 import { generateRefreshToken, hashRefreshToken } from '../lib/tokens';
 import { sendMail } from '../lib/mailer';
 import { ENGINEER_ACCOUNT_INVITE_V1 } from '../mail/templates';
@@ -528,6 +529,15 @@ export async function activateEngineerInvitation(input: ActivateEngineerInvitati
     !(await verifyPassword(input.password, invitation.user.passwordHash))
   ) {
     throw new AppError('UNAUTHORIZED', 401, 'Incorrect account password');
+  }
+  if (!invitation.wasExistingUser) {
+    if (input.password !== input.confirmPassword) {
+      throw new AppError('VALIDATION_ERROR', 400, 'Passwords do not match');
+    }
+    await assertNewPasswordAllowed(input.password, {
+      name: invitation.user.name,
+      email: invitation.user.email,
+    });
   }
   const engineerRole = await prisma.role.findUnique({
     where: { name: 'ENGINEER' },
