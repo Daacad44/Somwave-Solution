@@ -17,6 +17,7 @@ export const logger = pino({
       'REDIS_URL',
       'REDIS_PASSWORD',
       'JWT_SECRET',
+      'RESEND_API_KEY',
     ],
     remove: true,
   },

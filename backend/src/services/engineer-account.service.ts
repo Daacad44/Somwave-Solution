@@ -11,7 +11,7 @@ import { env } from '../lib/env';
 import { logger } from '../lib/logger';
 import { hashPassword, verifyPassword } from '../lib/password';
 import { generateRefreshToken, hashRefreshToken } from '../lib/tokens';
-import { sendMail } from '../lib/mailer';
+import { emailReadiness, sendMail } from '../lib/mailer';
 import { ENGINEER_ACCOUNT_INVITE_V1 } from '../mail/templates';
 import { emitNotification } from './notification-delivery.service';
 
@@ -28,13 +28,19 @@ function requireAccountAdmin(actor: Actor): void {
 }
 
 function requireMailConfiguration(): void {
-  if (!env.SMTP_HOST || !env.SMTP_FROM || !env.APP_PUBLIC_URL) {
+  const readiness = emailReadiness(true);
+  if (!readiness.configured) {
     throw new AppError(
       'SERVICE_UNAVAILABLE',
       503,
-      'SMTP and APP_PUBLIC_URL must be configured before inviting engineers',
+      `Engineer invitation email is not configured: ${readiness.missing.join(', ')}`,
     );
   }
+}
+
+export function engineerEmailReadiness(actor: Actor) {
+  requireAccountAdmin(actor);
+  return emailReadiness(true);
 }
 
 function invitationUrl(token: string): string {
@@ -74,6 +80,7 @@ const accountSelect = {
       lastSentAt: true,
       verifiedAt: true,
       activatedAt: true,
+      providerMessageId: true,
     },
   },
 } as const;
@@ -96,12 +103,16 @@ async function deliverInvitation(userId: string, name: string, email: string, to
   const result = await sendMail({
     to: email,
     template: ENGINEER_ACCOUNT_INVITE_V1,
-    vars: { name, setupUrl: invitationUrl(token) },
+    vars: { name, setupUrl: invitationUrl(token), supportEmail: env.EMAIL_SUPPORT ?? '' },
+    idempotencyKey: `engineer-invite:${userId}:${hashRefreshToken(token)}`,
   });
   await prisma.$transaction([
     prisma.engineerAccountInvitation.update({
       where: { userId },
-      data: { deliveryStatus: result.sent ? 'SENT' : 'FAILED' },
+      data: {
+        deliveryStatus: result.sent ? 'ACCEPTED' : 'FAILED',
+        providerMessageId: result.providerMessageId ?? null,
+      },
     }),
     prisma.engineerProfile.update({
       where: { userId },
@@ -109,7 +120,13 @@ async function deliverInvitation(userId: string, name: string, email: string, to
     }),
   ]);
   if (!result.sent) {
-    throw new AppError('SERVICE_UNAVAILABLE', 503, 'Engineer invitation email could not be sent');
+    throw new AppError(
+      'SERVICE_UNAVAILABLE',
+      503,
+      result.reason === 'invalid_credentials'
+        ? 'Resend rejected the email credentials; check the API key and sender domain'
+        : 'Resend could not accept the engineer invitation email',
+    );
   }
 }
 
@@ -182,6 +199,7 @@ async function provisionAccount(input: {
         lastSentAt: now,
         sendCount: 1,
         deliveryStatus: 'PENDING',
+        providerMessageId: null,
       },
     });
     await tx.auditLog.create({
@@ -383,6 +401,7 @@ async function sendFreshInvitation(
             ? { increment: 1 }
             : 1,
         deliveryStatus: 'PENDING',
+        providerMessageId: null,
       },
     });
     if (!claimed.count) throw new AppError('RATE_LIMITED', 429, 'Invitation was recently resent');

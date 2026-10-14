@@ -17,6 +17,7 @@
 #
 # Runtime env (Coolify Runtime — never baked in):
 #   NODE_ENV, PORT, DATABASE_URL, REDIS_URL, REDIS_PASSWORD, JWT_SECRET, CORS_ORIGINS
+#   RESEND_API_KEY, EMAIL_FROM, APP_PUBLIC_URL (transactional email)
 #
 # Coolify Redis requires AUTH. Host-only REDIS_URL → NOAUTH → /health 503.
 # Set REDIS_PASSWORD (or REDIS_URL=redis://:PASSWORD@<redis-uuid>:6379).

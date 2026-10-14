@@ -405,7 +405,7 @@ export async function listMyProjectInvitations(actor: EngineeringActor) {
 
 export async function listProjectInvitations(projectId: string, actor: EngineeringActor) {
   await requireManager(projectId, actor);
-  return prisma.projectInvitation.findMany({
+  const invitations = await prisma.projectInvitation.findMany({
     where: { projectId },
     select: {
       id: true,
@@ -421,10 +421,75 @@ export async function listProjectInvitations(projectId: string, actor: Engineeri
       invitedAt: true,
       expiresAt: true,
       respondedAt: true,
-      user: { select: { id: true, name: true, email: true } },
+      user: { select: { id: true, name: true, email: true, isActive: true } },
     },
     orderBy: { invitedAt: 'desc' },
   });
+  const keys = invitations.flatMap((invitation) => [
+    `email:project-invitation:${invitation.id}:${invitation.invitedAt.toISOString()}`,
+    `email:project-invitation-activated:${invitation.id}`,
+  ]);
+  const deliveries = keys.length
+    ? await prisma.notificationDelivery.findMany({
+        where: { dedupeKey: { in: keys } },
+        select: { dedupeKey: true, status: true, providerMessageId: true, error: true },
+      })
+    : [];
+  const byKey = new Map(deliveries.map((delivery) => [delivery.dedupeKey, delivery]));
+  return invitations.map((invitation) => ({
+    ...invitation,
+    emailDelivery:
+      byKey.get(`email:project-invitation-activated:${invitation.id}`) ??
+      byKey.get(
+        `email:project-invitation:${invitation.id}:${invitation.invitedAt.toISOString()}`,
+      ) ??
+      null,
+  }));
+}
+
+async function queueProjectInvitationEmail(
+  projectName: string,
+  userId: string,
+  invitation: {
+    id: string;
+    invitedAt: Date;
+    role: string;
+    description: string | null;
+    startDate: Date | null;
+    expectedEndDate: Date | null;
+    estimatedHours: Prisma.Decimal | number | null;
+    expiresAt: Date | null;
+  },
+) {
+  const active = await prisma.user.findFirst({
+    where: { id: userId, isActive: true, deletedAt: null },
+    select: { id: true },
+  });
+  // A newly invited account receives the assignment email after activation.
+  if (!active) return;
+  const appLink = env.APP_PUBLIC_URL
+    ? ` Open ${new URL('/engineering', env.APP_PUBLIC_URL).toString()} to accept or decline.`
+    : ' Sign in to Somwave and open Engineering to accept or decline.';
+  try {
+    await emitNotification({
+      eventKey: 'project.assignment',
+      userId,
+      title: `Project invitation: ${projectName}`,
+      body: `You have been invited to join ${projectName} as ${invitation.role.replaceAll('_', ' ').toLowerCase()}. ${invitation.description ?? ''} Start: ${invitation.startDate?.toISOString().slice(0, 10) ?? 'Not set'}. Expected end: ${invitation.expectedEndDate?.toISOString().slice(0, 10) ?? 'Not set'}. Workload: ${Number(invitation.estimatedHours ?? 0)} hours. Invitation expires ${invitation.expiresAt?.toISOString() ?? 'when cancelled'}.${appLink}`,
+      dedupeKey: `project-invitation:${invitation.id}:${invitation.invitedAt.toISOString()}`,
+      requiredEmail: true,
+    });
+  } catch (error) {
+    logger.error(
+      { err: error, invitationId: invitation.id },
+      'Project invitation email enqueue failed',
+    );
+    throw new AppError(
+      'SERVICE_UNAVAILABLE',
+      503,
+      'Project invitation was saved but email could not be queued; retry the invitation',
+    );
+  }
 }
 
 export async function inviteProjectEngineer(
@@ -449,9 +514,20 @@ export async function inviteProjectEngineer(
 
   const pending = await prisma.projectInvitation.findUnique({
     where: { projectId_userId: { projectId, userId: user.id } },
-    select: { id: true, status: true, expiresAt: true, invitedAt: true },
+    select: {
+      id: true,
+      status: true,
+      expiresAt: true,
+      invitedAt: true,
+      role: true,
+      description: true,
+      startDate: true,
+      expectedEndDate: true,
+      estimatedHours: true,
+    },
   });
-  if (pending?.status === 'PENDING' && (!pending.expiresAt || pending.expiresAt > new Date()))
+  if (pending?.status === 'PENDING' && (!pending.expiresAt || pending.expiresAt > new Date())) {
+    await queueProjectInvitationEmail(project.name, user.id, pending);
     return {
       id: pending.id,
       projectId,
@@ -460,6 +536,7 @@ export async function inviteProjectEngineer(
       status: 'PENDING' as const,
       duplicate: true,
     };
+  }
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const assignmentData = {
@@ -507,30 +584,7 @@ export async function inviteProjectEngineer(
     });
     return row;
   });
-  const appLink = env.APP_PUBLIC_URL
-    ? ` Open ${new URL('/engineering', env.APP_PUBLIC_URL).toString()} to accept or decline.`
-    : ' Sign in to Somwave and open Engineering to accept or decline.';
-  const active = await prisma.user.findFirst({
-    where: { id: user.id, isActive: true, deletedAt: null },
-    select: { id: true },
-  });
-  if (active) {
-    try {
-      await emitNotification({
-        eventKey: 'project.assignment',
-        userId: user.id,
-        title: `Project invitation: ${project.name}`,
-        body: `You have been invited to join ${project.name} as ${input.role.replaceAll('_', ' ').toLowerCase()}. ${input.description} Start: ${input.startDate}. Expected end: ${input.expectedEndDate}. Workload: ${input.estimatedHours} hours. Invitation expires ${expiresAt.toISOString()}.${appLink}`,
-        dedupeKey: `project-invitation:${invitation.id}:${invitation.invitedAt.toISOString()}`,
-        requiredEmail: true,
-      });
-    } catch (error) {
-      logger.error(
-        { err: error, invitationId: invitation.id },
-        'Project invitation notification failed',
-      );
-    }
-  }
+  await queueProjectInvitationEmail(project.name, user.id, invitation);
   return {
     id: invitation.id,
     projectId,

@@ -87,7 +87,8 @@ export function NotificationsPage(): ReactNode {
       <div className="mt-8 rounded-lg border border-border bg-surface p-4">
         <h2 className="text-lg font-semibold">Delivery preferences</h2>
         <p className="mt-1 text-sm text-muted">
-          Choose how engineering events reach you. Email requires SMTP to be configured.
+          Choose how engineering events reach you. Email delivery requires Resend to be configured
+          on the backend.
         </p>
         {preferenceError ? (
           <p role="alert" className="mt-2 text-sm text-red-700">

@@ -16,12 +16,10 @@ const envSchema = z
     REDIS_USERNAME: z.string().optional(),
     JWT_SECRET: z.string().min(32, 'must be at least 32 characters'),
     CORS_ORIGINS: z.string().min(1, 'comma-separated list of allowed origins is required'),
-    SMTP_HOST: z.string().min(1).optional(),
-    SMTP_PORT: z.coerce.number().int().positive().optional(),
-    SMTP_USER: z.string().min(1).optional(),
-    SMTP_PASS: z.string().min(1).optional(),
-    SMTP_FROM: z.string().email().optional(),
-    SMTP_NOTIFY_TO: z.string().email().optional(),
+    RESEND_API_KEY: z.string().min(1).optional(),
+    EMAIL_FROM: z.string().min(1).optional(),
+    EMAIL_NOTIFY_TO: z.string().email().optional(),
+    EMAIL_SUPPORT: z.string().email().optional(),
     PAYMENT_EVC_API_URL: z.string().url().optional(),
     PAYMENT_EVC_API_KEY: z.string().min(8).optional(),
     PAYMENT_EVC_MERCHANT_ID: z.string().min(1).optional(),
@@ -36,11 +34,13 @@ const envSchema = z
     BACKGROUND_WORKERS_ENABLED: z.enum(['true', 'false']).default('true'),
   })
   .superRefine((value, ctx) => {
-    if (value.SMTP_HOST && !value.SMTP_FROM) {
+    const sender = value.EMAIL_FROM?.trim();
+    const senderEmail = sender?.match(/^[^<>\r\n]+ <([^<>\s]+)>$/)?.[1] ?? sender;
+    if (sender && !z.string().email().safeParse(senderEmail).success) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['SMTP_FROM'],
-        message: 'required when SMTP_HOST is set',
+        path: ['EMAIL_FROM'],
+        message: 'must be an email address or a display name followed by <email address>',
       });
     }
     const evcKeys = [

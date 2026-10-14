@@ -292,7 +292,7 @@ export async function requestPasswordReset(email: string): Promise<void> {
   const user = await loadActiveUser({ email });
   if (!user) return;
   const token = generateRefreshToken();
-  await prisma.passwordResetToken.create({
+  const reset = await prisma.passwordResetToken.create({
     data: {
       userId: user.id,
       tokenHash: hashRefreshToken(token),
@@ -303,6 +303,7 @@ export async function requestPasswordReset(email: string): Promise<void> {
   await sendMail({
     to: user.email,
     template: PASSWORD_RESET_V1,
+    idempotencyKey: `password-reset:${reset.id}`,
     vars: { resetUrl: `${base.replace(/\/$/, '')}/reset-password?token=${token}` },
   });
 }

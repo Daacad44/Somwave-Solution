@@ -226,6 +226,7 @@ model NotificationDelivery {
   attempts       Int       @default(0)
   nextAttemptAt  DateTime? @map("next_attempt_at")
   sentAt         DateTime? @map("sent_at")
+  providerMessageId String? @map("provider_message_id")
   error          String?
   dedupeKey      String?   @unique @map("dedupe_key")
   createdAt      DateTime  @default(now()) @map("created_at")
@@ -1013,6 +1014,7 @@ model EngineerAccountInvitation {
   lastSentAt          DateTime?                @map("last_sent_at")
   sendCount           Int                      @default(0) @map("send_count")
   deliveryStatus      String                   @default("PENDING") @map("delivery_status")
+  providerMessageId   String?                  @map("provider_message_id")
   status              EngineerInvitationStatus @default(INVITED)
   createdAt           DateTime                 @default(now()) @map("created_at")
   updatedAt           DateTime                 @updatedAt @map("updated_at")

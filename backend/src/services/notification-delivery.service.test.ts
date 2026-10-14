@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Prisma } from '@prisma/client';
 
 vi.mock('../lib/prisma', () => ({
   prisma: {
@@ -14,16 +15,19 @@ vi.mock('../lib/prisma', () => ({
     $transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => callback(prisma)),
   },
 }));
-vi.mock('../lib/mailer', () => ({ sendMail: vi.fn() }));
+vi.mock('../lib/mailer', () => ({ sendMail: vi.fn(), emailReadiness: vi.fn() }));
 
 import { prisma } from '../lib/prisma';
-import { sendMail } from '../lib/mailer';
+import { emailReadiness, sendMail } from '../lib/mailer';
 import {
   emitNotification,
   processPendingNotificationEmails,
 } from './notification-delivery.service';
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(emailReadiness).mockReturnValue({ provider: 'resend', configured: true, missing: [] });
+});
 
 describe('engineering notification delivery', () => {
   it('creates an in-app item and an email queue entry with stable dedupe keys', async () => {
@@ -83,6 +87,30 @@ describe('engineering notification delivery', () => {
     });
   });
 
+  it('rearms a failed required invitation without creating a duplicate delivery', async () => {
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: 'user_1' } as never);
+    vi.mocked(prisma.notificationPreference.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.notification.create).mockResolvedValue({ id: 'notification_2' } as never);
+    vi.mocked(prisma.notificationDelivery.create).mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint', {
+        code: 'P2002',
+        clientVersion: '6.0.0',
+      }),
+    );
+    await emitNotification({
+      eventKey: 'project.assignment',
+      userId: 'user_1',
+      title: 'Invitation',
+      body: 'Review invitation',
+      dedupeKey: 'invite:1',
+      requiredEmail: true,
+    });
+    expect(prisma.notificationDelivery.updateMany).toHaveBeenCalledWith({
+      where: { dedupeKey: 'email:invite:1', channel: 'EMAIL', status: 'FAILED' },
+      data: expect.objectContaining({ status: 'RETRY', attempts: 0, error: null }),
+    });
+  });
+
   it('marks a claimed email delivered after the mailer succeeds', async () => {
     vi.mocked(prisma.notificationDelivery.findMany).mockResolvedValue([
       {
@@ -98,11 +126,100 @@ describe('engineering notification delivery', () => {
       },
     ] as never);
     vi.mocked(prisma.notificationDelivery.updateMany).mockResolvedValue({ count: 1 } as never);
-    vi.mocked(sendMail).mockResolvedValue({ sent: true });
+    vi.mocked(sendMail).mockResolvedValue({ sent: true, providerMessageId: 'resend-message-1' });
     expect(await processPendingNotificationEmails()).toBe(1);
     expect(prisma.notificationDelivery.update).toHaveBeenCalledWith({
       where: { id: 'delivery_1' },
-      data: expect.objectContaining({ status: 'SENT', nextAttemptAt: null }),
+      data: expect.objectContaining({
+        status: 'ACCEPTED',
+        providerMessageId: 'resend-message-1',
+        nextAttemptAt: null,
+      }),
     });
+    expect(sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        idempotencyKey: expect.stringMatching(/^notification:[a-f0-9]{64}$/),
+      }),
+    );
+  });
+
+  it('holds delivery until Resend is configured', async () => {
+    vi.mocked(emailReadiness).mockReturnValue({
+      provider: 'resend',
+      configured: false,
+      missing: ['RESEND_API_KEY'],
+    });
+    vi.mocked(prisma.notificationDelivery.findMany).mockResolvedValue([
+      {
+        id: 'delivery_1',
+        status: 'PENDING',
+        nextAttemptAt: new Date(),
+        attempts: 0,
+        notification: {
+          title: 'Invitation',
+          body: 'Review invitation',
+          user: { email: 'user@example.test', isActive: true, deletedAt: null },
+        },
+      },
+    ] as never);
+    vi.mocked(prisma.notificationDelivery.updateMany).mockResolvedValue({ count: 1 } as never);
+    vi.mocked(sendMail).mockResolvedValue({ sent: false, reason: 'not_configured' });
+    await processPendingNotificationEmails();
+    expect(prisma.notificationDelivery.update).toHaveBeenCalledWith({
+      where: { id: 'delivery_1' },
+      data: expect.objectContaining({
+        status: 'WAITING_CONFIG',
+        error: 'Resend is not configured',
+      }),
+    });
+  });
+
+  it('retries provider rate limits with backoff and fails permanent credential errors', async () => {
+    const now = new Date('2026-10-14T10:00:00.000Z');
+    vi.mocked(prisma.notificationDelivery.findMany).mockResolvedValue([
+      {
+        id: 'delivery_1',
+        status: 'PENDING',
+        nextAttemptAt: now,
+        attempts: 0,
+        notification: {
+          title: 'Invitation',
+          body: 'Review invitation',
+          user: { email: 'user@example.test', isActive: true, deletedAt: null },
+        },
+      },
+    ] as never);
+    vi.mocked(prisma.notificationDelivery.updateMany).mockResolvedValue({ count: 1 } as never);
+    vi.mocked(sendMail).mockResolvedValueOnce({ sent: false, reason: 'rate_limited' });
+    await processPendingNotificationEmails(now);
+    expect(prisma.notificationDelivery.update).toHaveBeenCalledWith({
+      where: { id: 'delivery_1' },
+      data: expect.objectContaining({ status: 'RETRY', nextAttemptAt: expect.any(Date) }),
+    });
+    vi.mocked(sendMail).mockResolvedValueOnce({ sent: false, reason: 'invalid_credentials' });
+    await processPendingNotificationEmails(now);
+    expect(prisma.notificationDelivery.update).toHaveBeenLastCalledWith({
+      where: { id: 'delivery_1' },
+      data: expect.objectContaining({ status: 'FAILED', nextAttemptAt: null }),
+    });
+  });
+
+  it('does not send when another worker already claimed the delivery', async () => {
+    vi.mocked(prisma.notificationDelivery.findMany).mockResolvedValue([
+      {
+        id: 'delivery_1',
+        status: 'PENDING',
+        nextAttemptAt: new Date(),
+        attempts: 0,
+        notification: {
+          title: 'Invitation',
+          body: 'Review invitation',
+          user: { email: 'user@example.test', isActive: true, deletedAt: null },
+        },
+      },
+    ] as never);
+    vi.mocked(prisma.notificationDelivery.updateMany).mockResolvedValue({ count: 0 } as never);
+    expect(await processPendingNotificationEmails()).toBe(0);
+    expect(sendMail).not.toHaveBeenCalled();
   });
 });

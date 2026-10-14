@@ -31,5 +31,20 @@ describe('mail templates', () => {
     expect(mail.text).toContain('https://app.example.com/activate-engineer?token=example');
     expect(mail.text).toContain('48 hours');
     expect(mail.text).toContain('used once');
+    expect(mail.subject).toBe("You're Invited to Join Somwave Solution");
+    expect(mail.html).toContain('Verify email and activate');
+    expect(mail.html).toContain('width:100%;max-width:600px');
+  });
+
+  it('escapes engineer-supplied content in the responsive HTML template', () => {
+    const mail = renderMail('engineer-account-invite.v1', {
+      name: '<script>alert(1)</script>',
+      setupUrl: 'https://app.example.com/activate-engineer?token=a&next=b',
+      supportEmail: 'support@example.com',
+    });
+    expect(mail.html).not.toContain('<script>');
+    expect(mail.html).toContain('&lt;script&gt;');
+    expect(mail.html).toContain('token=a&amp;next=b');
+    expect(mail.text).toContain('support@example.com');
   });
 });

@@ -12,6 +12,7 @@ import * as controller from '../controllers/engineer-account.controller';
 export const engineerAccountRouter: Router = Router();
 engineerAccountRouter.use(requireAuth, rbac(PERMISSIONS.ENGINEERING_MANAGE));
 engineerAccountRouter.get('/', controller.list);
+engineerAccountRouter.get('/email-readiness', controller.emailReadiness);
 engineerAccountRouter.post('/', validate(createEngineerAccountSchema), controller.create);
 engineerAccountRouter.get('/:userId', controller.detail);
 engineerAccountRouter.patch('/:userId', validate(updateEngineerAccountSchema), controller.update);

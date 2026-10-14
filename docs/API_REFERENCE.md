@@ -21,12 +21,13 @@ For a new engineer, a manager may provide `name` in this request; the service pr
 
 ## Engineer registration and activation
 
-Administrator account management is under `/api/v1/engineering/accounts`; requests use [`engineerAccount.ts`](../packages/shared/src/schemas/engineerAccount.ts). The public verification and activation routes are IP rate limited. Store `SMTP_HOST`, `SMTP_FROM`, and `APP_PUBLIC_URL` in backend runtime secrets for real invitations. Creation reuses an existing identity where eligible and does not give a newly invited account engineering access before verified activation. Invitation and activation tokens are single use, expire, and are stored only as hashes. A queued or successful delivery record is not proof that the recipient received an email.
+Administrator account management is under `/api/v1/engineering/accounts`; requests use [`engineerAccount.ts`](../packages/shared/src/schemas/engineerAccount.ts). The public verification and activation routes are IP rate limited. Store `RESEND_API_KEY`, `EMAIL_FROM`, and `APP_PUBLIC_URL` in backend runtime configuration for invitations. Creation reuses an existing identity where eligible and does not give a newly invited account engineering access before verified activation. Invitation and activation tokens are single use, expire, and are stored only as hashes. `ACCEPTED` and a Resend message ID mean the provider accepted the request; mailbox delivery still needs confirmation.
 
 | Method and path | Access | Purpose / body |
 | --- | --- | --- |
 | `GET /api/v1/engineering/accounts` | M, admin scope | List engineer accounts and profile statuses. |
-| `POST /api/v1/engineering/accounts` | M, admin scope | Register with `name`, `email`, `jobTitle`, `specialization`, `skills`, `experienceLevel`, `employmentType`, `weeklyCapacityHours`, `availability`; optional `phone`. Creates an invitation and queues email. |
+| `GET /api/v1/engineering/accounts/email-readiness` | M, admin scope | Returns `{ provider: "resend", configured, missing }` using setting names only; does not disclose the API key or prove delivery. |
+| `POST /api/v1/engineering/accounts` | M, admin scope | Register with `name`, `email`, `jobTitle`, `specialization`, `skills`, `experienceLevel`, `employmentType`, `weeklyCapacityHours`, `availability`; optional `phone`. Creates an invitation, sends through Resend, and records provider acceptance or failure. |
 | `GET /api/v1/engineering/accounts/:userId` | M, admin scope | Account/profile detail. |
 | `PATCH /api/v1/engineering/accounts/:userId` | M, admin scope | Update organizational profile fields; email cannot be changed here. |
 | `GET /api/v1/engineering/accounts/:userId/activity` | M, admin scope | Account audit activity. |
