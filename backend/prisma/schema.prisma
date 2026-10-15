@@ -819,10 +819,25 @@ model Milestone {
   verifiedBy    User?                   @relation("MilestoneVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
   tasks         Task[]
   documentLinks DocumentMilestoneLink[]
+  prerequisites MilestoneDependency[] @relation("MilestonePrerequisites")
+  dependents    MilestoneDependency[] @relation("MilestoneDependents")
 
   @@index([projectId, status])
   @@index([ownerId])
   @@map("milestones")
+}
+
+model MilestoneDependency {
+  id          String    @id @default(cuid())
+  milestoneId String    @map("milestone_id")
+  dependsOnId String    @map("depends_on_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  milestone   Milestone @relation("MilestonePrerequisites", fields: [milestoneId], references: [id], onDelete: Cascade)
+  dependsOn   Milestone @relation("MilestoneDependents", fields: [dependsOnId], references: [id], onDelete: Cascade)
+
+  @@unique([milestoneId, dependsOnId])
+  @@index([dependsOnId])
+  @@map("milestone_dependencies")
 }
 
 model ProjectPhase {

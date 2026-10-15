@@ -1,7 +1,12 @@
 // Milestones routes (I2.3, §10). Every route authenticates, then re-checks the
 // required permission on the server (§13). Mounted under /api/v1/milestones.
 import { Router } from 'express';
-import { createMilestoneSchema, updateMilestoneSchema, PERMISSIONS } from '@somwave/shared';
+import {
+  createMilestoneSchema,
+  updateMilestoneSchema,
+  addMilestoneDependencySchema,
+  PERMISSIONS,
+} from '@somwave/shared';
 import { requireAuth } from '../middleware/auth';
 import { rbac } from '../middleware/rbac';
 import { validate } from '../middleware/validate';
@@ -19,6 +24,22 @@ milestonesRouter.post(
   milestoneController.create,
 );
 milestonesRouter.get('/:id', rbac(PERMISSIONS.MILESTONES_READ), milestoneController.get);
+milestonesRouter.get(
+  '/:id/dependencies',
+  rbac(PERMISSIONS.MILESTONES_READ),
+  milestoneController.dependencies,
+);
+milestonesRouter.post(
+  '/:id/dependencies',
+  rbac(PERMISSIONS.MILESTONES_UPDATE),
+  validate(addMilestoneDependencySchema),
+  milestoneController.addDependency,
+);
+milestonesRouter.delete(
+  '/:id/dependencies/:dependsOnId',
+  rbac(PERMISSIONS.MILESTONES_UPDATE),
+  milestoneController.removeDependency,
+);
 milestonesRouter.patch(
   '/:id',
   rbac(PERMISSIONS.MILESTONES_UPDATE),

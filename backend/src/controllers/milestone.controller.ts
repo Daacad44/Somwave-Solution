@@ -87,3 +87,47 @@ export async function remove(req: Request, res: Response, next: NextFunction): P
     next(err);
   }
 }
+
+export async function dependencies(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const id = req.params.id;
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Milestone not found');
+    sendData(res, await milestoneService.listMilestoneDependencies(id, req.authUser));
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function addDependency(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const id = req.params.id;
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Milestone not found');
+    sendData(
+      res,
+      await milestoneService.addMilestoneDependency(id, req.body.dependsOnId, req.authUser),
+      201,
+    );
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function removeDependency(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const id = req.params.id;
+    const dependsOnId = req.params.dependsOnId;
+    if (!id || !dependsOnId) throw new AppError('NOT_FOUND', 404, 'Milestone dependency not found');
+    await milestoneService.removeMilestoneDependency(id, dependsOnId, req.authUser);
+    sendData(res, { success: true });
+  } catch (error) {
+    next(error);
+  }
+}

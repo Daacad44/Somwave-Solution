@@ -67,3 +67,13 @@ export const updateMilestoneSchema = z
   });
 
 export type UpdateMilestoneInput = z.infer<typeof updateMilestoneSchema>;
+
+export const addMilestoneDependencySchema = z.object({ dependsOnId: z.string().min(1) });
+export type AddMilestoneDependencyInput = z.infer<typeof addMilestoneDependencySchema>;
+
+export const milestoneDependencySchema = z.object({
+  id: z.string(),
+  dependsOn: z.object({ id: z.string(), title: z.string(), status: milestoneStatusSchema }),
+  createdAt: z.string(),
+});
+export type MilestoneDependencyRecord = z.infer<typeof milestoneDependencySchema>;

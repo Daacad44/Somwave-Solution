@@ -4,6 +4,7 @@ import type {
   CreateMilestoneInput,
   UpdateMilestoneInput,
   MilestoneStatus,
+  MilestoneDependencyRecord,
 } from '@somwave/shared';
 import { apiFetch, apiFetchPaged, type PaginationMeta } from '../../lib/apiClient';
 
@@ -39,4 +40,25 @@ export function updateMilestone(id: string, input: UpdateMilestoneInput): Promis
 
 export function deleteMilestone(id: string): Promise<{ success: boolean }> {
   return apiFetch<{ success: boolean }>(`/milestones/${id}`, { method: 'DELETE' });
+}
+
+export function listMilestoneDependencies(id: string): Promise<MilestoneDependencyRecord[]> {
+  return apiFetch<MilestoneDependencyRecord[]>(`/milestones/${id}/dependencies`);
+}
+export function addMilestoneDependency(
+  id: string,
+  dependsOnId: string,
+): Promise<MilestoneDependencyRecord> {
+  return apiFetch<MilestoneDependencyRecord>(`/milestones/${id}/dependencies`, {
+    method: 'POST',
+    body: JSON.stringify({ dependsOnId }),
+  });
+}
+export function removeMilestoneDependency(
+  id: string,
+  dependsOnId: string,
+): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/milestones/${id}/dependencies/${dependsOnId}`, {
+    method: 'DELETE',
+  });
 }

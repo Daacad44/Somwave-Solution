@@ -19,6 +19,20 @@ test('project dashboard and management tabs work on desktop and mobile', async (
     await expect(page.getByRole('button', { name: 'Invite engineer' })).toHaveCount(0);
   }
 
+  await page.getByRole('button', { name: 'Milestones', exact: true }).click();
+  const dependenciesButton = page
+    .getByRole('button', { name: 'Dependencies', exact: true })
+    .first();
+  if (await dependenciesButton.count()) {
+    await dependenciesButton.click();
+    await expect(page.getByRole('dialog', { name: /Milestone dependencies/ })).toBeVisible();
+    await expect(page.getByText('No prerequisite milestones.')).toBeVisible();
+    await page
+      .getByRole('dialog', { name: /Milestone dependencies/ })
+      .getByRole('button', { name: 'Close' })
+      .click();
+  }
+
   await page.getByRole('button', { name: 'Timeline & Calendar' }).click();
   await expect(page.getByRole('heading', { name: 'Project timeline' }).first()).toBeVisible();
   await expect(page.getByLabel('Project deadline calendar')).toBeVisible();

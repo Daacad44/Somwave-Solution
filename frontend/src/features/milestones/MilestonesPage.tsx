@@ -1,6 +1,7 @@
 // Milestones management screen (I2.3). Table with project + status filters and
 // pagination, the four states (§12), and permission-gated actions (§13).
 import { type ReactNode, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AdminMilestone, MilestoneStatus } from '@somwave/shared';
 import { PERMISSIONS, MILESTONE_STATUSES } from '@somwave/shared';
 import { INTERNAL_MILESTONE_STATUS } from '../../lib/internalLabels';
@@ -14,6 +15,12 @@ import { useHasPermission } from '../../lib/rbac';
 import { useProjects } from '../projects/hooks';
 import { useMilestones, useDeleteMilestone } from './hooks';
 import { MilestoneFormModal } from './components/MilestoneFormModal';
+import {
+  addMilestoneDependency,
+  listMilestoneDependencies,
+  listMilestones,
+  removeMilestoneDependency,
+} from './api';
 
 const PAGE_SIZE = 20;
 
@@ -55,6 +62,42 @@ export function MilestonesPage({
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<AdminMilestone | null>(null);
   const [confirming, setConfirming] = useState<AdminMilestone | null>(null);
+  const [dependencyTarget, setDependencyTarget] = useState<AdminMilestone | null>(null);
+  const [dependsOnId, setDependsOnId] = useState('');
+  const queryClient = useQueryClient();
+  const dependencies = useQuery({
+    queryKey: ['milestone-dependencies', dependencyTarget?.id],
+    queryFn: () => listMilestoneDependencies(dependencyTarget!.id),
+    enabled: Boolean(dependencyTarget),
+  });
+  const projectMilestones = useQuery({
+    queryKey: ['milestone-dependency-options', dependencyTarget?.project.id],
+    queryFn: async () => {
+      const projectId = dependencyTarget!.project.id;
+      const first = await listMilestones({ page: 1, pageSize: 100, projectId });
+      const rows = [...first.data];
+      for (let page = 2; page <= Math.ceil(first.meta.total / 100); page += 1) {
+        rows.push(...(await listMilestones({ page, pageSize: 100, projectId })).data);
+      }
+      return rows;
+    },
+    enabled: Boolean(dependencyTarget && canUpdate),
+  });
+  const refreshDependencies = () => {
+    setDependsOnId('');
+    void queryClient.invalidateQueries({
+      queryKey: ['milestone-dependencies', dependencyTarget?.id],
+    });
+  };
+  const addDependency = useMutation({
+    mutationFn: () => addMilestoneDependency(dependencyTarget!.id, dependsOnId),
+    onSuccess: refreshDependencies,
+  });
+  const removeDependency = useMutation({
+    mutationFn: (predecessorId: string) =>
+      removeMilestoneDependency(dependencyTarget!.id, predecessorId),
+    onSuccess: refreshDependencies,
+  });
 
   const openCreate = (): void => {
     setEditing(null);
@@ -164,6 +207,16 @@ export function MilestonesPage({
                           Edit
                         </Button>
                       ) : null}
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          setDependencyTarget(milestone);
+                          setDependsOnId('');
+                        }}
+                      >
+                        Dependencies
+                      </Button>
                       {canDelete ? (
                         <Button size="sm" variant="danger" onClick={() => setConfirming(milestone)}>
                           Delete
@@ -236,6 +289,92 @@ export function MilestonesPage({
             }}
           >
             Yes, delete
+          </Button>
+        </div>
+      </Modal>
+      <Modal
+        open={Boolean(dependencyTarget)}
+        onClose={() => setDependencyTarget(null)}
+        title={`Milestone dependencies · ${dependencyTarget?.title ?? ''}`}
+      >
+        <p className="text-sm text-muted">
+          This milestone can be verified only after its prerequisites are complete.
+        </p>
+        {dependencies.isLoading ? (
+          <LoadingState rows={2} />
+        ) : dependencies.isError ? (
+          <ErrorState
+            description="Could not load milestone dependencies."
+            onRetry={() => dependencies.refetch()}
+          />
+        ) : dependencies.data?.length ? (
+          <ul className="my-4 space-y-2">
+            {dependencies.data.map((dependency) => (
+              <li
+                key={dependency.id}
+                className="flex items-center justify-between gap-3 rounded border border-border p-2 text-sm"
+              >
+                <span>
+                  {dependency.dependsOn.title} ·{' '}
+                  {INTERNAL_MILESTONE_STATUS[dependency.dependsOn.status]}
+                </span>
+                {canUpdate ? (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={removeDependency.isPending}
+                    onClick={() => removeDependency.mutate(dependency.dependsOn.id)}
+                  >
+                    Remove
+                  </Button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="my-4 text-sm text-muted">No prerequisite milestones.</p>
+        )}
+        {canUpdate ? (
+          <form
+            className="flex flex-wrap items-end gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (dependsOnId) addDependency.mutate();
+            }}
+          >
+            <Select
+              label="Prerequisite milestone"
+              value={dependsOnId}
+              onChange={(event) => setDependsOnId(event.target.value)}
+              options={[
+                { value: '', label: 'Choose a milestone' },
+                ...(projectMilestones.data ?? [])
+                  .filter(
+                    (candidate) =>
+                      candidate.id !== dependencyTarget?.id &&
+                      !dependencies.data?.some((item) => item.dependsOn.id === candidate.id),
+                  )
+                  .map((candidate) => ({ value: candidate.id, label: candidate.title })),
+              ]}
+            />
+            <Button type="submit" disabled={!dependsOnId || addDependency.isPending}>
+              Add dependency
+            </Button>
+          </form>
+        ) : null}
+        {addDependency.isError ? (
+          <p role="alert" className="mt-2 text-sm text-error">
+            {addDependency.error.message}
+          </p>
+        ) : null}
+        {removeDependency.isError ? (
+          <p role="alert" className="mt-2 text-sm text-error">
+            {removeDependency.error.message}
+          </p>
+        ) : null}
+        <div className="mt-5 flex justify-end">
+          <Button variant="secondary" onClick={() => setDependencyTarget(null)}>
+            Close
           </Button>
         </div>
       </Modal>

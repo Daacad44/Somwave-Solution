@@ -7,6 +7,7 @@ import type {
   UpdateMilestoneInput,
   MilestoneStatus,
   AuthUser,
+  MilestoneDependencyRecord,
 } from '@somwave/shared';
 import { MAX_PAGE_SIZE } from '@somwave/shared';
 import { Prisma } from '@prisma/client';
@@ -248,6 +249,26 @@ export async function updateMilestone(
     });
     if (openTasks)
       throw new AppError('CONFLICT', 409, 'Complete linked tasks before verifying the milestone');
+    const unmetMilestones = await prisma.milestoneDependency.count({
+      where: { milestoneId: id, dependsOn: { deletedAt: null, status: { not: 'COMPLETED' } } },
+    });
+    if (unmetMilestones)
+      throw new AppError(
+        'CONFLICT',
+        409,
+        'Complete prerequisite milestones before verifying this milestone',
+      );
+  }
+  if (milestone.status === 'COMPLETED' && input.status && input.status !== 'COMPLETED') {
+    const completedDependents = await prisma.milestoneDependency.count({
+      where: { dependsOnId: id, milestone: { deletedAt: null, status: 'COMPLETED' } },
+    });
+    if (completedDependents)
+      throw new AppError(
+        'CONFLICT',
+        409,
+        'Reopen dependent milestones before reopening this milestone',
+      );
   }
 
   const stamp = completionStamp(input.status, milestone.status === 'COMPLETED');
@@ -292,6 +313,15 @@ export async function deleteMilestone(id: string, actor?: AuthUser): Promise<voi
     where: { id, deletedAt: null, project: projectManageScope(actor) },
   });
   if (!milestone) throw new AppError('NOT_FOUND', 404, 'Milestone not found');
+  const completedDependents = await prisma.milestoneDependency.count({
+    where: { dependsOnId: id, milestone: { deletedAt: null, status: 'COMPLETED' } },
+  });
+  if (completedDependents)
+    throw new AppError(
+      'CONFLICT',
+      409,
+      'Reopen dependent milestones before deleting this milestone',
+    );
   await prisma.milestone.update({ where: { id }, data: { deletedAt: new Date() } });
   await writeAudit({
     actorId: actor.id,
@@ -299,5 +329,126 @@ export async function deleteMilestone(id: string, actor?: AuthUser): Promise<voi
     subjectType: 'Milestone',
     subjectId: id,
     after: { projectId: milestone.projectId },
+  });
+}
+
+async function requireMilestone(id: string, actor: AuthUser | undefined, manage: boolean) {
+  if (!actor) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+  const milestone = await prisma.milestone.findFirst({
+    where: {
+      id,
+      deletedAt: null,
+      project: manage ? projectManageScope(actor) : projectScope(actor),
+    },
+    select: { id: true, projectId: true, status: true },
+  });
+  if (!milestone) throw new AppError('NOT_FOUND', 404, 'Milestone not found');
+  return milestone;
+}
+
+export async function listMilestoneDependencies(
+  id: string,
+  actor?: AuthUser,
+): Promise<MilestoneDependencyRecord[]> {
+  await requireMilestone(id, actor, false);
+  const rows = await prisma.milestoneDependency.findMany({
+    where: { milestoneId: id, dependsOn: { deletedAt: null } },
+    select: {
+      id: true,
+      createdAt: true,
+      dependsOn: { select: { id: true, title: true, status: true } },
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    dependsOn: row.dependsOn,
+    createdAt: row.createdAt.toISOString(),
+  }));
+}
+
+export async function addMilestoneDependency(
+  id: string,
+  dependsOnId: string,
+  actor?: AuthUser,
+): Promise<MilestoneDependencyRecord> {
+  const milestone = await requireMilestone(id, actor, true);
+  if (id === dependsOnId)
+    throw new AppError('VALIDATION_ERROR', 400, 'A milestone cannot depend on itself');
+  const dependsOn = await prisma.milestone.findFirst({
+    where: { id: dependsOnId, projectId: milestone.projectId, deletedAt: null },
+    select: { id: true, title: true, status: true },
+  });
+  if (!dependsOn)
+    throw new AppError('VALIDATION_ERROR', 400, 'Prerequisite must belong to the same project');
+  if (milestone.status === 'COMPLETED' && dependsOn.status !== 'COMPLETED')
+    throw new AppError(
+      'CONFLICT',
+      409,
+      'Reopen this milestone before adding an incomplete prerequisite',
+    );
+  return prisma.$transaction(
+    async (tx) => {
+      const edges = await tx.milestoneDependency.findMany({
+        where: {
+          milestone: { projectId: milestone.projectId, deletedAt: null },
+          dependsOn: { deletedAt: null },
+        },
+        select: { milestoneId: true, dependsOnId: true },
+      });
+      if (edges.some((edge) => edge.milestoneId === id && edge.dependsOnId === dependsOnId))
+        throw new AppError('CONFLICT', 409, 'Milestone dependency already exists');
+      const graph = new Map<string, string[]>();
+      for (const edge of edges)
+        graph.set(edge.milestoneId, [...(graph.get(edge.milestoneId) ?? []), edge.dependsOnId]);
+      const visited = new Set<string>();
+      const stack = [dependsOnId];
+      while (stack.length) {
+        const node = stack.pop()!;
+        if (node === id)
+          throw new AppError('CONFLICT', 409, 'Milestone dependency would create a cycle');
+        if (visited.has(node)) continue;
+        visited.add(node);
+        stack.push(...(graph.get(node) ?? []));
+      }
+      const row = await tx.milestoneDependency.create({
+        data: { milestoneId: id, dependsOnId },
+        select: { id: true, createdAt: true },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorId: actor!.id,
+          action: 'milestone.dependency.add',
+          subjectType: 'Milestone',
+          subjectId: id,
+          after: { projectId: milestone.projectId, dependsOnId },
+        },
+      });
+      return { id: row.id, dependsOn, createdAt: row.createdAt.toISOString() };
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+  );
+}
+
+export async function removeMilestoneDependency(
+  id: string,
+  dependsOnId: string,
+  actor?: AuthUser,
+): Promise<void> {
+  const milestone = await requireMilestone(id, actor, true);
+  await prisma.$transaction(async (tx) => {
+    const removed = await tx.milestoneDependency.deleteMany({
+      where: { milestoneId: id, dependsOnId },
+    });
+    if (!removed.count) throw new AppError('NOT_FOUND', 404, 'Milestone dependency not found');
+    await tx.auditLog.create({
+      data: {
+        actorId: actor!.id,
+        action: 'milestone.dependency.remove',
+        subjectType: 'Milestone',
+        subjectId: id,
+        after: { projectId: milestone.projectId, dependsOnId },
+      },
+    });
   });
 }
