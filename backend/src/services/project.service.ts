@@ -163,6 +163,7 @@ export interface ProjectPortfolioFilters {
   priority?: TaskPriority;
   managerId?: string;
   engineerId?: string;
+  assignment?: 'unassigned' | 'pending' | 'active';
   clientId?: string;
   health?: ProjectHealth;
   dueFrom?: string;
@@ -202,6 +203,8 @@ export async function getProjectPortfolio(
         atRiskProjects: 0,
         assignedEngineers: 0,
         unassignedProjects: 0,
+        projectsWithPendingInvitations: 0,
+        projectsWithActiveTeams: 0,
         overdueTasks: 0,
         upcomingDeadlines: 0,
       },
@@ -220,6 +223,7 @@ export async function getProjectPortfolio(
     upcomingTaskGroups,
     upcomingMilestoneGroups,
     members,
+    invitations,
   ] = await Promise.all([
     prisma.task.groupBy({
       by: ['projectId', 'status'],
@@ -265,9 +269,22 @@ export async function getProjectPortfolio(
       where: {
         projectId: { in: ids },
         removedAt: null,
-        role: { in: ['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER', 'CONTRIBUTOR'] },
+        role: { in: ['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER', 'REVIEWER', 'CONTRIBUTOR'] },
+        user: {
+          isActive: true,
+          deletedAt: null,
+          OR: [{ engineerProfile: { is: null } }, { engineerProfile: { status: 'ACTIVE' } }],
+        },
       },
       select: { projectId: true, userId: true, user: { select: { name: true } } },
+    }),
+    prisma.projectInvitation.findMany({
+      where: {
+        projectId: { in: ids },
+        status: 'PENDING',
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      },
+      select: { projectId: true, userId: true },
     }),
   ]);
   const counts = new Map<string, { total: number; done: number }>();
@@ -290,6 +307,12 @@ export async function getProjectPortfolio(
     projectEngineers.add(member.userId);
     engineers.set(member.projectId, projectEngineers);
   }
+  const pendingByProject = new Map<string, Set<string>>();
+  for (const invitation of invitations) {
+    const pending = pendingByProject.get(invitation.projectId) ?? new Set<string>();
+    pending.add(invitation.userId);
+    pendingByProject.set(invitation.projectId, pending);
+  }
   const portfolio: ProjectPortfolioItem[] = rows.map((row) => {
     const taskCounts = counts.get(row.id) ?? { total: 0, done: 0 };
     const health = deriveProjectHealthDetails({
@@ -301,6 +324,8 @@ export async function getProjectPortfolio(
       remainingTasks: taskCounts.total - taskCounts.done,
       now,
     }).health;
+    const assignedEngineers = engineers.get(row.id)?.size ?? 0;
+    const pendingInvitations = pendingByProject.get(row.id)?.size ?? 0;
     return {
       ...toAdminProject(row, canReadProjectBudget(filters.actor)),
       clientName: row.client?.companyName ?? null,
@@ -308,7 +333,13 @@ export async function getProjectPortfolio(
       progress: deriveProgress(taskCounts.total, taskCounts.done),
       taskCount: taskCounts.total,
       overdueTasks: overdueTasks.get(row.id) ?? 0,
-      assignedEngineers: engineers.get(row.id)?.size ?? 0,
+      assignedEngineers,
+      pendingInvitations,
+      assignmentStatus: assignedEngineers
+        ? 'ACTIVE'
+        : pendingInvitations
+          ? 'PENDING'
+          : 'UNASSIGNED',
     };
   });
   const summary = {
@@ -320,6 +351,8 @@ export async function getProjectPortfolio(
     atRiskProjects: portfolio.filter((row) => row.health === 'AT_RISK').length,
     assignedEngineers: new Set(members.map((member) => member.userId)).size,
     unassignedProjects: portfolio.filter((row) => row.assignedEngineers === 0).length,
+    projectsWithPendingInvitations: portfolio.filter((row) => row.pendingInvitations > 0).length,
+    projectsWithActiveTeams: portfolio.filter((row) => row.assignedEngineers > 0).length,
     overdueTasks: [...overdueTasks.values()].reduce((total, count) => total + count, 0),
     upcomingDeadlines:
       portfolio.filter(
@@ -369,6 +402,10 @@ export async function getProjectPortfolio(
       (!filters.managerId || row.manager?.id === filters.managerId) &&
       (!filters.clientId || row.clientId === filters.clientId) &&
       (!filters.engineerId || engineers.get(row.id)?.has(filters.engineerId)) &&
+      (!filters.assignment ||
+        (filters.assignment === 'unassigned' && row.assignedEngineers === 0) ||
+        (filters.assignment === 'pending' && row.pendingInvitations > 0) ||
+        (filters.assignment === 'active' && row.assignedEngineers > 0)) &&
       (!filters.health || row.health === filters.health) &&
       inRange(row.dueDate, filters.dueFrom, filters.dueTo) &&
       inRange(row.createdAt, filters.createdFrom, filters.createdTo),
@@ -459,11 +496,16 @@ export async function getProject(id: string, actor?: AuthUser): Promise<AdminPro
   return row ? toAdminProject(row, canReadProjectBudget(actor)) : null;
 }
 
-// A managerId, when given, must belong to a real active user.
+// A managerId grants project management access, so it must be an active manager.
 async function assertManagerExists(managerId: string | null | undefined): Promise<void> {
   if (!managerId) return;
   const manager = await prisma.user.findFirst({
-    where: { id: managerId, isActive: true, deletedAt: null },
+    where: {
+      id: managerId,
+      isActive: true,
+      deletedAt: null,
+      roles: { some: { role: { name: { in: ['SUPER_ADMIN', 'ADMIN', 'MANAGER'] } } } },
+    },
     select: { id: true },
   });
   if (!manager) throw new AppError('VALIDATION_ERROR', 400, 'Manager not found');

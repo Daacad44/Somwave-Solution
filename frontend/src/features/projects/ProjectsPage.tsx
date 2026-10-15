@@ -16,6 +16,7 @@ import { useHasPermission } from '../../lib/rbac';
 import { formatDate } from '../../lib/date';
 import { useProjectPortfolio, useDeleteProject } from './hooks';
 import { ProjectFormModal } from './components/ProjectFormModal';
+import { ProjectEngineerAssignmentModal } from './components/ProjectEngineerAssignmentModal';
 
 const PAGE_SIZE = 20;
 
@@ -43,9 +44,14 @@ export function ProjectsPage(): ReactNode {
     if (key !== 'page' && key !== 'view') next.delete('page');
     setParams(next);
   };
+  const showAssignmentGroup = (assignment: 'unassigned' | 'pending' | 'active'): void => {
+    setSearchInput('');
+    setParams(new URLSearchParams({ assignment, ...(view === 'cards' ? { view } : {}) }));
+  };
 
   const canCreate = useHasPermission(PERMISSIONS.PROJECTS_CREATE);
   const canUpdate = useHasPermission(PERMISSIONS.PROJECTS_UPDATE);
+  const canAssign = useHasPermission(PERMISSIONS.ENGINEERING_MANAGE);
   const canDelete = useHasPermission(PERMISSIONS.PROJECTS_DELETE);
   const canReadFinance = useHasPermission(PERMISSIONS.INVOICES_READ);
 
@@ -57,6 +63,9 @@ export function ProjectsPage(): ReactNode {
     priority: params.get('priority') || undefined,
     managerId: params.get('managerId') || undefined,
     engineerId: params.get('engineerId') || undefined,
+    assignment: (['unassigned', 'pending', 'active'].includes(params.get('assignment') ?? '')
+      ? params.get('assignment')
+      : undefined) as 'unassigned' | 'pending' | 'active' | undefined,
     clientId: params.get('clientId') || undefined,
     health: params.get('health') || undefined,
     dueFrom: params.get('dueFrom') || undefined,
@@ -71,6 +80,7 @@ export function ProjectsPage(): ReactNode {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<AdminProject | null>(null);
   const [confirming, setConfirming] = useState<AdminProject | null>(null);
+  const [assigning, setAssigning] = useState<{ id: string; name: string } | null>(null);
 
   const openCreate = (): void => {
     setEditing(null);
@@ -116,14 +126,37 @@ export function ProjectsPage(): ReactNode {
               ['At risk', summary.atRiskProjects],
               ['Assigned engineers', summary.assignedEngineers],
               ['Unassigned projects', summary.unassignedProjects],
+              ['Pending invitations', summary.projectsWithPendingInvitations ?? 0],
+              ['Active teams', summary.projectsWithActiveTeams ?? 0],
               ['Overdue tasks', summary.overdueTasks],
               ['Upcoming deadlines', summary.upcomingDeadlines],
             ] as const
           ).map(([label, value]) => (
-            <div key={label} className="rounded-lg border border-border bg-surface p-4">
-              <p className="text-sm text-muted">{label}</p>
-              <p className="mt-1 text-2xl font-semibold">{value}</p>
-            </div>
+            <button
+              key={label}
+              type="button"
+              disabled={
+                !['Unassigned projects', 'Pending invitations', 'Active teams'].includes(label)
+              }
+              aria-pressed={
+                (label === 'Unassigned projects' && params.get('assignment') === 'unassigned') ||
+                (label === 'Pending invitations' && params.get('assignment') === 'pending') ||
+                (label === 'Active teams' && params.get('assignment') === 'active')
+              }
+              onClick={() =>
+                showAssignmentGroup(
+                  label === 'Unassigned projects'
+                    ? 'unassigned'
+                    : label === 'Pending invitations'
+                      ? 'pending'
+                      : 'active',
+                )
+              }
+              className="rounded-lg border border-border bg-surface p-4 text-start enabled:cursor-pointer enabled:hover:border-brand enabled:focus-visible:outline-none enabled:focus-visible:ring-2 enabled:focus-visible:ring-brand disabled:opacity-100 aria-pressed:border-brand"
+            >
+              <span className="text-sm text-muted">{label}</span>
+              <span className="mt-1 block text-2xl font-semibold">{value}</span>
+            </button>
           ))}
         </div>
       ) : null}
@@ -152,6 +185,18 @@ export function ProjectsPage(): ReactNode {
       </form>
 
       <div className="mt-4 grid gap-3 rounded-lg border border-border bg-surface p-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Select
+          id="assignment-filter"
+          label="Assignment"
+          value={params.get('assignment') ?? ''}
+          onChange={(event) => updateParam('assignment', event.target.value)}
+          options={[
+            { value: '', label: 'All assignments' },
+            { value: 'unassigned', label: 'No active engineer' },
+            { value: 'pending', label: 'Pending invitation' },
+            { value: 'active', label: 'Active team' },
+          ]}
+        />
         <Select
           label="Status"
           value={params.get('status') ?? ''}
@@ -285,7 +330,11 @@ export function ProjectsPage(): ReactNode {
           <ErrorState description="Could not load projects." onRetry={() => query.refetch()} />
         ) : projects.length === 0 ? (
           <EmptyState
-            title="No matching projects"
+            title={
+              params.get('assignment') === 'unassigned'
+                ? 'All projects have active engineers'
+                : 'No matching projects'
+            }
             description="Adjust the filters or create a project."
             action={canCreate ? <Button onClick={openCreate}>New project</Button> : undefined}
           />
@@ -323,6 +372,14 @@ export function ProjectsPage(): ReactNode {
                   {project.taskCount} tasks
                 </p>
                 <p className="mt-1 text-sm text-muted">
+                  Assignment:{' '}
+                  {(
+                    project.assignmentStatus ??
+                    (project.assignedEngineers ? 'ACTIVE' : 'UNASSIGNED')
+                  ).toLowerCase()}
+                  {project.pendingInvitations ? ` · ${project.pendingInvitations} pending` : ''}
+                </p>
+                <p className="mt-1 text-sm text-muted">
                   Deadline: {formatDate(project.dueDate)} · {project.overdueTasks} overdue tasks
                 </p>
                 <p className="mt-3 text-sm">
@@ -334,6 +391,16 @@ export function ProjectsPage(): ReactNode {
                     style={{ width: `${project.progress ?? 0}%` }}
                   />
                 </div>
+                {canAssign && project.status !== 'COMPLETED' && project.status !== 'CANCELLED' ? (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="mt-4"
+                    onClick={() => setAssigning(project)}
+                  >
+                    Assign engineer
+                  </Button>
+                ) : null}
               </article>
             ))}
           </div>
@@ -347,6 +414,7 @@ export function ProjectsPage(): ReactNode {
                 <Th>Health</Th>
                 <Th>Progress</Th>
                 <Th>Engineers</Th>
+                <Th>Assignment status</Th>
                 <Th>Manager</Th>
                 <Th>Client</Th>
                 {canReadFinance ? <Th>Budget</Th> : null}
@@ -376,12 +444,26 @@ export function ProjectsPage(): ReactNode {
                   </Td>
                   <Td>{project.progress === null ? '—' : `${project.progress}%`}</Td>
                   <Td>{project.assignedEngineers}</Td>
+                  <Td>
+                    {(
+                      project.assignmentStatus ??
+                      (project.assignedEngineers ? 'ACTIVE' : 'UNASSIGNED')
+                    ).toLowerCase()}
+                    {project.pendingInvitations ? ` · ${project.pendingInvitations} pending` : ''}
+                  </Td>
                   <Td className="text-muted">{project.manager?.name ?? '—'}</Td>
                   <Td>{project.clientName ?? '—'}</Td>
                   {canReadFinance ? <Td>{formatMoney(project.budget)}</Td> : null}
                   <Td className="text-muted">{formatDate(project.dueDate)}</Td>
                   <Td>
                     <div className="flex justify-end gap-2">
+                      {canAssign &&
+                      project.status !== 'COMPLETED' &&
+                      project.status !== 'CANCELLED' ? (
+                        <Button size="sm" variant="secondary" onClick={() => setAssigning(project)}>
+                          Assign engineer
+                        </Button>
+                      ) : null}
                       {canUpdate ? (
                         <Button size="sm" variant="secondary" onClick={() => openEdit(project)}>
                           Edit
@@ -434,6 +516,9 @@ export function ProjectsPage(): ReactNode {
           onClose={() => setFormOpen(false)}
           project={editing}
         />
+      ) : null}
+      {assigning ? (
+        <ProjectEngineerAssignmentModal project={assigning} onClose={() => setAssigning(null)} />
       ) : null}
 
       <Modal open={Boolean(confirming)} onClose={() => setConfirming(null)} title="Delete project">

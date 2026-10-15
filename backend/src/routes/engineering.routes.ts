@@ -115,6 +115,11 @@ engineeringRouter.get(
   controller.teamOverview,
 );
 engineeringRouter.get(
+  '/eligible-engineers',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  controller.eligibleEngineersForNewProject,
+);
+engineeringRouter.get(
   '/engineers/:userId/assignments',
   rbac(PERMISSIONS.ENGINEERING_MANAGE),
   controller.engineerAssignments,
@@ -171,6 +176,11 @@ engineeringRouter.post(
   rbac(PERMISSIONS.ENGINEERING_MANAGE),
   validate(inviteProjectEngineerSchema),
   controller.inviteEngineer,
+);
+engineeringRouter.post(
+  '/projects/:projectId/invitations/:invitationId/resend',
+  rbac(PERMISSIONS.ENGINEERING_MANAGE),
+  controller.resendInvitation,
 );
 engineeringRouter.delete(
   '/projects/:projectId/invitations/:invitationId',

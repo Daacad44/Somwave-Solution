@@ -167,6 +167,11 @@ export async function getEngineeringMetrics(actor: EngineeringActor) {
       where: {
         removedAt: null,
         role: { in: ['ENGINEER', 'LEAD_ENGINEER', 'QA_ENGINEER', 'REVIEWER', 'CONTRIBUTOR'] },
+        user: {
+          isActive: true,
+          deletedAt: null,
+          OR: [{ engineerProfile: { is: null } }, { engineerProfile: { status: 'ACTIVE' } }],
+        },
         ...projectRelation,
       },
       distinct: ['userId'],
@@ -291,11 +296,11 @@ export async function listEngineerAssignments(userId: string, actor: Engineering
 }
 
 export async function listEligibleEngineers(
-  projectId: string,
+  projectId: string | null,
   actor: EngineeringActor,
   search?: string,
 ) {
-  await requireManager(projectId, actor);
+  if (projectId) await requireManager(projectId, actor);
   const now = new Date();
   const candidates = await prisma.user.findMany({
     where: {
@@ -537,15 +542,7 @@ export async function inviteProjectEngineer(
     },
   });
   if (pending?.status === 'PENDING' && (!pending.expiresAt || pending.expiresAt > new Date())) {
-    await queueProjectInvitationEmail(project.name, user.id, pending);
-    return {
-      id: pending.id,
-      projectId,
-      userId: user.id,
-      email: user.email,
-      status: 'PENDING' as const,
-      duplicate: true,
-    };
+    throw new AppError('CONFLICT', 409, 'Engineer already has a pending invitation');
   }
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -603,6 +600,51 @@ export async function inviteProjectEngineer(
     status: 'PENDING' as const,
     expiresAt,
   };
+}
+
+export async function resendProjectInvitation(
+  projectId: string,
+  invitationId: string,
+  actor: EngineeringActor,
+) {
+  const { project } = await requireManager(projectId, actor);
+  if (project.status === 'CANCELLED' || project.status === 'COMPLETED')
+    throw new AppError('CONFLICT', 409, 'Project does not accept new assignments');
+  const invitation = await prisma.projectInvitation.findFirst({
+    where: { id: invitationId, projectId, status: { in: ['PENDING', 'EXPIRED'] } },
+    select: { id: true, userId: true, invitedAt: true },
+  });
+  if (!invitation) throw new AppError('NOT_FOUND', 404, 'Invitation not found');
+  const member = await prisma.projectMember.findUnique({
+    where: { projectId_userId: { projectId, userId: invitation.userId } },
+    select: { removedAt: true },
+  });
+  if (member && !member.removedAt)
+    throw new AppError('CONFLICT', 409, 'Engineer is already assigned to this project');
+  const now = new Date(Math.max(Date.now(), invitation.invitedAt.getTime() + 1));
+  const updated = await prisma.$transaction(async (tx) => {
+    const claimed = await tx.projectInvitation.updateMany({
+      where: { id: invitationId, projectId, status: { in: ['PENDING', 'EXPIRED'] } },
+      data: {
+        status: 'PENDING',
+        invitedAt: now,
+        expiresAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+        respondedAt: null,
+      },
+    });
+    if (!claimed.count) throw new AppError('CONFLICT', 409, 'Invitation is no longer pending');
+    await tx.auditLog.create({
+      data: {
+        actorId: actor.id,
+        action: 'project.invitation.resend',
+        subjectType: 'ProjectInvitation',
+        subjectId: invitationId,
+      },
+    });
+    return tx.projectInvitation.findUniqueOrThrow({ where: { id: invitationId } });
+  });
+  await queueProjectInvitationEmail(project.name, invitation.userId, updated);
+  return { id: updated.id, projectId, status: 'PENDING' as const };
 }
 
 export async function respondToProjectInvitation(

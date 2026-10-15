@@ -281,8 +281,14 @@ export const engineeringApi = {
     apiFetch<Array<{ taskId: string; dependsOnId: string }>>(
       `/engineering/projects/${projectId}/dependencies`,
     ),
-  eligibleEngineers: (projectId: string) =>
-    apiFetch<EligibleEngineer[]>(`/engineering/projects/${projectId}/eligible-engineers`),
+  eligibleEngineers: (projectId: string, search = '') =>
+    apiFetch<EligibleEngineer[]>(
+      `/engineering/projects/${projectId}/eligible-engineers?search=${encodeURIComponent(search)}`,
+    ),
+  eligibleEngineersForNewProject: (search = '') =>
+    apiFetch<EligibleEngineer[]>(
+      `/engineering/eligible-engineers?search=${encodeURIComponent(search)}`,
+    ),
   myInvitations: () => apiFetch<ProjectInvitation[]>('/engineering/invitations/me'),
   respondInvitation: (id: string, decision: 'ACCEPT' | 'DECLINE') =>
     apiFetch<{ id: string; projectId: string; status: string }>(
@@ -314,6 +320,11 @@ export const engineeringApi = {
     apiFetch<{ success: boolean }>(
       `/engineering/projects/${projectId}/invitations/${invitationId}`,
       { method: 'DELETE' },
+    ),
+  resendInvitation: (projectId: string, invitationId: string) =>
+    apiFetch<{ id: string; status: string }>(
+      `/engineering/projects/${projectId}/invitations/${invitationId}/resend`,
+      { method: 'POST' },
     ),
   addMember: (projectId: string, userId: string, role: string, responsibilities: string) =>
     apiFetch<EngineeringMember>(`/engineering/projects/${projectId}/members`, {
