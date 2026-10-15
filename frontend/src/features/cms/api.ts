@@ -33,7 +33,10 @@ export function getSiteContent(): Promise<SiteContent> {
 }
 
 export function saveSiteContent(content: SiteContent): Promise<SiteContent> {
-  return apiFetch<SiteContent>('/cms/site-content', { method: 'PUT', body: JSON.stringify(content) });
+  return apiFetch<SiteContent>('/cms/site-content', {
+    method: 'PUT',
+    body: JSON.stringify(content),
+  });
 }
 
 export function listServices(): Promise<AdminService[]> {

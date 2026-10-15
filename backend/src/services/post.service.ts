@@ -40,7 +40,9 @@ function toSummary(row: PostRow, includeReadingTime = false): PublicPostSummary 
     authorName: row.authorName,
     publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
     category: row.category,
-    ...(includeReadingTime && row.body ? { readingMinutes: Math.max(1, Math.ceil(row.body.trim().split(/\s+/).length / 220)) } : {}),
+    ...(includeReadingTime && row.body
+      ? { readingMinutes: Math.max(1, Math.ceil(row.body.trim().split(/\s+/).length / 220)) }
+      : {}),
   };
 }
 
@@ -102,7 +104,12 @@ export async function listPublishedPosts(page: number, pageSize: number): Promis
     prisma.post.count({ where }),
   ]);
 
-  const result: PostPage = { items: rows.map((row) => toSummary(row, true)), total, page: current, pageSize: size };
+  const result: PostPage = {
+    items: rows.map((row) => toSummary(row, true)),
+    total,
+    page: current,
+    pageSize: size,
+  };
   await safeSet(cacheKey, JSON.stringify(result));
   return result;
 }

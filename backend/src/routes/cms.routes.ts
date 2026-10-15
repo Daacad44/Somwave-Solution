@@ -30,7 +30,12 @@ export const cmsRouter: Router = Router();
 cmsRouter.use(requireAuth);
 
 cmsRouter.get('/site-content', rbac(PERMISSIONS.CONTENT_READ), cmsController.getSiteContent);
-cmsRouter.put('/site-content', rbac(PERMISSIONS.CONTENT_UPDATE), validate(siteContentSchema), cmsController.putSiteContent);
+cmsRouter.put(
+  '/site-content',
+  rbac(PERMISSIONS.CONTENT_UPDATE),
+  validate(siteContentSchema),
+  cmsController.putSiteContent,
+);
 
 cmsRouter.get('/services', rbac(PERMISSIONS.CONTENT_READ), cmsController.listServices);
 cmsRouter.post(
