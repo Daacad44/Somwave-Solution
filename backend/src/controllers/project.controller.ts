@@ -66,6 +66,9 @@ export async function portfolio(req: Request, res: Response, next: NextFunction)
             : undefined,
         managerId: queryString(req.query.managerId),
         engineerId: queryString(req.query.engineerId),
+        assignment: ['unassigned', 'pending', 'active'].includes(String(req.query.assignment))
+          ? (req.query.assignment as 'unassigned' | 'pending' | 'active')
+          : undefined,
         clientId: queryString(req.query.clientId),
         health:
           health && (PROJECT_HEALTH as readonly string[]).includes(health)

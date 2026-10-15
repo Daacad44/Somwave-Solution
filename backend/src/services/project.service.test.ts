@@ -20,6 +20,7 @@ vi.mock('../lib/prisma', () => ({
     task: { findMany: vi.fn(), count: vi.fn(), groupBy: vi.fn() },
     milestone: { findMany: vi.fn(), count: vi.fn(), groupBy: vi.fn() },
     projectMember: { findMany: vi.fn(), findFirst: vi.fn() },
+    projectInvitation: { findMany: vi.fn() },
     auditLog: { create: vi.fn() },
     $transaction: vi.fn((ops: unknown[] | ((tx: unknown) => unknown)) =>
       typeof ops === 'function'
@@ -75,6 +76,7 @@ const row = {
 beforeEach(() => {
   vi.clearAllMocks();
   transactionMocks.updateMany.mockResolvedValue({ count: 1 });
+  vi.mocked(prisma.projectInvitation.findMany).mockResolvedValue([]);
 });
 
 describe('createProject', () => {
@@ -118,7 +120,9 @@ describe('createProject', () => {
       }),
     ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
     expect(prisma.user.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: 'suspended', isActive: true, deletedAt: null } }),
+      expect.objectContaining({
+        where: expect.objectContaining({ id: 'suspended', isActive: true, deletedAt: null }),
+      }),
     );
   });
 });
@@ -159,6 +163,8 @@ describe('project portfolio', () => {
       completedProjects: 1,
       delayedProjects: 1,
       assignedEngineers: 1,
+      unassignedProjects: 1,
+      projectsWithActiveTeams: 1,
       overdueTasks: 1,
     });
     expect(prisma.project.findMany).toHaveBeenCalledWith(
@@ -166,6 +172,35 @@ describe('project portfolio', () => {
         where: expect.objectContaining({ OR: expect.any(Array) }),
       }),
     );
+  });
+
+  it('includes pending-only projects in unassigned results while labelling them pending', async () => {
+    vi.mocked(prisma.project.findMany).mockResolvedValue([
+      { ...row, id: 'pending', client: null },
+      { ...row, id: 'empty', client: null },
+    ] as never);
+    vi.mocked(prisma.task.groupBy).mockResolvedValue([] as never);
+    vi.mocked(prisma.milestone.groupBy).mockResolvedValue([] as never);
+    vi.mocked(prisma.projectMember.findMany).mockResolvedValue([] as never);
+    vi.mocked(prisma.projectInvitation.findMany).mockResolvedValue([
+      { projectId: 'pending', userId: 'engineer' },
+    ] as never);
+    const result = await getProjectPortfolio({
+      actor: admin,
+      page: 1,
+      pageSize: 20,
+      assignment: 'unassigned',
+    });
+    expect(result.total).toBe(2);
+    expect(result.items.map((item) => [item.id, item.assignmentStatus])).toEqual([
+      ['pending', 'PENDING'],
+      ['empty', 'UNASSIGNED'],
+    ]);
+    expect(result.summary).toMatchObject({
+      unassignedProjects: 2,
+      projectsWithPendingInvitations: 1,
+      projectsWithActiveTeams: 0,
+    });
   });
 });
 

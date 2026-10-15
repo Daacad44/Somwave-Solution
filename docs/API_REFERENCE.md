@@ -63,8 +63,10 @@ Base path: `/api/v1/engineering`. Body shapes are in [`engineering.ts`](../packa
 | `GET /projects/:projectId/members` | R | Active project members. |
 | `GET /projects/:projectId/assignment-history` | M | Assignment and invitation history. |
 | `GET /projects/:projectId/eligible-engineers?search=...` | M | Candidate engineers with current-week capacity, open estimates and near/over-capacity flags; `search` is optional. |
+| `GET /eligible-engineers?search=...` | M | Active engineer candidates for the new-project wizard before a project ID exists. |
 | `GET /projects/:projectId/invitations` | M | Pending invitations for this project. |
 | `POST /projects/:projectId/invitations` | M | `email`, project `role` (`ENGINEER`, `LEAD_ENGINEER`, `REVIEWER`, `QA_ENGINEER`, `CONTRIBUTOR`), required `description`, `startDate`, `expectedEndDate`, `estimatedHours`; optional `name` for a new account, `responsibilities`, `priority`, `managerNotes`. Email is normalized to lowercase. |
+| `POST /projects/:projectId/invitations/:invitationId/resend` | M | Requeue a pending or expired invitation with a fresh seven-day expiry and audited email attempt. |
 | `DELETE /projects/:projectId/invitations/:invitationId` | M | Cancel a pending invitation. |
 | `POST /projects/:projectId/reassign-tasks` | M | `{ "fromUserId": "...", "toUserId": "..." }`; bulk reassign open tasks between active engineers on this project. |
 | `GET /projects/:projectId/handovers` | M | List manager-approved handover history and retained checklists. |
@@ -75,7 +77,7 @@ Base path: `/api/v1/engineering`. Body shapes are in [`engineering.ts`](../packa
 | `PATCH /projects/:projectId/members/:userId` | M | Change `role` and/or `responsibilities`; upgrading a non-engineer member to an engineer role requires an invitation instead. |
 | `DELETE /projects/:projectId/members/:userId` | M | Remove member. |
 
-Project member roles are `MANAGER`, `LEAD_ENGINEER`, `ENGINEER`, `REVIEWER`, `QA_ENGINEER`, `CONTRIBUTOR`, and `VIEWER`. Managers control membership. An invitation for an already assigned engineer returns 409. An already answered or cancelled invitation cannot be accepted; a concurrent second response returns 409.
+Project member roles are `MANAGER`, `LEAD_ENGINEER`, `ENGINEER`, `REVIEWER`, `QA_ENGINEER`, `CONTRIBUTOR`, and `VIEWER`. Managers control membership. An invitation for an already assigned engineer or an unexpired pending invitation returns 409. An already answered or cancelled invitation cannot be accepted; a concurrent second response returns 409.
 
 ## Engineering planning and tasks
 
@@ -238,6 +240,8 @@ These routes also require an access cookie and the named global permission. Proj
 
 | Method and path | Global permission | Additional rule |
 | --- | --- | --- |
+| `GET /api/v1/projects/portfolio?assignment=unassigned|pending|active` | `projects.read` | Scoped dashboard and pagination. Unassigned means zero active engineer members, including projects with pending invitations; each row reports assignment status and pending count. |
+| `POST /api/v1/projects` | `projects.create` | Creates the project before optional wizard planning and invitations; supplied manager must hold an active admin or manager role. |
 | `GET /api/v1/projects/:id/workspace` | `projects.read` | Project read scope; returns project, tasks, milestones, progress. |
 | `PATCH /api/v1/projects/:id` | `projects.update` | Project manager scope. |
 | `DELETE /api/v1/projects/:id` | `projects.delete` | Project manager scope; soft-deletes. |

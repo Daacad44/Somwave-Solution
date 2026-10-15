@@ -9,6 +9,8 @@ export const projectPortfolioItemSchema = adminProjectSchema.extend({
   taskCount: z.number().int().nonnegative(),
   overdueTasks: z.number().int().nonnegative(),
   assignedEngineers: z.number().int().nonnegative(),
+  pendingInvitations: z.number().int().nonnegative(),
+  assignmentStatus: z.enum(['ACTIVE', 'PENDING', 'UNASSIGNED']),
 });
 export type ProjectPortfolioItem = z.infer<typeof projectPortfolioItemSchema>;
 
@@ -31,6 +33,8 @@ export const projectPortfolioSchema = z.object({
     atRiskProjects: z.number().int(),
     assignedEngineers: z.number().int(),
     unassignedProjects: z.number().int(),
+    projectsWithPendingInvitations: z.number().int(),
+    projectsWithActiveTeams: z.number().int(),
     overdueTasks: z.number().int(),
     upcomingDeadlines: z.number().int(),
   }),

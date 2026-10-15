@@ -101,6 +101,14 @@ export function ProjectTeamPanel({ projectId }: { projectId: string }): ReactNod
     },
     onError: (error: Error) => setMessage(error.message),
   });
+  const resend = useMutation({
+    mutationFn: (invitationId: string) => engineeringApi.resendInvitation(projectId, invitationId),
+    onSuccess: () => {
+      setMessage('Invitation requeued.');
+      refresh();
+    },
+    onError: (error: Error) => setMessage(error.message),
+  });
   const updateRole = useMutation({
     mutationFn: ({ userId, nextRole }: { userId: string; nextRole: string }) =>
       engineeringApi.updateMember(projectId, userId, { role: nextRole }),
@@ -180,6 +188,11 @@ export function ProjectTeamPanel({ projectId }: { projectId: string }): ReactNod
                       </p>
                     ) : null}
                     {member.responsibilities ? <p>{member.responsibilities}</p> : null}
+                    {profile ? (
+                      <p className="text-muted">
+                        Assignment started {new Date(profile.assignedAt).toLocaleDateString()}
+                      </p>
+                    ) : null}
                     {profile ? (
                       <p className="text-muted">
                         {profile.assignedTaskCount} assigned tasks · {profile.completedTaskCount}{' '}
@@ -391,7 +404,24 @@ export function ProjectTeamPanel({ projectId }: { projectId: string }): ReactNod
                       {item.emailDelivery
                         ? ` · Email ${item.emailDelivery.status.toLowerCase()}`
                         : ''}
+                      {item.startDate
+                        ? ` · Starts ${new Date(item.startDate).toLocaleDateString()}`
+                        : ''}
+                      {item.expectedEndDate
+                        ? ` · Ends ${new Date(item.expectedEndDate).toLocaleDateString()}`
+                        : ''}
+                      {item.estimatedHours ? ` · ${item.estimatedHours} hours` : ''}
                     </span>
+                    {item.status === 'PENDING' || item.status === 'EXPIRED' ? (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={resend.isPending}
+                        onClick={() => resend.mutate(item.id)}
+                      >
+                        Resend
+                      </Button>
+                    ) : null}
                     {item.status === 'PENDING' ? (
                       <Button
                         size="sm"

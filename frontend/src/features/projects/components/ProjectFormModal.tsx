@@ -19,6 +19,7 @@ import { ApiError } from '../../../lib/apiClient';
 import { useHasPermission } from '../../../lib/rbac';
 import { useCreateProject, useUpdateProject } from '../hooks';
 import { INTERNAL_PROJECT_STATUS } from '../../../lib/internalLabels';
+import { ProjectCreationWizard } from './ProjectCreationWizard';
 
 export interface ProjectFormModalProps {
   open: boolean;
@@ -36,7 +37,7 @@ const dateValue = (iso: string | null | undefined): string => (iso ? iso.slice(0
 const orUndefined = (value: string | undefined): string | undefined =>
   value && value.trim() !== '' ? value.trim() : undefined;
 
-export function ProjectFormModal({ open, onClose, project }: ProjectFormModalProps): ReactNode {
+function ProjectEditForm({ open, onClose, project }: ProjectFormModalProps): ReactNode {
   const canEditBudget = useHasPermission(PERMISSIONS.INVOICES_UPDATE);
   const isEdit = Boolean(project);
   const createMutation = useCreateProject();
@@ -163,4 +164,8 @@ export function ProjectFormModal({ open, onClose, project }: ProjectFormModalPro
       </form>
     </Modal>
   );
+}
+
+export function ProjectFormModal(props: ProjectFormModalProps): ReactNode {
+  return props.project ? <ProjectEditForm {...props} /> : <ProjectCreationWizard {...props} />;
 }
