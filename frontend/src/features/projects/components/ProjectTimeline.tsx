@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import type { AdminMilestone, AdminTask } from '@somwave/shared';
 import { EmptyState } from '../../../components/states';
 import { formatLongDate } from '../../../lib/date';
@@ -133,5 +133,113 @@ export function ProjectTimeline({
         </p>
       ) : null}
     </div>
+  );
+}
+
+/** A keyboard-operable month view of the same project deadlines. */
+export function ProjectCalendar({
+  tasks,
+  milestones,
+}: {
+  tasks: readonly AdminTask[];
+  milestones: readonly AdminMilestone[];
+}): ReactNode {
+  const [month, setMonth] = useState(() => {
+    const today = new Date();
+    return new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
+  });
+  const year = month.getUTCFullYear();
+  const monthIndex = month.getUTCMonth();
+  const firstWeekday = new Date(Date.UTC(year, monthIndex, 1)).getUTCDay();
+  const daysInMonth = new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+  const events = new Map<number, { id: string; label: string; kind: string }[]>();
+  for (const row of [
+    ...tasks.map((task) => ({
+      id: task.id,
+      label: task.title,
+      kind: 'Task',
+      dueDate: task.dueDate,
+    })),
+    ...milestones.map((milestone) => ({
+      id: milestone.id,
+      label: milestone.title,
+      kind: 'Milestone',
+      dueDate: milestone.dueDate,
+    })),
+  ]) {
+    if (!row.dueDate) continue;
+    const due = new Date(row.dueDate);
+    if (due.getUTCFullYear() !== year || due.getUTCMonth() !== monthIndex) continue;
+    const day = due.getUTCDate();
+    events.set(day, [...(events.get(day) ?? []), row]);
+  }
+  const move = (offset: number) => setMonth(new Date(Date.UTC(year, monthIndex + offset, 1)));
+  return (
+    <section
+      className="rounded-lg border border-border bg-surface p-4"
+      aria-label="Project deadline calendar"
+    >
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold text-ink">
+          {month.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })}
+        </h2>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className="rounded border border-border px-3 py-1 focus-visible:ring-2 focus-visible:ring-brand"
+            aria-label="Previous month"
+            onClick={() => move(-1)}
+          >
+            ←
+          </button>
+          <button
+            type="button"
+            className="rounded border border-border px-3 py-1 focus-visible:ring-2 focus-visible:ring-brand"
+            aria-label="Next month"
+            onClick={() => move(1)}
+          >
+            →
+          </button>
+        </div>
+      </div>
+      <div
+        className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-muted"
+        aria-hidden="true"
+      >
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+          <span key={day}>{day}</span>
+        ))}
+      </div>
+      <div className="mt-1 grid grid-cols-7 gap-1">
+        {Array.from({ length: firstWeekday }, (_, index) => (
+          <div key={`blank-${index}`} />
+        ))}
+        {Array.from({ length: daysInMonth }, (_, index) => {
+          const day = index + 1;
+          const items = events.get(day) ?? [];
+          const date = new Date(Date.UTC(year, monthIndex, day));
+          return (
+            <div
+              key={day}
+              className="min-h-20 rounded border border-border p-1 text-xs"
+              aria-label={`${date.toDateString()}, ${items.length} deadlines`}
+            >
+              <time dateTime={date.toISOString().slice(0, 10)} className="font-semibold text-ink">
+                {day}
+              </time>
+              {items.map((item) => (
+                <p
+                  key={`${item.kind}-${item.id}`}
+                  className="mt-1 truncate rounded bg-brand/10 px-1 text-ink"
+                  title={`${item.kind}: ${item.label}`}
+                >
+                  {item.kind}: {item.label}
+                </p>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }

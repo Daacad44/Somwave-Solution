@@ -13,6 +13,8 @@ import {
   updateProjectHealthNote,
   deleteProject,
   type ListProjectsParams,
+  type PortfolioFilters,
+  getProjectPortfolio,
 } from './api';
 
 const PROJECTS_KEY = ['projects'] as const;
@@ -22,6 +24,14 @@ export function useProjects(params: ListProjectsParams) {
     queryKey: [...PROJECTS_KEY, params],
     queryFn: () => listProjects(params),
     placeholderData: (prev) => prev,
+  });
+}
+
+export function useProjectPortfolio(filters: PortfolioFilters) {
+  return useQuery({
+    queryKey: [...PROJECTS_KEY, 'portfolio', filters],
+    queryFn: () => getProjectPortfolio(filters),
+    placeholderData: (previous) => previous,
   });
 }
 

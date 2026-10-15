@@ -4,6 +4,11 @@ import type {
   CreateProjectInput,
   ProjectStatus,
   ProjectWorkspace,
+  ProjectPortfolio,
+  ProjectFinance,
+  CreateProjectExpenseInput,
+  ReviseProjectBudgetInput,
+  ProjectActivity,
   UpdateProjectInput,
   UpdateProjectHealthNoteInput,
 } from '@somwave/shared';
@@ -15,6 +20,53 @@ export interface ListProjectsParams {
   search?: string;
   status?: ProjectStatus;
 }
+
+export interface PortfolioFilters {
+  page: number;
+  pageSize: number;
+  search?: string;
+  status?: string;
+  priority?: string;
+  managerId?: string;
+  engineerId?: string;
+  clientId?: string;
+  health?: string;
+  dueFrom?: string;
+  dueTo?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  sortBy?: string;
+  sortDirection?: 'asc' | 'desc';
+}
+
+export function getProjectPortfolio(filters: PortfolioFilters): Promise<ProjectPortfolio> {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== '') query.set(key, String(value));
+  }
+  return apiFetch<ProjectPortfolio>(`/projects/portfolio?${query.toString()}`);
+}
+
+export const projectFinanceApi = {
+  get: (projectId: string) => apiFetch<ProjectFinance>(`/projects/${projectId}/finance`),
+  createExpense: (projectId: string, input: CreateProjectExpenseInput) =>
+    apiFetch<{ id: string }>(`/projects/${projectId}/expenses`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+  removeExpense: (projectId: string, expenseId: string) =>
+    apiFetch<{ success: boolean }>(`/projects/${projectId}/expenses/${expenseId}`, {
+      method: 'DELETE',
+    }),
+  reviseBudget: (projectId: string, input: ReviseProjectBudgetInput) =>
+    apiFetch<{ id: string; budget: string }>(`/projects/${projectId}/budget-revisions`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+};
+
+export const getProjectActivity = (projectId: string) =>
+  apiFetch<ProjectActivity>(`/projects/${projectId}/activity`);
 
 export function listProjects(
   params: ListProjectsParams,

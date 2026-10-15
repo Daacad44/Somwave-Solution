@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import {
   changeProjectDocumentationStatusSchema,
   createProjectDocumentationSchema,
@@ -113,4 +114,9 @@ projectDocumentationRouter.patch(
   '/:projectId/documentation/:documentId/status',
   validate(changeProjectDocumentationStatusSchema),
   controller.changeStatus,
+);
+projectDocumentationRouter.patch(
+  '/:projectId/documentation/:documentId/client-visibility',
+  validate(z.object({ clientVisible: z.boolean() })),
+  controller.setClientVisibility,
 );

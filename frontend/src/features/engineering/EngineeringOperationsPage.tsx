@@ -64,7 +64,9 @@ const MAINTENANCE_TYPES = [
 ];
 const iso = (value: string) => (value ? new Date(value).toISOString() : undefined);
 
-export function EngineeringOperationsPage(): ReactNode {
+export function EngineeringOperationsPage({
+  projectId: fixedProjectId,
+}: { projectId?: string } = {}): ReactNode {
   const client = useQueryClient();
   const canManage = useHasPermission(PERMISSIONS.ENGINEERING_MANAGE);
   const [projectId, setProjectId] = useState('');
@@ -91,7 +93,7 @@ export function EngineeringOperationsPage(): ReactNode {
     queryKey: ['engineering-projects'],
     queryFn: engineeringApi.projects,
   });
-  const selectedProjectId = projectId || projects.data?.[0]?.id || '';
+  const selectedProjectId = fixedProjectId || projectId || projects.data?.[0]?.id || '';
   const systems = useQuery({
     queryKey: ['engineering-systems', selectedProjectId],
     queryFn: () => engineeringApi.systems(selectedProjectId),
@@ -198,23 +200,25 @@ export function EngineeringOperationsPage(): ReactNode {
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-sm">
-              Project
-              <select
-                className="mt-1 w-full rounded border border-border bg-surface p-3"
-                value={selectedProjectId}
-                onChange={(event) => {
-                  setProjectId(event.target.value);
-                  setSystemId('');
-                }}
-              >
-                {projects.data.map((row) => (
-                  <option key={row.id} value={row.id}>
-                    {row.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {!fixedProjectId ? (
+              <label className="text-sm">
+                Project
+                <select
+                  className="mt-1 w-full rounded border border-border bg-surface p-3"
+                  value={selectedProjectId}
+                  onChange={(event) => {
+                    setProjectId(event.target.value);
+                    setSystemId('');
+                  }}
+                >
+                  {projects.data.map((row) => (
+                    <option key={row.id} value={row.id}>
+                      {row.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <label className="text-sm">
               Managed system
               <select

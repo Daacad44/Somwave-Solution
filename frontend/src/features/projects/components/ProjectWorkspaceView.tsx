@@ -82,11 +82,13 @@ export function ProjectWorkspaceView({
   backTo,
   backLabel,
   language = 'en',
+  clientView = false,
 }: {
   data: ProjectWorkspace;
   backTo: string;
   backLabel: string;
   language?: 'en' | 'so';
+  clientView?: boolean;
 }): ReactNode {
   const t = (english: string, somali: string): string => (language === 'so' ? somali : english);
   const [taskQuery, setTaskQuery] = useState('');
@@ -148,12 +150,14 @@ export function ProjectWorkspaceView({
             <dt className="text-muted">{t('Due', 'Dhammaadka')}</dt>
             <dd className="font-medium text-ink">{formatLongDate(data.project.dueDate)}</dd>
           </div>
-          <div>
-            <dt className="text-muted">{t('Budget', 'Miisaaniyad')}</dt>
-            <dd className="font-medium text-ink">
-              {data.project.budget ? `$${data.project.budget}` : '—'}
-            </dd>
-          </div>
+          {!clientView ? (
+            <div>
+              <dt className="text-muted">{t('Budget', 'Miisaaniyad')}</dt>
+              <dd className="font-medium text-ink">
+                {data.project.budget ? `$${data.project.budget}` : '—'}
+              </dd>
+            </div>
+          ) : null}
           <div>
             <dt className="text-muted">{t('Tasks', 'Hawlaha')}</dt>
             <dd className="font-medium text-ink">
@@ -309,65 +313,67 @@ export function ProjectWorkspaceView({
         </div>
       </section>
 
-      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-ink">{t('Tasks', 'Hawlaha')}</h2>
-            <p className="mt-1 text-sm text-muted">
-              {t('Tasks in this project.', 'Hawlaha ku xiran mashruucan.')}
-            </p>
-          </div>
-          <Input
-            aria-label={t('Search tasks', 'Raadi hawlaha')}
-            placeholder={t('Search tasks…', 'Raadi hawl…')}
-            value={taskQuery}
-            onChange={(event) => setTaskQuery(event.target.value)}
-            className="sm:w-64"
-          />
-        </div>
-        <div className="mt-4">
-          {tasks.length === 0 ? (
-            <EmptyState
-              title={
-                taskQuery
-                  ? t('No matching tasks', 'Raadintaadu waxba ma soo celin')
-                  : t('No tasks yet', 'Hawl ma jirto')
-              }
-              description={
-                taskQuery
-                  ? t('Try another search.', 'Isku day magac kale.')
-                  : t(
-                      'Tasks created on the Tasks page will appear here.',
-                      'Hawlaha laga sameeyo bogga Hawlaha ayaa halkan ka muuqan doona.',
-                    )
-              }
+      {!clientView ? (
+        <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-ink">{t('Tasks', 'Hawlaha')}</h2>
+              <p className="mt-1 text-sm text-muted">
+                {t('Tasks in this project.', 'Hawlaha ku xiran mashruucan.')}
+              </p>
+            </div>
+            <Input
+              aria-label={t('Search tasks', 'Raadi hawlaha')}
+              placeholder={t('Search tasks…', 'Raadi hawl…')}
+              value={taskQuery}
+              onChange={(event) => setTaskQuery(event.target.value)}
+              className="sm:w-64"
             />
-          ) : (
-            <Table>
-              <THead>
-                <Tr>
-                  <Th>{t('Title', 'Cinwaan')}</Th>
-                  <Th>{t('Status', 'Xaalad')}</Th>
-                  <Th>{t('Priority', 'Mudnaan')}</Th>
-                  <Th>{t('Assignee', 'Qofka')}</Th>
-                  <Th>{t('Due', 'Dhammaad')}</Th>
-                </Tr>
-              </THead>
-              <TBody>
-                {tasks.map((task) => (
-                  <Tr key={task.id}>
-                    <Td className="font-medium">{task.title}</Td>
-                    <Td>{TASK_STATUS_LABELS[task.status]}</Td>
-                    <Td>{TASK_PRIORITY_LABELS[task.priority]}</Td>
-                    <Td className="text-muted">{task.assignee?.name ?? '—'}</Td>
-                    <Td className="text-muted">{formatLongDate(task.dueDate)}</Td>
+          </div>
+          <div className="mt-4">
+            {tasks.length === 0 ? (
+              <EmptyState
+                title={
+                  taskQuery
+                    ? t('No matching tasks', 'Raadintaadu waxba ma soo celin')
+                    : t('No tasks yet', 'Hawl ma jirto')
+                }
+                description={
+                  taskQuery
+                    ? t('Try another search.', 'Isku day magac kale.')
+                    : t(
+                        'Tasks created on the Tasks page will appear here.',
+                        'Hawlaha laga sameeyo bogga Hawlaha ayaa halkan ka muuqan doona.',
+                      )
+                }
+              />
+            ) : (
+              <Table>
+                <THead>
+                  <Tr>
+                    <Th>{t('Title', 'Cinwaan')}</Th>
+                    <Th>{t('Status', 'Xaalad')}</Th>
+                    <Th>{t('Priority', 'Mudnaan')}</Th>
+                    <Th>{t('Assignee', 'Qofka')}</Th>
+                    <Th>{t('Due', 'Dhammaad')}</Th>
                   </Tr>
-                ))}
-              </TBody>
-            </Table>
-          )}
-        </div>
-      </section>
+                </THead>
+                <TBody>
+                  {tasks.map((task) => (
+                    <Tr key={task.id}>
+                      <Td className="font-medium">{task.title}</Td>
+                      <Td>{TASK_STATUS_LABELS[task.status]}</Td>
+                      <Td>{TASK_PRIORITY_LABELS[task.priority]}</Td>
+                      <Td className="text-muted">{task.assignee?.name ?? '—'}</Td>
+                      <Td className="text-muted">{formatLongDate(task.dueDate)}</Td>
+                    </Tr>
+                  ))}
+                </TBody>
+              </Table>
+            )}
+          </div>
+        </section>
+      ) : null}
 
       <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
         <h2 className="text-base font-semibold text-ink">{t('Milestones', 'Marxaladaha')}</h2>

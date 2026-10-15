@@ -70,6 +70,7 @@ const project = { id: 'project_1', name: 'Private project', managerId: manager.i
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(prisma.user.findMany).mockResolvedValue([]);
   vi.mocked(prisma.project.findFirst).mockResolvedValue(project as never);
   vi.mocked(prisma.projectMember.findUnique).mockResolvedValue(null);
   vi.mocked(ensureEngineerAccountForProjectInvite).mockResolvedValue({
@@ -370,6 +371,7 @@ describe('project engineer invitations', () => {
       priority: 'MEDIUM',
     } as never);
     vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: engineer.id } as never);
+    vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: 'super_admin_1' }] as never);
     vi.mocked(prisma.projectInvitation.updateMany).mockResolvedValue({ count: 1 } as never);
     const result = await respondToProjectInvitation(
       'invitation_1',
@@ -380,6 +382,13 @@ describe('project engineer invitations', () => {
     expect(prisma.projectMember.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         create: expect.objectContaining({ projectId: project.id, userId: engineer.id }),
+      }),
+    );
+    expect(emitNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventKey: 'project.assignment',
+        userId: 'super_admin_1',
+        title: expect.stringContaining('accepted'),
       }),
     );
   });

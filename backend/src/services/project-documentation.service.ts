@@ -95,6 +95,7 @@ function toDocument(row: {
   mimeType: string | null;
   sizeBytes: number | null;
   status: ProjectDocumentation['status'];
+  clientVisible: boolean;
   currentVersion: number;
   ownerId: string | null;
   createdById: string;
@@ -116,6 +117,7 @@ function toDocument(row: {
     mimeType: row.mimeType,
     sizeBytes: row.sizeBytes,
     status: row.status,
+    clientVisible: row.clientVisible,
     currentVersion: row.currentVersion,
     ownerId: row.ownerId,
     createdById: row.createdById,
@@ -369,6 +371,7 @@ export async function updateProjectDocumentation(
           : {}),
         ...(input.ownerId !== undefined ? { ownerId: input.ownerId } : {}),
         status: nextStatus,
+        clientVisible: old.status === 'APPROVED' ? false : old.clientVisible,
         approvedById: null,
         approvedAt: null,
         updatedById: actor.id,
@@ -434,6 +437,7 @@ export async function changeProjectDocumentationStatus(
       },
       data: {
         status: input.status,
+        clientVisible: input.status === 'APPROVED' ? old.clientVisible : false,
         approvedAt,
         approvedById,
         updatedById: actor.id,
@@ -466,6 +470,40 @@ export async function changeProjectDocumentationStatus(
     action: `projectDocumentation.${input.status.toLowerCase()}`,
     subjectType: 'ProjectDocumentation',
     subjectId: documentId,
+  });
+  return toDocument(row);
+}
+
+export async function setClientDocumentationVisibility(
+  projectId: string,
+  documentId: string,
+  actor: Actor,
+  visible: boolean,
+): Promise<ProjectDocumentation> {
+  await assertProjectAccess(projectId, actor, 'approve');
+  const old = await getExisting(projectId, documentId);
+  if (visible && old.status !== 'APPROVED') {
+    throw new AppError('CONFLICT', 409, 'Approve the document before sharing it with clients');
+  }
+  const changed = await prisma.projectDocumentation.updateMany({
+    where: {
+      id: documentId,
+      projectId,
+      deletedAt: null,
+      ...(visible ? { status: 'APPROVED' } : {}),
+    },
+    data: { clientVisible: visible, updatedById: actor.id },
+  });
+  if (changed.count !== 1)
+    throw new AppError('CONFLICT', 409, 'Document changed; reload before sharing');
+  const row = await getExisting(projectId, documentId);
+  await writeAudit({
+    actorId: actor.id,
+    action: visible ? 'projectDocumentation.publish' : 'projectDocumentation.unpublish',
+    subjectType: 'ProjectDocumentation',
+    subjectId: documentId,
+    before: { clientVisible: old.clientVisible },
+    after: { projectId, clientVisible: visible },
   });
   return toDocument(row);
 }

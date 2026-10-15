@@ -12,6 +12,7 @@ import { MAX_PAGE_SIZE } from '@somwave/shared';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
+import { writeAudit } from '../lib/audit';
 import { projectManageScope, projectScope } from './project.service';
 
 const adminTaskSelect = {
@@ -164,6 +165,13 @@ export async function createTask(input: CreateTaskInput, actor?: AuthUser): Prom
     },
     select: adminTaskSelect,
   });
+  await writeAudit({
+    actorId: actor.id,
+    action: 'task.create',
+    subjectType: 'Task',
+    subjectId: row.id,
+    after: { projectId: input.projectId, title: row.title, status: row.status },
+  });
   return toAdminTask(row);
 }
 
@@ -262,6 +270,16 @@ export async function updateTask(
         data: { taskId: id, actorId: actor.id, fromStatus: task.status, toStatus: input.status! },
       });
       const row = await tx.task.findUniqueOrThrow({ where: { id }, select: adminTaskSelect });
+      await tx.auditLog.create({
+        data: {
+          actorId: actor.id,
+          action: 'task.update',
+          subjectType: 'Task',
+          subjectId: id,
+          before: { projectId: task.projectId, status: task.status },
+          after: { projectId: task.projectId, status: row.status },
+        },
+      });
       return toAdminTask(row);
     });
   }
@@ -280,6 +298,15 @@ export async function updateTask(
     },
     select: adminTaskSelect,
   });
+  if (actor)
+    await writeAudit({
+      actorId: actor.id,
+      action: 'task.update',
+      subjectType: 'Task',
+      subjectId: id,
+      before: { projectId: task.projectId, status: task.status },
+      after: { projectId: task.projectId, status: row.status },
+    });
   return toAdminTask(row);
 }
 
@@ -291,4 +318,11 @@ export async function deleteTask(id: string, actor?: AuthUser): Promise<void> {
   });
   if (!task) throw new AppError('NOT_FOUND', 404, 'Task not found');
   await prisma.task.update({ where: { id }, data: { deletedAt: new Date() } });
+  await writeAudit({
+    actorId: actor.id,
+    action: 'task.delete',
+    subjectType: 'Task',
+    subjectId: id,
+    after: { projectId: task.projectId },
+  });
 }

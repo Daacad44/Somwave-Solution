@@ -64,6 +64,11 @@ export const documentationApi = {
       method: 'PATCH',
       body: JSON.stringify({ expectedVersion, status }),
     }),
+  clientVisibility: (projectId: string, documentId: string, clientVisible: boolean) =>
+    apiFetch<ProjectDocumentation>(`${doc(projectId, documentId)}/client-visibility`, {
+      method: 'PATCH',
+      body: JSON.stringify({ clientVisible }),
+    }),
   versions: (projectId: string, documentId: string) =>
     apiFetch<DocumentationVersionRecord[]>(`${doc(projectId, documentId)}/versions`),
   comments: (projectId: string, documentId: string) =>

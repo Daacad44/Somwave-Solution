@@ -195,7 +195,9 @@ function DocumentEditor({
   );
 }
 
-export function DocumentationPage(): ReactNode {
+export function DocumentationPage({
+  projectId: fixedProjectId,
+}: { projectId?: string } = {}): ReactNode {
   const client = useQueryClient();
   const { data: user } = useCurrentUser();
   const [projectId, setProjectId] = useState('');
@@ -214,7 +216,7 @@ export function DocumentationPage(): ReactNode {
     queryKey: ['engineering-projects'],
     queryFn: engineeringApi.projects,
   });
-  const selectedProjectId = projectId || projects.data?.[0]?.id || '';
+  const selectedProjectId = fixedProjectId || projectId || projects.data?.[0]?.id || '';
   const documents = useQuery({
     queryKey: ['documentation', selectedProjectId, search, folder, status],
     queryFn: () => documentationApi.list(selectedProjectId, search, folder, status),
@@ -258,8 +260,8 @@ export function DocumentationPage(): ReactNode {
     enabled: Boolean(selectedProjectId && selected),
   });
   useEffect(() => {
-    if (selectedProjectId && !projectId) setProjectId(selectedProjectId);
-  }, [selectedProjectId, projectId]);
+    if (selectedProjectId && !projectId && !fixedProjectId) setProjectId(selectedProjectId);
+  }, [selectedProjectId, projectId, fixedProjectId]);
   const refresh = () => {
     void client.invalidateQueries({ queryKey: ['documentation'] });
     void client.invalidateQueries({ queryKey: ['documentation-comments'] });
@@ -293,6 +295,11 @@ export function DocumentationPage(): ReactNode {
   const changeStatus = useMutation({
     mutationFn: (status: ProjectDocumentation['status']) =>
       documentationApi.status(selectedProjectId, documentId, selected!.currentVersion, status),
+    onSuccess: refresh,
+  });
+  const changeClientVisibility = useMutation({
+    mutationFn: (clientVisible: boolean) =>
+      documentationApi.clientVisibility(selectedProjectId, documentId, clientVisible),
     onSuccess: refresh,
   });
   const proposeTasks = useMutation({
@@ -335,25 +342,27 @@ export function DocumentationPage(): ReactNode {
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <label className="text-sm">
-              Project
-              <select
-                className="mt-1 w-full rounded border border-border bg-surface p-3"
-                value={selectedProjectId}
-                onChange={(event) => {
-                  setProjectId(event.target.value);
-                  setPage(1);
-                  setDocumentId('');
-                  setEditing(false);
-                }}
-              >
-                {projects.data.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {!fixedProjectId ? (
+              <label className="text-sm">
+                Project
+                <select
+                  className="mt-1 w-full rounded border border-border bg-surface p-3"
+                  value={selectedProjectId}
+                  onChange={(event) => {
+                    setProjectId(event.target.value);
+                    setPage(1);
+                    setDocumentId('');
+                    setEditing(false);
+                  }}
+                >
+                  {projects.data.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <Input
               label="Search documents"
               value={search}
@@ -568,6 +577,16 @@ export function DocumentationPage(): ReactNode {
                       ) : null}
                       {selected.status === 'APPROVED' ? (
                         <>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            disabled={changeClientVisibility.isPending}
+                            onClick={() => changeClientVisibility.mutate(!selected.clientVisible)}
+                          >
+                            {selected.clientVisible
+                              ? 'Remove from client portal'
+                              : 'Share with client'}
+                          </Button>
                           {selected.format !== 'FILE' ? (
                             <Button
                               size="sm"
@@ -596,6 +615,11 @@ export function DocumentationPage(): ReactNode {
                     {changeStatus.isError ? (
                       <p role="alert" className="text-error">
                         {changeStatus.error.message}
+                      </p>
+                    ) : null}
+                    {changeClientVisibility.isError ? (
+                      <p role="alert" className="text-error">
+                        {changeClientVisibility.error.message}
                       </p>
                     ) : null}
                     {proposeTasks.isError ? (

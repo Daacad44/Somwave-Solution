@@ -178,6 +178,26 @@ export function getPortalProject(id: string): Promise<ProjectWorkspace> {
 export function listPortalMilestones(): Promise<AdminMilestone[]> {
   return apiFetch<AdminMilestone[]>('/portal/milestones');
 }
+export interface PortalDocument {
+  id: string;
+  title: string;
+  category: string | null;
+  format: 'MARKDOWN' | 'RICH_TEXT' | 'FILE';
+  content: string | null;
+  fileName: string | null;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  updatedAt: string;
+}
+export function listPortalDocuments(projectId: string): Promise<PortalDocument[]> {
+  return apiFetch<PortalDocument[]>(`/portal/projects/${projectId}/documents`);
+}
+export function downloadPortalDocument(projectId: string, document: PortalDocument): Promise<void> {
+  return apiDownload(
+    `/portal/projects/${projectId}/documents/${document.id}/file`,
+    document.fileName ?? document.title,
+  );
+}
 
 export function listEmployees() {
   return apiFetch<import('@somwave/shared').AdminEmployee[]>('/employees');

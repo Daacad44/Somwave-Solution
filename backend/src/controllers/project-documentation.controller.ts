@@ -106,6 +106,27 @@ export async function changeStatus(req: Request, res: Response, next: NextFuncti
   }
 }
 
+export async function setClientVisibility(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { projectId, actor } = routeContext(req);
+    sendData(
+      res,
+      await service.setClientDocumentationVisibility(
+        projectId,
+        documentId(req),
+        actor,
+        req.body.clientVisible as boolean,
+      ),
+    );
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function versions(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { projectId, actor } = routeContext(req);

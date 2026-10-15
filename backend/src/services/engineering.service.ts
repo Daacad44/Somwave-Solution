@@ -320,7 +320,14 @@ export async function listEligibleEngineers(
       id: true,
       name: true,
       email: true,
-      engineerProfile: { select: { weeklyCapacityHours: true, availability: true } },
+      engineerProfile: {
+        select: {
+          weeklyCapacityHours: true,
+          availability: true,
+          skills: true,
+          specialization: true,
+        },
+      },
       assignedTasks: {
         where: {
           deletedAt: null,
@@ -357,6 +364,9 @@ export async function listEligibleEngineers(
     );
     return {
       ...candidate,
+      skills: engineerProfile?.skills ?? [],
+      specialization: engineerProfile?.specialization ?? null,
+      availability: engineerProfile?.availability ?? 'AVAILABLE',
       weeklyCapacityHours,
       availableHoursThisWeek: currentWeek.availableHours,
       estimatedHoursThisWeek: currentWeek.estimatedHours,
@@ -719,6 +729,20 @@ export async function respondToProjectInvitation(
       body: `An engineer ${status.toLowerCase()} the invitation for ${response.projectName}.`,
       dedupeKey: `project-invitation-response:${invitation.id}:${status}`,
     });
+  const superAdmins = await prisma.user.findMany({
+    where: { isActive: true, deletedAt: null, roles: { some: { role: { name: 'SUPER_ADMIN' } } } },
+    select: { id: true },
+  });
+  for (const admin of superAdmins) {
+    if (admin.id === actor.id || admin.id === response.managerId) continue;
+    await notifyAfterWrite({
+      eventKey: 'project.assignment',
+      userId: admin.id,
+      title: `Project invitation ${status.toLowerCase()}: ${response.projectName}`,
+      body: `An engineer ${status.toLowerCase()} the invitation for ${response.projectName}.`,
+      dedupeKey: `project-invitation-response:${invitation.id}:${status}:admin:${admin.id}`,
+    });
+  }
   return { id: response.id, projectId: response.projectId, status };
 }
 
@@ -1050,7 +1074,17 @@ export async function listProjectEngineerProfiles(projectId: string, actor: Engi
           id: true,
           name: true,
           email: true,
-          engineerProfile: true,
+          engineerProfile: {
+            select: {
+              userId: true,
+              headline: true,
+              specialization: true,
+              skills: true,
+              availability: true,
+              weeklyCapacityHours: true,
+              timezone: true,
+            },
+          },
           availabilitySlots: {
             where: { endAt: { gte: new Date() } },
             orderBy: { startAt: 'asc' },
@@ -1076,6 +1110,14 @@ export async function listProjectEngineerProfiles(projectId: string, actor: Engi
       dueDate: true,
     },
   });
+  const projectTaskActivity = await prisma.task.findMany({
+    where: {
+      projectId,
+      assigneeId: { in: members.map((member) => member.user.id) },
+      deletedAt: null,
+    },
+    select: { assigneeId: true, status: true, updatedAt: true },
+  });
   return members.map((member) => ({
     ...member,
     user: {
@@ -1085,6 +1127,19 @@ export async function listProjectEngineerProfiles(projectId: string, actor: Engi
     activeTaskCount: tasks.filter(
       (task) => task.projectId === projectId && task.assigneeId === member.user.id,
     ).length,
+    assignedTaskCount: projectTaskActivity.filter((task) => task.assigneeId === member.user.id)
+      .length,
+    completedTaskCount: projectTaskActivity.filter(
+      (task) => task.assigneeId === member.user.id && task.status === 'DONE',
+    ).length,
+    lastActivity:
+      projectTaskActivity
+        .filter((task) => task.assigneeId === member.user.id)
+        .reduce<Date | null>(
+          (latest, task) => (!latest || task.updatedAt > latest ? task.updatedAt : latest),
+          null,
+        )
+        ?.toISOString() ?? null,
     estimatedOpenHours: tasks
       .filter((task) => task.projectId === projectId && task.assigneeId === member.user.id)
       .reduce((sum, task) => sum + Number(task.estimatedHours ?? 0), 0),

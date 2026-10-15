@@ -623,7 +623,9 @@ function TaskDetail({
   );
 }
 
-export function TaskPlanningPage(): ReactNode {
+export function TaskPlanningPage({
+  projectId: fixedProjectId,
+}: { projectId?: string } = {}): ReactNode {
   const client = useQueryClient();
   const { data: currentUser } = useCurrentUser();
   const canManage = useHasPermission(PERMISSIONS.ENGINEERING_MANAGE);
@@ -643,7 +645,7 @@ export function TaskPlanningPage(): ReactNode {
     queryKey: ['engineering-projects'],
     queryFn: engineeringApi.projects,
   });
-  const selectedProjectId = projectId || projects.data?.[0]?.id || '';
+  const selectedProjectId = fixedProjectId || projectId || projects.data?.[0]?.id || '';
   const tasks = useQuery({
     queryKey: ['engineering-tasks', selectedProjectId],
     queryFn: () => engineeringApi.tasks(selectedProjectId),
@@ -752,23 +754,25 @@ export function TaskPlanningPage(): ReactNode {
         <EmptyState title="No accessible projects" />
       ) : (
         <>
-          <label className="block text-sm">
-            Project
-            <select
-              className="mt-1 w-full rounded border border-border bg-surface p-3"
-              value={selectedProjectId}
-              onChange={(event) => {
-                setProjectId(event.target.value);
-                setTaskId('');
-              }}
-            >
-              {projects.data.map((row) => (
-                <option key={row.id} value={row.id}>
-                  {row.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          {!fixedProjectId ? (
+            <label className="block text-sm">
+              Project
+              <select
+                className="mt-1 w-full rounded border border-border bg-surface p-3"
+                value={selectedProjectId}
+                onChange={(event) => {
+                  setProjectId(event.target.value);
+                  setTaskId('');
+                }}
+              >
+                {projects.data.map((row) => (
+                  <option key={row.id} value={row.id}>
+                    {row.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           {message ? (
             <p role="status" className="text-sm">
               {message}

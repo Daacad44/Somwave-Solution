@@ -50,6 +50,8 @@ model User {
   createdDocumentation          ProjectDocumentation[]   @relation("DocumentationCreator")
   updatedDocumentation          ProjectDocumentation[]   @relation("DocumentationUpdater")
   approvedDocumentation         ProjectDocumentation[]   @relation("DocumentationApprover")
+  ownedMilestones                Milestone[]              @relation("MilestoneOwner")
+  verifiedMilestones             Milestone[]              @relation("MilestoneVerifier")
   documentationVersions         DocumentationVersion[]
   documentationComments         DocumentationComment[]
   approvedDocumentationVersions DocumentationVersion[]   @relation("DocumentationVersionApprover")
@@ -713,6 +715,7 @@ model Project {
   description String?
   healthNote  String?       @map("health_note")
   status      ProjectStatus @default(PLANNING)
+  priority    TaskPriority  @default(MEDIUM)
   startDate   DateTime?     @map("start_date")
   dueDate     DateTime?     @map("due_date")
   budget      Decimal?      @db.Decimal(12, 2)
@@ -740,11 +743,51 @@ model Project {
   githubRepositories  GitHubRepository[]
   phases              ProjectPhase[]
   engineerReports     EngineerProgressReport[]
+  expenses            ProjectExpense[]
+  budgetRevisions     ProjectBudgetRevision[]
 
   @@index([clientId])
   @@index([status])
   @@index([managerId])
   @@map("projects")
+}
+
+enum ProjectExpenseKind {
+  PLANNED
+  ACTUAL
+}
+
+model ProjectExpense {
+  id          String             @id @default(cuid())
+  projectId   String             @map("project_id")
+  kind        ProjectExpenseKind
+  category    String
+  description String
+  amount      Decimal            @db.Decimal(12, 2)
+  expenseDate DateTime?          @map("expense_date")
+  actorId     String             @map("actor_id")
+  createdAt   DateTime           @default(now()) @map("created_at")
+  deletedAt   DateTime?          @map("deleted_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, deletedAt, kind])
+  @@map("project_expenses")
+}
+
+model ProjectBudgetRevision {
+  id             String   @id @default(cuid())
+  projectId      String   @map("project_id")
+  previousBudget Decimal? @map("previous_budget") @db.Decimal(12, 2)
+  newBudget      Decimal  @map("new_budget") @db.Decimal(12, 2)
+  reason         String
+  actorId        String   @map("actor_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+  @@map("project_budget_revisions")
 }
 
 enum MilestoneStatus {
@@ -760,6 +803,10 @@ model Milestone {
   title       String
   description String?
   status      MilestoneStatus @default(PENDING)
+  clientVisible Boolean       @default(false) @map("client_visible")
+  ownerId     String?         @map("owner_id")
+  verifiedById String?        @map("verified_by_id")
+  verifiedAt  DateTime?       @map("verified_at")
   dueDate     DateTime?       @map("due_date")
   completedAt DateTime?       @map("completed_at")
   order       Int             @default(0)
@@ -768,11 +815,29 @@ model Milestone {
   deletedAt   DateTime?       @map("deleted_at")
 
   project       Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  owner         User?                   @relation("MilestoneOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  verifiedBy    User?                   @relation("MilestoneVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
   tasks         Task[]
   documentLinks DocumentMilestoneLink[]
+  prerequisites MilestoneDependency[] @relation("MilestonePrerequisites")
+  dependents    MilestoneDependency[] @relation("MilestoneDependents")
 
   @@index([projectId, status])
+  @@index([ownerId])
   @@map("milestones")
+}
+
+model MilestoneDependency {
+  id          String    @id @default(cuid())
+  milestoneId String    @map("milestone_id")
+  dependsOnId String    @map("depends_on_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  milestone   Milestone @relation("MilestonePrerequisites", fields: [milestoneId], references: [id], onDelete: Cascade)
+  dependsOn   Milestone @relation("MilestoneDependents", fields: [dependsOnId], references: [id], onDelete: Cascade)
+
+  @@unique([milestoneId, dependsOnId])
+  @@index([dependsOnId])
+  @@map("milestone_dependencies")
 }
 
 model ProjectPhase {
@@ -1181,6 +1246,7 @@ model ProjectDocumentation {
   mimeType       String?             @map("mime_type")
   sizeBytes      Int?                @map("size_bytes")
   status         DocumentationStatus @default(DRAFT)
+  clientVisible  Boolean             @default(false) @map("client_visible")
   currentVersion Int                 @default(1) @map("current_version")
   ownerId        String?             @map("owner_id")
   createdById    String              @map("created_by_id")
