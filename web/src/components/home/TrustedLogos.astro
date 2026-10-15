@@ -4,7 +4,7 @@ import { defaultSiteContent, type SiteContent } from '@somwave/shared';
 
 interface Props { content?: SiteContent['trusted'] }
 const { content = defaultSiteContent.trusted } = Astro.props;
-const clients = trustedClients.filter((client) => content.visibleIds.includes(client.id));
+const clients = content.visibleIds.map((id) => trustedClients.find((client) => client.id === id)).filter((client): client is (typeof trustedClients)[number] => Boolean(client));
 ---
 
 {content.approved && clients.length > 0 && <section class="bg-surface" aria-labelledby="trusted-heading">
@@ -21,7 +21,7 @@ const clients = trustedClients.filter((client) => content.visibleIds.includes(cl
               {clients.map((client) => (
                 <li class="logo-item">
                   <img
-                    src={client.logo}
+                    src={content.assetUrls[client.id] ?? client.logo}
                     alt={duplicate ? '' : client.name}
                     width={client.width}
                     height={client.height}

@@ -5,6 +5,7 @@ import {
   siteContentSchema,
   type SiteContent,
   type TrustedBusinessId,
+  type HeroSlideId,
 } from '@somwave/shared';
 import { Button } from '../../components/ui/Button';
 import { ErrorState, LoadingState } from '../../components/states';
@@ -51,8 +52,45 @@ export function SiteContentAdminPage(): ReactNode {
 
   const updateHero = (key: keyof SiteContent['hero'], value: string): void =>
     setDraft((current) => current && { ...current, hero: { ...current.hero, [key]: value } });
+  const updateSlide = (
+    id: 'software' | 'connected',
+    key: keyof SiteContent['heroSlides'][number],
+    value: string,
+  ): void =>
+    setDraft(
+      (current) =>
+        current && {
+          ...current,
+          heroSlides: current.heroSlides.map((slide) =>
+            slide.id === id ? { ...slide, [key]: value } : slide,
+          ),
+        },
+    );
+  const moveSlide = (id: HeroSlideId, direction: -1 | 1): void =>
+    setDraft((current) => {
+      if (!current) return current;
+      const order = [...current.heroSlideOrder];
+      const position = order.indexOf(id);
+      const destination = position + direction;
+      if (destination < 0 || destination >= order.length) return current;
+      [order[position], order[destination]] = [order[destination]!, order[position]!];
+      return { ...current, heroSlideOrder: order };
+    });
   const updateCta = (key: keyof SiteContent['cta'], value: string): void =>
     setDraft((current) => current && { ...current, cta: { ...current.cta, [key]: value } });
+  const updateEcosystem = (
+    side: 'left' | 'right',
+    index: number,
+    key: 'title' | 'description' | 'href',
+    value: string,
+  ): void =>
+    setDraft((current) => {
+      if (!current) return current;
+      const items = current.ecosystem[side].map((item, position) =>
+        position === index ? { ...item, [key]: value } : item,
+      );
+      return { ...current, ecosystem: { ...current.ecosystem, [side]: items } };
+    });
   const updateContact = (key: 'location' | 'email' | 'phone', value: string): void =>
     setDraft((current) => current && { ...current, contact: { ...current.contact, [key]: value } });
   const updateSocial = (label: (typeof socialLabels)[number], value: string): void =>
@@ -69,6 +107,24 @@ export function SiteContentAdminPage(): ReactNode {
         ? [...current.trusted.visibleIds, id]
         : current.trusted.visibleIds.filter((value) => value !== id);
       return { ...current, trusted: { ...current.trusted, visibleIds } };
+    });
+  const moveLogo = (id: TrustedBusinessId, direction: -1 | 1): void =>
+    setDraft((current) => {
+      if (!current) return current;
+      const ids = [...current.trusted.visibleIds];
+      const position = ids.indexOf(id);
+      const destination = position + direction;
+      if (position < 0 || destination < 0 || destination >= ids.length) return current;
+      [ids[position], ids[destination]] = [ids[destination]!, ids[position]!];
+      return { ...current, trusted: { ...current.trusted, visibleIds: ids } };
+    });
+  const updateLogoAsset = (id: TrustedBusinessId, url: string): void =>
+    setDraft((current) => {
+      if (!current) return current;
+      const assetUrls = { ...current.trusted.assetUrls };
+      if (url.trim()) assetUrls[id] = url.trim();
+      else delete assetUrls[id];
+      return { ...current, trusted: { ...current.trusted, assetUrls } };
     });
 
   const save = async (): Promise<void> => {
@@ -99,7 +155,46 @@ export function SiteContentAdminPage(): ReactNode {
 
       <fieldset disabled={!canEdit || mutation.isPending} className="space-y-6 disabled:opacity-70">
         <div className="rounded-lg border border-border bg-surface p-6">
-          <h2 className="text-lg font-bold text-ink">Hero</h2>
+          <h2 className="text-lg font-bold text-ink">Hero slider</h2>
+          <p className="mt-1 text-sm text-muted">
+            Three slides appear in the order below. Use approved or clearly illustrative images.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2" aria-label="Slide order">
+            {draft.heroSlideOrder.map((id, index) => (
+              <div
+                key={id}
+                className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-sm"
+              >
+                <span>
+                  {index + 1}.{' '}
+                  {id === 'intro'
+                    ? 'Digital transformation'
+                    : id === 'software'
+                      ? 'Custom software'
+                      : 'Connected solutions'}
+                </span>
+                <button
+                  type="button"
+                  className="min-h-9 min-w-9 rounded text-brand disabled:opacity-40"
+                  disabled={index === 0}
+                  onClick={() => moveSlide(id, -1)}
+                  aria-label={`Move ${id} slide earlier`}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  className="min-h-9 min-w-9 rounded text-brand disabled:opacity-40"
+                  disabled={index === draft.heroSlideOrder.length - 1}
+                  onClick={() => moveSlide(id, 1)}
+                  aria-label={`Move ${id} slide later`}
+                >
+                  ↓
+                </button>
+              </div>
+            ))}
+          </div>
+          <h3 className="mt-6 text-sm font-bold text-ink">Digital transformation</h3>
           <div className="mt-4 grid gap-4">
             <Field
               label="Badge"
@@ -117,11 +212,130 @@ export function SiteContentAdminPage(): ReactNode {
               onChange={(value) => updateHero('imageUrl', value)}
             />
             <Field
+              label="Image description"
+              value={draft.hero.imageAlt}
+              onChange={(value) => updateHero('imageAlt', value)}
+            />
+            <Field
               label="Description"
               value={draft.hero.description}
               onChange={(value) => updateHero('description', value)}
               multiline
             />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field
+                label="Primary button text"
+                value={draft.hero.primaryLabel}
+                onChange={(value) => updateHero('primaryLabel', value)}
+              />
+              <Field
+                label="Primary button destination"
+                value={draft.hero.primaryHref}
+                onChange={(value) => updateHero('primaryHref', value)}
+              />
+              <Field
+                label="Secondary button text"
+                value={draft.hero.secondaryLabel}
+                onChange={(value) => updateHero('secondaryLabel', value)}
+              />
+              <Field
+                label="Secondary button destination"
+                value={draft.hero.secondaryHref}
+                onChange={(value) => updateHero('secondaryHref', value)}
+              />
+            </div>
+          </div>
+          {draft.heroSlides.map((slide) => (
+            <div key={slide.id} className="mt-6 grid gap-4 border-t border-border pt-6">
+              <h3 className="text-sm font-bold text-ink">
+                {slide.id === 'software' ? 'Custom software' : 'Connected solutions'}
+              </h3>
+              <Field
+                label="Eyebrow"
+                value={slide.badge}
+                onChange={(value) => updateSlide(slide.id, 'badge', value)}
+              />
+              <Field
+                label="Headline"
+                value={slide.headline}
+                onChange={(value) => updateSlide(slide.id, 'headline', value)}
+              />
+              <Field
+                label="Description"
+                value={slide.description}
+                onChange={(value) => updateSlide(slide.id, 'description', value)}
+                multiline
+              />
+              <Field
+                label="Image URL (leave empty for connected illustration)"
+                value={slide.imageUrl}
+                onChange={(value) => updateSlide(slide.id, 'imageUrl', value)}
+              />
+              <Field
+                label="Image description"
+                value={slide.imageAlt}
+                onChange={(value) => updateSlide(slide.id, 'imageAlt', value)}
+              />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  label="Primary button text"
+                  value={slide.primaryLabel}
+                  onChange={(value) => updateSlide(slide.id, 'primaryLabel', value)}
+                />
+                <Field
+                  label="Primary button destination"
+                  value={slide.primaryHref}
+                  onChange={(value) => updateSlide(slide.id, 'primaryHref', value)}
+                />
+                <Field
+                  label="Secondary button text"
+                  value={slide.secondaryLabel}
+                  onChange={(value) => updateSlide(slide.id, 'secondaryLabel', value)}
+                />
+                <Field
+                  label="Secondary button destination"
+                  value={slide.secondaryHref}
+                  onChange={(value) => updateSlide(slide.id, 'secondaryHref', value)}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-lg border border-border bg-surface p-6">
+          <h2 className="text-lg font-bold text-ink">All-in-One Digital Solutions</h2>
+          <p className="mt-1 text-sm text-muted">
+            Edit the eight connected solution cards and their destinations.
+          </p>
+          <div className="mt-4 grid gap-6 lg:grid-cols-2">
+            {(['left', 'right'] as const).map((side) => (
+              <div key={side} className="space-y-4">
+                <h3 className="text-sm font-bold capitalize text-ink">{side} cards</h3>
+                {draft.ecosystem[side].map((item, index) => (
+                  <div
+                    key={`${side}-${index}`}
+                    className="grid gap-3 rounded-md border border-border p-4"
+                  >
+                    <Field
+                      label="Title"
+                      value={item.title}
+                      onChange={(value) => updateEcosystem(side, index, 'title', value)}
+                    />
+                    <Field
+                      label="Description"
+                      value={item.description}
+                      onChange={(value) => updateEcosystem(side, index, 'description', value)}
+                      multiline
+                    />
+                    <Field
+                      label="Destination"
+                      value={item.href}
+                      onChange={(value) => updateEcosystem(side, index, 'href', value)}
+                    />
+                  </div>
+                ))}
+              </div>
+            ))}
           </div>
         </div>
 
@@ -200,15 +414,46 @@ export function SiteContentAdminPage(): ReactNode {
           </label>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {logos.map((logo) => (
-              <label key={logo.id} className="flex items-center gap-3 text-sm text-ink">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-primary"
-                  checked={draft.trusted.visibleIds.includes(logo.id)}
-                  onChange={(event) => toggleLogo(logo.id, event.target.checked)}
+              <div key={logo.id} className="rounded-md border border-border p-3">
+                <label className="flex items-center gap-3 text-sm text-ink">
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-primary"
+                    checked={draft.trusted.visibleIds.includes(logo.id)}
+                    onChange={(event) => toggleLogo(logo.id, event.target.checked)}
+                  />
+                  {logo.name}
+                </label>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    className="min-h-9 min-w-9 rounded text-brand disabled:opacity-40"
+                    disabled={draft.trusted.visibleIds.indexOf(logo.id) <= 0}
+                    onClick={() => moveLogo(logo.id, -1)}
+                    aria-label={`Move ${logo.name} logo earlier`}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="min-h-9 min-w-9 rounded text-brand disabled:opacity-40"
+                    disabled={
+                      draft.trusted.visibleIds.indexOf(logo.id) < 0 ||
+                      draft.trusted.visibleIds.indexOf(logo.id) ===
+                        draft.trusted.visibleIds.length - 1
+                    }
+                    onClick={() => moveLogo(logo.id, 1)}
+                    aria-label={`Move ${logo.name} logo later`}
+                  >
+                    ↓
+                  </button>
+                </div>
+                <Field
+                  label={`${logo.name} approved logo URL (optional)`}
+                  value={draft.trusted.assetUrls[logo.id] ?? ''}
+                  onChange={(value) => updateLogoAsset(logo.id, value)}
                 />
-                {logo.name}
-              </label>
+              </div>
             ))}
           </div>
         </div>

@@ -26,17 +26,24 @@ try {
   // Keep the verified defaults when the CMS is temporarily unavailable.
 }
 const siteContent = homepage.siteContent;
+const firstId = siteContent.heroSlideOrder[0];
+const firstSlide = firstId === 'intro' ? siteContent.hero : siteContent.heroSlides.find((slide) => slide.id === firstId);
+const firstImage = firstSlide?.imageUrl === '/images/hero-somwave.png' ? '/images/hero-devices-1200.webp' : firstSlide?.imageUrl;
+const defaultDevices = firstImage === '/images/hero-devices-1200.webp';
 ---
 
 <PageLayout
   title="Somwave Solution — Technology for what comes next"
   description="Somwave Solution builds websites, mobile apps, custom software, and digital tools for growing businesses."
   siteContent={siteContent}
+  homepage
+  preloadImage={firstImage || undefined}
+  preloadImageSrcset={defaultDevices ? '/images/hero-devices-768.webp 768w, /images/hero-devices-1200.webp 1200w' : undefined}
 >
-  <Hero content={siteContent.hero} />
+  <Hero content={siteContent} />
   <TrustedLogos content={siteContent.trusted} />
+  <HomeSolutions content={siteContent.ecosystem} />
   <HomeServices services={homepage.services} />
-  <HomeSolutions />
   <HomePortfolio projects={homepage.portfolio} />
   <WhySomwave />
   <HomeTestimonials testimonials={homepage.testimonials} />

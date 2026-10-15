@@ -12,6 +12,16 @@ test('English homepage and accessible, pausable logo carousel', async ({ page })
   await expect(logos.locator('ul').last().locator('img').first()).toHaveAttribute('alt', '');
 
   const track = logos.locator('.logo-track');
+  const widths = await track.evaluate((element) => {
+    const [first, second] = element.querySelectorAll('ul');
+    return {
+      first: first!.getBoundingClientRect().width,
+      second: second!.getBoundingClientRect().width,
+      track: element.getBoundingClientRect().width,
+    };
+  });
+  expect(Math.abs(widths.first - widths.second)).toBeLessThan(1);
+  expect(Math.abs(widths.track - widths.first * 2)).toBeLessThan(1);
   await logos.scrollIntoViewIfNeeded();
   await page.mouse.move(0, 0);
   await expect(track).toHaveCSS('animation-name', 'logo-scroll');
@@ -62,8 +72,8 @@ test('homepage sections, navigation and contact actions are functional', async (
   const headings = await page.locator('main h2').allTextContents();
   const ordered = [
     'Trusted by leading businesses in Somalia',
-    'Comprehensive IT Solutions for Your Business',
     'All-in-One Digital Solutions',
+    'Comprehensive IT Solutions for Your Business',
     'Featured Projects',
     'Your Technology Partner for Success',
     'Latest Articles & Resources',
@@ -89,6 +99,81 @@ test('homepage sections, navigation and contact actions are functional', async (
     'aria-expanded',
     'false',
   );
+});
+
+test('hero slider supports manual, keyboard, autoplay, hover pause and reduced motion', async ({
+  page,
+}) => {
+  await page.clock.install();
+  await page.goto('/');
+  const hero = page.locator('.hero-slider');
+  const active = hero.locator('.hero-slide.is-active');
+  await expect(active).toContainText('Innovative Technology Solutions');
+  await hero.getByRole('button', { name: 'Next slide' }).click();
+  await expect(active).toContainText('Power Your Business');
+  await expect(hero.locator('.hero-slide').first()).toHaveAttribute('aria-hidden', 'true');
+  await hero.focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(active).toContainText('Innovative Technology Solutions');
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.mouse.move(0, 0);
+  await page.clock.fastForward(7100);
+  await expect(active).toContainText('Power Your Business');
+  await hero.hover();
+  await page.clock.fastForward(8000);
+  await expect(active).toContainText('Power Your Business');
+  await page.mouse.move(0, 0);
+  await page.clock.fastForward(7100);
+  await expect(active).toContainText('Everything Your Business Needs');
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(hero).not.toHaveClass(/is-playing/);
+  await page.clock.fastForward(8000);
+  await expect(active).toContainText('Everything Your Business Needs');
+});
+
+test('ecosystem keeps all eight linked cards and reverses its desktop scroll story', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  const solution = page.locator('#solutions');
+  await expect(solution.locator('.solution-card')).toHaveCount(8);
+  await expect(solution.locator('.solution-hub img')).toHaveAttribute('alt', 'Somwave Solution');
+  await solution.scrollIntoViewIfNeeded();
+  await page.evaluate(() =>
+    document.querySelector('#solutions')?.scrollIntoView({ block: 'start', behavior: 'instant' }),
+  );
+  await expect(solution).toHaveAttribute('data-story-stage', 'intro');
+  await page.evaluate(() => {
+    const section = document.querySelector('#solutions')!;
+    window.scrollTo(0, window.scrollY + section.getBoundingClientRect().height * 0.88);
+  });
+  await expect(solution).toHaveAttribute('data-story-stage', 'complete');
+  await page.evaluate(() =>
+    document.querySelector('#solutions')?.scrollIntoView({ block: 'start', behavior: 'instant' }),
+  );
+  await expect(solution).toHaveAttribute('data-story-stage', 'intro');
+});
+
+test('mobile swipe changes slides and solution cards remain navigable without motion', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  const hero = page.locator('.hero-slider');
+  await hero.evaluate((element) => {
+    const start = new Touch({ identifier: 1, target: element, clientX: 320, clientY: 260 });
+    const end = new Touch({ identifier: 1, target: element, clientX: 80, clientY: 260 });
+    element.dispatchEvent(new TouchEvent('touchstart', { changedTouches: [start], bubbles: true }));
+    element.dispatchEvent(new TouchEvent('touchend', { changedTouches: [end], bubbles: true }));
+  });
+  await expect(hero.locator('.hero-slide.is-active')).toContainText('Power Your Business');
+  const solution = page.locator('#solutions');
+  await expect(solution).not.toHaveClass(/has-story/);
+  await expect(solution.locator('.solution-card')).toHaveCount(8);
+  await expect(solution.locator('.solution-card').first()).toHaveAttribute('href', '/adeegyada');
 });
 
 test('contact form validates before sending and reports a successful submission', async ({

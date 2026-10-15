@@ -1,90 +1,196 @@
 ---
 import BrandLogo from '../BrandLogo.astro';
 import HomeIcon from './HomeIcon.astro';
+import { defaultSiteContent, type SiteContent } from '@somwave/shared';
 
-const left = [
-  { title: 'Websites', note: 'A clear digital first impression', icon: 'web' as const },
-  { title: 'Mobile Apps', note: 'Experiences on the move', icon: 'mobile' as const },
-  { title: 'Custom Software', note: 'Tools shaped around your work', icon: 'software' as const },
-  { title: 'IT Consulting', note: 'Practical technical guidance', icon: 'consult' as const },
-];
-const right = [
-  { title: 'Payments', note: 'Connected transaction flows', icon: 'payment' as const },
-  { title: 'CRM', note: 'Customer relationships in view', icon: 'crm' as const },
-  { title: 'Automation', note: 'Less repetitive work', icon: 'automation' as const },
-  { title: 'Analytics', note: 'Useful insights from your data', icon: 'analytics' as const },
-];
+interface Props { content?: SiteContent['ecosystem'] }
+const { content = defaultSiteContent.ecosystem } = Astro.props;
+const leftIcons = ['web', 'mobile', 'software', 'consult'] as const;
+const rightIcons = ['payment', 'crm', 'automation', 'analytics'] as const;
+const leftColors = ['blue', 'indigo', 'cyan', 'green'];
+const rightColors = ['amber', 'rose', 'purple', 'blue'];
+const rows = [73, 190, 308, 425];
 ---
 
-<section id="solutions" class="solutions relative overflow-hidden" aria-labelledby="solutions-heading">
-  <div class="section-shell relative z-10 text-center">
-    <p class="section-kicker">Our approach</p>
-    <h2 id="solutions-heading" class="section-title mx-auto mt-4">All-in-One Digital Solutions</h2>
-    <p class="mx-auto mt-4 max-w-2xl text-sm leading-7 text-muted sm:text-base">We connect the digital tools your business needs into a clearer, more useful experience.</p>
-
-    <div class="solution-layout relative mt-12">
-      <svg class="connectors pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1200 480" preserveAspectRatio="none" fill="none" aria-hidden="true">
-        {[65, 180, 300, 415].map((y) => (
-          <>
-            <path d={`M 475 240 C 400 240, 390 ${y}, 285 ${y}`} />
-            <path d={`M 725 240 C 800 240, 810 ${y}, 915 ${y}`} />
-            <circle cx="285" cy={y} r="4" />
-            <circle cx="915" cy={y} r="4" />
-          </>
-        ))}
-      </svg>
-
-      <div class="solution-side solution-left">
-        {left.map((item) => (
-          <div class="solution-node" data-reveal>
-            <span class="solution-icon"><HomeIcon name={item.icon} class="h-5 w-5" /></span>
-            <div><h3>{item.title}</h3><p>{item.note}</p></div>
-          </div>
-        ))}
-      </div>
-
-      <div class="solution-center" data-reveal>
-        <div class="solution-core">
-          <BrandLogo size="md" />
-          <p>One connected ecosystem</p>
+<section id="solutions" class="solutions relative" aria-labelledby="solutions-heading">
+  <div class="solution-panel">
+    <div class="solution-shell">
+      <div class="solution-heading text-center" data-story-heading>
+        <p class="section-kicker">Our solution</p>
+        <h2 id="solutions-heading" class="section-title mx-auto mt-4">All-in-One <span>Digital Solutions</span></h2>
+        <p class="mx-auto mt-3 max-w-3xl text-sm leading-6 text-muted sm:text-base">Somwave connects all parts of your business with powerful technology.</p>
+        <div class="solution-benefits mt-5 flex flex-wrap justify-center gap-2 text-xs font-semibold text-primary" aria-label="Solution benefits">
+          <span>Integrated systems</span><span>Scalable technology</span><span>Business growth</span>
         </div>
       </div>
 
-      <div class="solution-side solution-right">
-        {right.map((item) => (
-          <div class="solution-node" data-reveal>
-            <span class="solution-icon"><HomeIcon name={item.icon} class="h-5 w-5" /></span>
-            <div><h3>{item.title}</h3><p>{item.note}</p></div>
-          </div>
-        ))}
+      <div class="solution-layout relative mt-8">
+        <svg class="solution-lines pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1200 500" preserveAspectRatio="none" fill="none" aria-hidden="true">
+          {rows.map((y, index) => <g>
+            <path class="solution-path" data-line="left" data-row={index} pathLength="1" d={`M 350 ${y} C 455 ${y}, 440 250, 520 250`} />
+            <path class="solution-path" data-line="right" data-row={index} pathLength="1" d={`M 680 250 C 760 250, 745 ${y}, 850 ${y}`} />
+            <circle cx="350" cy={y} r="5" class="line-dot" /><circle cx="850" cy={y} r="5" class="line-dot" />
+            {index === 1 && <circle class="flow-particle" r="4" fill="#1462f2"><animateMotion dur="5s" repeatCount="indefinite" path={`M 350 ${y} C 455 ${y}, 440 250, 520 250`} /></circle>}
+          </g>)}
+        </svg>
+
+        <div class="solution-side solution-left">
+          {content.left.map((item, index) => <a href={item.href} class="solution-item solution-card group" data-story-side="left" data-story-index={index}>
+            <span class:list={['solution-icon', `icon-${leftColors[index]}`]}><HomeIcon name={leftIcons[index]!} class="h-7 w-7" /></span>
+            <span class="solution-card-copy"><strong>{item.title}</strong><small>{item.description}</small></span>
+            <span class="solution-link-icon" aria-hidden="true">→</span>
+          </a>)}
+        </div>
+
+        <div class="solution-hub" data-story-hub>
+          <div class="hub-glow"></div>
+          <div class="hub-ring ring-outer"></div><div class="hub-ring ring-inner"></div>
+          <span class="hub-satellite hub-web"><HomeIcon name="web" /></span>
+          <span class="hub-satellite hub-mobile"><HomeIcon name="mobile" /></span>
+          <span class="hub-satellite hub-software"><HomeIcon name="software" /></span>
+          <span class="hub-satellite hub-payment"><HomeIcon name="payment" /></span>
+          <span class="hub-satellite hub-crm"><HomeIcon name="crm" /></span>
+          <span class="hub-satellite hub-analytics"><HomeIcon name="analytics" /></span>
+          <div class="hub-core"><BrandLogo size="md" /></div>
+        </div>
+
+        <div class="solution-side solution-right">
+          {content.right.map((item, index) => <a href={item.href} class="solution-item solution-card group" data-story-side="right" data-story-index={index}>
+            <span class:list={['solution-icon', `icon-${rightColors[index]}`]}><HomeIcon name={rightIcons[index]!} class="h-7 w-7" /></span>
+            <span class="solution-card-copy"><strong>{item.title}</strong><small>{item.description}</small></span>
+            <span class="solution-link-icon" aria-hidden="true">→</span>
+          </a>)}
+        </div>
+      </div>
+      <p class="solution-tagline mx-auto mt-5 w-fit rounded-full bg-white/75 px-5 py-2 text-center text-xs font-semibold text-primary shadow-sm"><span>One Partner.</span> Endless Possibilities</p>
+      <div class="solution-bottom mx-auto mt-5 grid max-w-4xl gap-3 rounded-lg border border-white/80 bg-white/85 p-4 text-center text-xs font-semibold text-primary shadow-md sm:grid-cols-4">
+        <span>Clearer workflows</span><span>Connected tools</span><span>Flexible growth</span><span>Ongoing support</span>
       </div>
     </div>
   </div>
 </section>
 
 <style>
-  .solutions { background: radial-gradient(circle at 50% 45%, var(--color-surface) 0, var(--color-sky) 72%); }
-  .solution-layout { display: grid; grid-template-areas: 'center' 'left' 'right'; gap: 2rem; align-items: center; }
-  .solution-left { grid-area: left; }
-  .solution-center { grid-area: center; display: flex; justify-content: center; }
-  .solution-right { grid-area: right; }
-  .solution-side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-  .solution-node { display: flex; min-width: 0; align-items: center; gap: 0.75rem; text-align: start; }
-  .solution-icon { display: inline-flex; width: 2.9rem; height: 2.9rem; flex: none; align-items: center; justify-content: center; border-radius: 50%; background: var(--color-brand); color: white; box-shadow: var(--shadow-md); }
-  .solution-node h3 { color: var(--color-primary); font-size: 0.9rem; font-weight: 800; }
-  .solution-node p { margin-top: 0.1rem; color: var(--color-muted); font-size: 0.75rem; line-height: 1.5; }
-  .solution-core { display: flex; width: min(70vw, 250px); aspect-ratio: 1; flex-direction: column; align-items: center; justify-content: center; border: 1px solid color-mix(in srgb, var(--color-brand) 20%, var(--color-border)); border-radius: 50%; background: white; box-shadow: 0 0 0 14px rgb(255 255 255 / 0.5), var(--shadow-float); }
-  .solution-core p { margin-top: 0.5rem; color: var(--color-muted); font-size: 0.7rem; font-weight: 700; }
-  .connectors { display: none; }
-  .connectors path { stroke: var(--color-brand); stroke-width: 1.2; stroke-dasharray: 4 5; opacity: 0.38; animation: dash 14s linear infinite; }
-  .connectors circle { fill: var(--color-brand); opacity: 0.55; }
-  @keyframes dash { to { stroke-dashoffset: -90; } }
-  @media (min-width: 1024px) {
-    .solution-layout { min-height: 480px; grid-template-columns: 1fr 280px 1fr; grid-template-areas: 'left center right'; gap: 5rem; }
-    .solution-side { grid-template-columns: 1fr; gap: 2rem; }
-    .solution-left .solution-node { flex-direction: row-reverse; text-align: end; }
-    .connectors { display: block; }
+  .solutions { isolation: isolate; background: radial-gradient(circle at 50% 47%, #fff 1%, #e8f4ff 58%, #f7fbff 100%); }
+  .solutions::before { content: ''; position: absolute; inset: 0; z-index: -1; opacity: .28; background-image: radial-gradient(#6aa9ee 1px, transparent 1px); background-size: 12px 12px; mask-image: radial-gradient(ellipse at 50% 52%, #000, transparent 66%); }
+  .solution-panel { min-height: 760px; display: grid; align-items: center; }
+  .solution-shell { width: min(100% - 2rem, 1600px); margin-inline: auto; padding-block: 4rem; }
+  .solution-heading .section-title { max-width: none; font-size: clamp(2rem, 3.8vw, 3.7rem); }
+  .solution-heading .section-title span { color: var(--color-brand); }
+  .solution-benefits span { border: 1px solid #d8e8fa; border-radius: 99px; background: rgb(255 255 255 / .8); padding: .5rem 1rem; box-shadow: 0 4px 16px rgb(22 95 180 / .06); }
+  .solution-layout { display: grid; grid-template-columns: minmax(0,1fr) 330px minmax(0,1fr); align-items: center; gap: clamp(1rem, 4vw, 4rem); min-height: 500px; }
+  .solution-side { display: grid; gap: 1rem; }
+  .solution-card { position: relative; z-index: 2; display: flex; min-width: 0; min-height: 106px; align-items: center; gap: 1rem; border: 1px solid #e6effd; border-radius: 1.2rem; background: rgb(255 255 255 / .92); padding: .9rem 1.1rem; text-align: start; box-shadow: 0 12px 26px rgb(31 101 181 / .1); transition: border-color 220ms, box-shadow 220ms, transform 220ms; }
+  .solution-card:hover { transform: translateY(-4px); border-color: #aed2ff; box-shadow: 0 18px 30px rgb(31 101 181 / .18); }
+  .solution-icon { display: grid; width: 64px; height: 64px; flex: none; place-items: center; border-radius: 16px; color: white; box-shadow: 0 6px 15px rgb(15 91 211 / .16); transition: transform 220ms; }
+  .solution-card:hover .solution-icon { transform: scale(1.06); }
+  .icon-blue { background: #216bff; }.icon-indigo { background: #5452ff; }.icon-cyan { background: #0a9cf2; }.icon-green { background: #16c88f; }.icon-amber { background: #ff9e17; }.icon-rose { background: #fa4779; }.icon-purple { background: #8b42f4; }
+  .solution-card-copy { display: grid; min-width: 0; gap: .2rem; }
+  .solution-card-copy strong { color: var(--color-primary); font-size: 1rem; line-height: 1.25; }
+  .solution-card-copy small { color: var(--color-muted); font-size: .79rem; line-height: 1.45; }
+  .solution-link-icon { display: grid; width: 32px; height: 32px; flex: none; place-items: center; margin-inline-start: auto; border: 1px solid #b4d1ff; border-radius: 50%; color: var(--color-brand); font-size: 1.15rem; }
+  .solution-hub { position: relative; display: grid; width: 330px; aspect-ratio: 1; place-items: center; margin: auto; }
+  .hub-glow { position: absolute; inset: 10%; border-radius: 50%; background: #7cc3ff; filter: blur(42px); opacity: .42; }
+  .hub-ring { position: absolute; border: 2px solid rgb(31 119 250 / .25); border-radius: 50%; }
+  .ring-outer { inset: 0; border-style: dashed; }.ring-inner { inset: 12%; box-shadow: inset 0 0 14px #a4d0ff, 0 0 24px #b9deff; }
+  .hub-core { z-index: 1; display: grid; width: 58%; aspect-ratio: 1; place-items: center; border: 1px solid #b1d5ff; border-radius: 50%; background: white; box-shadow: 0 0 0 12px rgb(255 255 255 / .55), 0 18px 32px rgb(25 108 217 / .3); }
+  .hub-core :global(.brand-logo) { transform: scale(.9); }
+  .hub-satellite { position: absolute; z-index: 2; display: grid; width: 48px; height: 48px; place-items: center; border-radius: 50%; background: white; color: var(--color-brand); box-shadow: 0 5px 18px rgb(42 115 208 / .18); }
+  .hub-web { top: 6%; left: 18%; }.hub-mobile { top: 45%; left: -2%; }.hub-software { bottom: 7%; left: 20%; }.hub-payment { top: 6%; right: 18%; }.hub-crm { top: 45%; right: -2%; }.hub-analytics { bottom: 7%; right: 20%; }
+  .solution-lines { z-index: 1; overflow: visible; }
+  .solution-path { stroke: #297cf7; stroke-width: 1.5; stroke-dasharray: .012 .009; opacity: .72; }
+  .line-dot { fill: #1764f6; stroke: white; stroke-width: 3; }
+  .flow-particle { display: none; }
+  .solutions[data-story-stage='complete'] .flow-particle { display: block; }
+  .solution-tagline span { color: var(--color-brand); }
+  .solution-bottom span + span { border-inline-start: 1px solid #d9e8fc; }
+  @media (min-width: 1200px) and (min-height: 850px) and (prefers-reduced-motion: no-preference) {
+    .solutions { min-height: 245vh; }
+    .solution-panel { position: sticky; top: 72px; min-height: 0; height: calc(100vh - 72px); }
+    .solution-shell { padding-block: .25rem; }
+    .solution-layout { min-height: min(500px, 52vh); }
+    .solution-tagline, .solution-bottom { margin-top: .5rem; }
   }
-  @media (max-width: 390px) { .solution-side { grid-template-columns: 1fr; } }
-  @media (prefers-reduced-motion: reduce) { .connectors path { animation: none; } }
+  @media (max-width: 1199px) {
+    .solution-layout { grid-template-columns: 1fr 260px 1fr; gap: 1rem; }
+    .solution-hub { width: 260px; }
+    .solution-lines { display: none; }
+    .solution-card { min-height: 110px; padding: .7rem; gap: .6rem; }
+    .solution-icon { width: 48px; height: 48px; }
+    .solution-link-icon { display: none; }
+  }
+  @media (max-width: 899px) {
+    .solution-layout { grid-template-columns: 1fr 1fr; }
+    .solution-hub { grid-column: 1 / -1; grid-row: 1; }
+    .solution-side { grid-template-columns: 1fr 1fr; grid-column: 1 / -1; }
+    .solution-card { min-height: 100px; }
+  }
+  @media (max-width: 600px) {
+    .solution-shell { padding-block: 4rem; }
+    .solution-layout { display: flex; flex-direction: column; gap: 1.25rem; }
+    .solution-side { width: 100%; grid-template-columns: 1fr; }
+    .solution-hub { width: min(73vw, 280px); order: 0; }
+    .solution-left { order: 1; }.solution-right { order: 2; }
+    .solution-card { min-height: 88px; padding: .65rem .8rem; }
+    .solution-icon { width: 52px; height: 52px; }
+    .solution-link-icon { display: grid; }
+    .solution-bottom { grid-template-columns: 1fr 1fr; }
+    .solution-bottom span + span { border: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { .solution-card, .solution-icon { transition: none; }.solution-card:hover, .solution-card:hover .solution-icon { transform: none; }.flow-particle { display: none !important; } }
 </style>
+
+<script>
+  const section = document.querySelector<HTMLElement>('.solutions');
+  if (section) {
+    const motion = window.matchMedia('(min-width: 1200px) and (min-height: 850px) and (prefers-reduced-motion: no-preference)');
+    const heading = section.querySelector<HTMLElement>('[data-story-heading]');
+    const hub = section.querySelector<HTMLElement>('[data-story-hub]');
+    const cards = [...section.querySelectorAll<HTMLElement>('[data-story-side]')];
+    const lines = [...section.querySelectorAll<SVGPathElement>('.solution-path')];
+    let scheduled = false;
+    const range = (value: number, start: number, end: number) => Math.max(0, Math.min(1, (value - start) / (end - start)));
+    const reset = () => {
+      section.classList.remove('has-story');
+      section.removeAttribute('data-story-stage');
+      [heading, hub, ...cards].forEach((item) => { if (item) { item.style.opacity = ''; item.style.transform = ''; } });
+      lines.forEach((line) => { line.style.strokeDasharray = ''; line.style.strokeDashoffset = ''; line.style.opacity = ''; });
+    };
+    const render = () => {
+      scheduled = false;
+      if (!motion.matches) { reset(); return; }
+      section.classList.add('has-story');
+      const rect = section.getBoundingClientRect();
+      const progress = Math.max(0, Math.min(1, -rect.top / Math.max(1, rect.height - window.innerHeight)));
+      section.dataset.storyStage = progress < .16 ? 'intro' : progress < .32 ? 'hub' : progress < .58 ? 'left' : progress < .84 ? 'right' : 'complete';
+      if (heading) { heading.style.opacity = String(.9 + .1 * range(progress, 0, .12)); heading.style.transform = `translateY(${12 * (1 - range(progress, 0, .12))}px)`; }
+      if (hub) { const value = range(progress, .12, .3); hub.style.opacity = String(.7 + .3 * value); hub.style.transform = `scale(${.9 + .1 * value})`; }
+      cards.forEach((card) => {
+        const index = Number(card.dataset.storyIndex ?? 0);
+        const start = card.dataset.storySide === 'left' ? .28 + index * .065 : .56 + index * .065;
+        const value = range(progress, start, start + .13);
+        card.style.opacity = String(.75 + .25 * value);
+        card.style.transform = `translateY(${16 * (1 - value)}px)`;
+      });
+      lines.forEach((line) => {
+        const index = Number(line.dataset.row ?? 0);
+        const start = line.dataset.line === 'left' ? .32 + index * .06 : .6 + index * .06;
+        const value = range(progress, start, start + .14);
+        line.style.strokeDashoffset = String(1 - value);
+        line.style.opacity = String(.72 * value);
+      });
+    };
+    const schedule = () => { if (!scheduled) { scheduled = true; requestAnimationFrame(render); } };
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule, { passive: true });
+    motion.addEventListener('change', schedule);
+    window.addEventListener('load', schedule, { once: true });
+    document.fonts?.ready.then(schedule);
+    schedule();
+    document.addEventListener('astro:before-swap', () => {
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+      motion.removeEventListener('change', schedule);
+    }, { once: true });
+  }
+</script>

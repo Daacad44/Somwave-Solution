@@ -13,8 +13,11 @@ interface Props {
   publishedAt?: string | null;
   authorName?: string | null;
   siteContent?: SiteContent;
+  homepage?: boolean;
+  preloadImage?: string;
+  preloadImageSrcset?: string;
 }
-const { title, description, image, ogType, publishedAt, authorName, siteContent = defaultSiteContent } = Astro.props;
+const { title, description, image, ogType, publishedAt, authorName, siteContent = defaultSiteContent, homepage = false, preloadImage, preloadImageSrcset } = Astro.props;
 const refreshSiteContent = !Astro.props.siteContent;
 ---
 
@@ -25,6 +28,8 @@ const refreshSiteContent = !Astro.props.siteContent;
   ogType={ogType}
   publishedAt={publishedAt}
   authorName={authorName}
+  preloadImage={preloadImage}
+  preloadImageSrcset={preloadImageSrcset}
 >
   <a
     href="#main"
@@ -33,13 +38,23 @@ const refreshSiteContent = !Astro.props.siteContent;
     Skip to content
   </a>
   <Header />
-  <main id="main">
+  <main id="main" data-homepage={homepage ? 'true' : undefined}>
     <slot />
   </main>
   <Footer content={siteContent} refresh={refreshSiteContent} />
 </BaseLayout>
 
 <script>
+  const homepage = document.querySelector('main[data-homepage="true"]');
+  homepage?.querySelectorAll<HTMLElement>('section:not(.hero-slider) h2').forEach((heading) => {
+    heading.dataset.reveal = '';
+    heading.dataset.motionKind = 'heading';
+  });
+  homepage?.querySelectorAll<HTMLElement>('section').forEach((section) => {
+    section.querySelectorAll<HTMLElement>('[data-reveal]:not([data-motion-kind])').forEach((item, index) => {
+      item.style.setProperty('--motion-delay', `${Math.min(index * 70, 280)}ms`);
+    });
+  });
   const revealItems = document.querySelectorAll<HTMLElement>('[data-reveal]');
   if ('IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     const observer = new IntersectionObserver((entries) => {
@@ -51,5 +66,33 @@ const refreshSiteContent = !Astro.props.siteContent;
       });
     }, { threshold: 0.08 });
     revealItems.forEach((item) => observer.observe(item));
+    document.addEventListener('astro:before-swap', () => observer.disconnect(), { once: true });
+  }
+
+  if (homepage) {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const artwork = [...homepage.querySelectorAll<HTMLElement>('.hero-art, .home-cta-wave')];
+    let frame = 0;
+    const render = () => {
+      frame = 0;
+      artwork.forEach((item) => {
+        if (reduced.matches) { item.style.transform = ''; return; }
+        const rect = item.closest('section')?.getBoundingClientRect();
+        if (!rect || rect.bottom < 0 || rect.top > window.innerHeight) return;
+        const offset = Math.max(-12, Math.min(12, (window.innerHeight / 2 - (rect.top + rect.height / 2)) * .025));
+        item.style.transform = `translate3d(0, ${offset}px, 0)`;
+      });
+    };
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(render); };
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule, { passive: true });
+    reduced.addEventListener('change', schedule);
+    schedule();
+    document.addEventListener('astro:before-swap', () => {
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+      reduced.removeEventListener('change', schedule);
+      cancelAnimationFrame(frame);
+    }, { once: true });
   }
 </script>

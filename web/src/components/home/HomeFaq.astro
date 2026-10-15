@@ -24,7 +24,7 @@ const faqs = (source ?? []).slice(0, 6).map(displayFaq);
     ) : (
       <div class="mt-9 grid gap-3 md:grid-cols-2">
         {faqs.map((faq) => (
-          <details class="faq-item group h-fit rounded-md border border-border bg-surface px-5 py-4 shadow-sm">
+          <details class="faq-item group h-fit rounded-md border border-border bg-surface px-5 py-4 shadow-sm" data-reveal>
             <summary class="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-bold text-primary marker:hidden">
               {faq.question}<span class="text-xl font-normal text-brand transition-transform group-open:rotate-45" aria-hidden="true">+</span>
             </summary>
@@ -38,5 +38,7 @@ const faqs = (source ?? []).slice(0, 6).map(displayFaq);
 
 <style>
   .faq-item summary::-webkit-details-marker { display: none; }
-  @media (prefers-reduced-motion: reduce) { .faq-item summary span { transition: none; } }
+  .faq-item[open] p { animation: faq-expand 260ms ease-out both; }
+  @keyframes faq-expand { from { opacity: 0; transform: translateY(-5px); } }
+  @media (prefers-reduced-motion: reduce) { .faq-item summary span { transition: none; }.faq-item[open] p { animation: none; } }
 </style>

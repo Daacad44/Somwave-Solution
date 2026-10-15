@@ -8,7 +8,7 @@ const { content = defaultSiteContent.cta } = Astro.props;
   {content.backgroundImageUrl && <img src={content.backgroundImageUrl} alt="" loading="lazy" class="absolute inset-0 h-full w-full object-cover opacity-25" aria-hidden="true" />}
   <div class="home-cta-wave pointer-events-none absolute inset-y-0 end-0 w-1/2" aria-hidden="true">
   </div>
-  <div class="relative mx-auto max-w-site px-4 py-20 sm:px-6">
+  <div class="relative mx-auto max-w-site px-4 py-20 sm:px-6" data-reveal>
     <h2
       id="cta-heading"
       class="max-w-xl text-3xl font-extrabold tracking-tight sm:text-4xl"
