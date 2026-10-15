@@ -18,28 +18,28 @@ try {
 ---
 
 <PageLayout
-  title="Adeegyada — Somwave"
-  description="Adeegyada Somwave: horumarinta websaydka, nidaamyo gudaha ah, iyo barnaamijyo mobil."
+  title="Services — Somwave"
+  description="Explore Somwave services: websites, custom systems, and mobile apps."
 >
   <section class="mx-auto max-w-content px-4 py-20 sm:px-6">
     <div class="max-w-2xl">
-      <p class="text-sm font-semibold uppercase tracking-[0.14em] text-accent-600">Adeegyada</p>
+      <p class="text-sm font-semibold uppercase tracking-[0.14em] text-accent-600">Services</p>
       <h1 class="mt-2 text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
-        Waxa aan kuu qaban karno
+        What we can build for you
       </h1>
       <p class="mt-4 text-lg leading-relaxed text-muted">
-        Adeegyada aan bixinno si aad ganacsigaaga online ugu koriso.
+        Digital services that help your business grow.
       </p>
     </div>
 
     {
       failed ? (
         <p class="mt-10 rounded-lg border border-border bg-surface-alt p-6 text-muted">
-          Cilad ayaa dhacday markii adeegyada la soo raadinayay. Fadlan mar kale isku day.
+          Services are unavailable right now. Please try again later.
         </p>
       ) : services.length === 0 ? (
         <p class="mt-10 rounded-lg border border-border bg-surface-alt p-6 text-muted">
-          Weli adeegyo lama daabicin.
+          No services have been published yet.
         </p>
       ) : (
         <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

@@ -18,9 +18,9 @@ if (!service) {
     <PageLayout title={`${service.title} — Somwave`} description={service.summary}>
       <article class="mx-auto max-w-3xl px-4 py-20 sm:px-6">
         <a href="/adeegyada" class="text-sm font-semibold text-accent-600">
-          ← Dib ugu noqo adeegyada
+          ← Back to services
         </a>
-        <p class="mt-6 text-sm font-semibold uppercase tracking-[0.14em] text-accent-600">Adeeg</p>
+        <p class="mt-6 text-sm font-semibold uppercase tracking-[0.14em] text-accent-600">Service</p>
         <h1 class="mt-2 text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
           {service.title}
         </h1>
@@ -34,20 +34,20 @@ if (!service) {
           href="/nala-soo-xiriir"
           class="mt-10 inline-flex h-11 items-center rounded-md bg-primary px-5 text-sm font-semibold text-surface hover:bg-primary-600"
         >
-          Codso adeegan
+          Ask about this service
         </a>
       </article>
     </PageLayout>
   ) : (
-    <PageLayout title="Lama helin — Somwave" description="Adeegan lama helin.">
+    <PageLayout title="Not found — Somwave" description="This service could not be found.">
       <section class="mx-auto max-w-content px-4 py-24 text-center sm:px-6">
-        <h1 class="text-4xl font-extrabold tracking-tight text-ink">Lama helin</h1>
-        <p class="mt-3 text-lg text-muted">Adeegan lama helin ama weli lama daabicin.</p>
+        <h1 class="text-4xl font-extrabold tracking-tight text-ink">Not found</h1>
+        <p class="mt-3 text-lg text-muted">This service could not be found or is not published yet.</p>
         <a
           href="/adeegyada"
           class="mt-8 inline-flex h-11 items-center rounded-md bg-primary px-5 text-sm font-semibold text-surface hover:bg-primary-600"
         >
-          Fiiri dhammaan adeegyada
+          View all services
         </a>
       </section>
     </PageLayout>

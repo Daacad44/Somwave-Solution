@@ -3,24 +3,120 @@ import { trustedClients } from '../../lib/homeContent';
 ---
 
 <section class="border-y border-border bg-surface" aria-labelledby="trusted-heading">
-  <div class="mx-auto max-w-site px-4 py-10 sm:px-6">
-    <p id="trusted-heading" class="text-center text-sm font-medium text-muted">Waxaa nala kalsoon</p>
-    <ul
-      class="mt-6 grid grid-cols-2 items-center justify-items-center gap-x-8 gap-y-5 sm:grid-cols-3 lg:grid-cols-6"
-    >
-      {
-        trustedClients.map((client) => (
-          <li class="flex h-10 items-center justify-center sm:h-12">
-            <img
-              src={client.logo}
-              alt={client.name}
-              width={client.width}
-              height={client.height}
-              class="h-8 w-auto max-w-full object-contain sm:h-10"
-            />
-          </li>
-        ))
-      }
-    </ul>
+  <div class="mx-auto max-w-site px-4 py-12 sm:px-6">
+    <h2 id="trusted-heading" class="sr-only">Companies that trust Somwave</h2>
+    <div class="logo-viewport">
+      <div class="logo-track">
+        {
+          [false, true].map((duplicate) => (
+            <ul class="logo-group" aria-hidden={duplicate ? 'true' : undefined}>
+              {trustedClients.map((client) => (
+                <li class="logo-item">
+                  <img
+                    src={client.logo}
+                    alt={duplicate ? '' : client.name}
+                    width={client.width}
+                    height={client.height}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </li>
+              ))}
+            </ul>
+          ))
+        }
+      </div>
+    </div>
   </div>
 </section>
+
+<style>
+  .logo-viewport {
+    overflow: hidden;
+    mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
+  }
+
+  .logo-track {
+    display: flex;
+    width: max-content;
+    animation: logo-scroll 28s linear infinite;
+  }
+
+  .logo-viewport:hover .logo-track,
+  .logo-viewport:focus-within .logo-track {
+    animation-play-state: paused;
+  }
+
+  .logo-group {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: clamp(1.5rem, 4vw, 3.5rem);
+    margin: 0;
+    padding: 0 clamp(1.5rem, 4vw, 3.5rem) 0 0;
+    list-style: none;
+  }
+
+  .logo-item {
+    display: flex;
+    width: clamp(8rem, 15vw, 10.5rem);
+    height: 4.5rem;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .logo-item img {
+    display: block;
+    max-width: 100%;
+    max-height: 3.5rem;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+  }
+
+  @keyframes logo-scroll {
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .logo-viewport {
+      overflow: visible;
+      mask-image: none;
+    }
+
+    .logo-track {
+      width: 100%;
+      animation: none;
+    }
+
+    .logo-group {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      width: 100%;
+      padding: 0;
+    }
+
+    .logo-item {
+      width: 100%;
+    }
+
+    .logo-group[aria-hidden='true'] {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) and (min-width: 640px) {
+    .logo-group {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) and (min-width: 1024px) {
+    .logo-group {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+  }
+</style>

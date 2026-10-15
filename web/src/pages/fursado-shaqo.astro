@@ -17,28 +17,28 @@ try {
 ---
 
 <PageLayout
-  title="Fursado shaqo — Somwave"
-  description="Ku biir kooxda Somwave — fiiri fursadaha shaqo ee furan."
+  title="Careers — Somwave"
+  description="Join the Somwave team. Explore our open positions."
 >
   <section class="mx-auto max-w-content px-4 py-20 sm:px-6">
     <div class="max-w-2xl">
-      <p class="text-sm font-semibold uppercase tracking-[0.14em] text-accent-600">Fursado shaqo</p>
+      <p class="text-sm font-semibold uppercase tracking-[0.14em] text-accent-600">Careers</p>
       <h1 class="mt-2 text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
-        Ku biir kooxdayada
+        Join our team
       </h1>
       <p class="mt-4 text-lg leading-relaxed text-muted">
-        Waxaan raadinaynaa dad karti leh oo nala dhisa tignoolajiyada. Fiiri fursadaha furan oo codso.
+        We are looking for people who want to build useful technology. Explore our open roles and apply.
       </p>
     </div>
 
     {
       failed ? (
         <p class="mt-10 rounded-lg border border-border bg-surface-alt p-6 text-muted">
-          Cilad ayaa dhacday markii fursadaha la soo raadinayay. Fadlan mar kale isku day.
+          Open positions are unavailable right now. Please try again later.
         </p>
       ) : openings.length === 0 ? (
         <p class="mt-10 rounded-lg border border-border bg-surface-alt p-6 text-muted">
-          Weli fursado shaqo furan ma jiraan. Dib u soo eeg dhawaan.
+          There are no open positions right now. Please check back soon.
         </p>
       ) : (
         <div class="mt-10 grid gap-6 sm:grid-cols-2">

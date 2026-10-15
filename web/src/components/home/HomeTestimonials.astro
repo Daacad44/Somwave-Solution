@@ -5,12 +5,12 @@ import HomeIcon from './HomeIcon.astro';
 
 <section id="marag-furka-home" class="bg-surface" aria-labelledby="testimonials-heading">
   <div class="mx-auto max-w-site px-4 py-20 sm:px-6">
-    <p class="text-sm font-semibold text-brand">Marag-furka</p>
+    <p class="text-sm font-semibold text-brand">Testimonials</p>
     <h2
       id="testimonials-heading"
       class="mt-2 max-w-xl text-3xl font-extrabold tracking-tight text-ink sm:text-4xl"
     >
-      Macaamiisheenu<br />Maxay Ka Yiraahdeen?
+      What our clients<br />say about us
     </h2>
 
     <div class="mt-10 grid gap-5 md:grid-cols-3">
@@ -33,7 +33,7 @@ import HomeIcon from './HomeIcon.astro';
                 <p class="text-xs text-muted">
                   {item.role} · {item.company}
                 </p>
-                <div class="mt-1 flex gap-0.5" aria-label={`${item.rating} xiddigood`}>
+                <div class="mt-1 flex gap-0.5" aria-label={`${item.rating} out of 5 stars`}>
                   {Array.from({ length: 5 }).map((_, i) => (
                     <span class={i < item.rating ? 'text-brand' : 'text-border'} aria-hidden="true">
                       ★

@@ -13,7 +13,7 @@ interface Props {
 const { slug, title, excerpt, publishedAt, category, coverImage, authorName } = Astro.props;
 
 const dateLabel = publishedAt
-  ? new Intl.DateTimeFormat('so', {
+  ? new Intl.DateTimeFormat('en', {
       dateStyle: 'long',
       timeZone: 'Africa/Mogadishu',
     }).format(new Date(publishedAt))
@@ -39,6 +39,6 @@ const dateLabel = publishedAt
     </h3>
     {authorName ? <p class="mt-1 text-sm text-muted">{authorName}</p> : null}
     <p class="mt-2 flex-1 text-[15px] leading-relaxed text-muted">{excerpt}</p>
-    <a href={`/blog/${slug}`} class="mt-4 inline-flex min-h-11 items-center text-sm font-semibold text-accent-600">Akhri →</a>
+    <a href={`/blog/${slug}`} class="mt-4 inline-flex min-h-11 items-center text-sm font-semibold text-accent-600">Read more →</a>
   </div>
 </article>
