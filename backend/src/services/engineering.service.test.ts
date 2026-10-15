@@ -18,6 +18,7 @@ vi.mock('../lib/prisma', () => ({
       findMany: vi.fn(),
       upsert: vi.fn(),
       updateMany: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
     },
     notificationDelivery: { findMany: vi.fn() },
     projectHandover: { create: vi.fn(), findMany: vi.fn() },
@@ -54,6 +55,7 @@ import {
   reviewEngineeringTask,
   listProjectEngineeringTasks,
   inviteProjectEngineer,
+  resendProjectInvitation,
   respondToProjectInvitation,
   reassignProjectTasks,
   createProjectHandover,
@@ -291,7 +293,7 @@ describe('project engineer invitations', () => {
     );
   });
 
-  it('retries queueing an unexpired pending invitation without changing it', async () => {
+  it('rejects a duplicate pending invitation', async () => {
     vi.mocked(prisma.projectInvitation.findUnique).mockResolvedValue({
       id: 'invitation_1',
       status: 'PENDING',
@@ -303,13 +305,45 @@ describe('project engineer invitations', () => {
       expectedEndDate: new Date(details.expectedEndDate),
       estimatedHours: details.estimatedHours,
     } as never);
-    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: engineer.id } as never);
-    const result = await inviteProjectEngineer(project.id, manager, details);
-    expect(result).toMatchObject({ duplicate: true, status: 'PENDING' });
+    await expect(inviteProjectEngineer(project.id, manager, details)).rejects.toMatchObject({
+      code: 'CONFLICT',
+    });
     expect(prisma.projectInvitation.upsert).not.toHaveBeenCalled();
+    expect(emitNotification).not.toHaveBeenCalled();
+  });
+
+  it('resends an expired invitation with a fresh expiry and email key', async () => {
+    vi.mocked(prisma.projectInvitation.findFirst).mockResolvedValue({
+      id: 'invitation_1',
+      userId: engineer.id,
+      invitedAt: new Date('2026-10-12T00:00:00Z'),
+    } as never);
+    vi.mocked(prisma.projectInvitation.updateMany).mockResolvedValue({ count: 1 } as never);
+    vi.mocked(prisma.projectInvitation.findUniqueOrThrow).mockResolvedValue({
+      id: 'invitation_1',
+      invitedAt: new Date('2026-10-15T00:00:00Z'),
+      role: 'ENGINEER',
+      description: 'Build the API',
+      startDate: new Date('2026-10-16T00:00:00Z'),
+      expectedEndDate: new Date('2026-11-16T00:00:00Z'),
+      estimatedHours: 40,
+      expiresAt: new Date('2026-10-22T00:00:00Z'),
+    } as never);
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: engineer.id } as never);
+    const result = await resendProjectInvitation(project.id, 'invitation_1', manager);
+    expect(result.status).toBe('PENDING');
+    expect(prisma.projectInvitation.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: 'PENDING',
+          invitedAt: expect.any(Date),
+          expiresAt: expect.any(Date),
+        }),
+      }),
+    );
     expect(emitNotification).toHaveBeenCalledWith(
       expect.objectContaining({
-        dedupeKey: 'project-invitation:invitation_1:2026-10-12T00:00:00.000Z',
+        dedupeKey: 'project-invitation:invitation_1:2026-10-15T00:00:00.000Z',
         requiredEmail: true,
       }),
     );

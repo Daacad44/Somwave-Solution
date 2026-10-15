@@ -228,6 +228,13 @@ export const myInvitations = handle((req) => engineering.listMyProjectInvitation
 export const projectInvitations = handle((req) =>
   engineering.listProjectInvitations(projectId(req), actor(req)),
 );
+export const eligibleEngineersForNewProject = handle((req) =>
+  engineering.listEligibleEngineers(
+    null,
+    actor(req),
+    typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 100) : undefined,
+  ),
+);
 export const projectDependencies = handle((req) =>
   engineering.listProjectDependencies(projectId(req), actor(req)),
 );
@@ -253,6 +260,11 @@ export const cancelInvitation = handle((req) => {
   const id = req.params.invitationId;
   if (!id) throw new AppError('VALIDATION_ERROR', 400, 'Invitation ID is required');
   return engineering.cancelProjectInvitation(projectId(req), id, actor(req));
+});
+export const resendInvitation = handle((req) => {
+  const id = req.params.invitationId;
+  if (!id) throw new AppError('VALIDATION_ERROR', 400, 'Invitation ID is required');
+  return engineering.resendProjectInvitation(projectId(req), id, actor(req));
 });
 export const reassignTasks = handle((req) =>
   engineering.reassignProjectTasks(

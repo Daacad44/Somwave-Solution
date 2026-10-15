@@ -29,6 +29,7 @@ export interface PortfolioFilters {
   priority?: string;
   managerId?: string;
   engineerId?: string;
+  assignment?: 'unassigned' | 'pending' | 'active';
   clientId?: string;
   health?: string;
   dueFrom?: string;
