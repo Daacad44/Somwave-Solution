@@ -241,6 +241,7 @@ async function main(): Promise<void> {
       description:
         'Waxaan u dhisnay iskuul weyn nidaam maamul oo casri ah — diiwaangelinta ardayda, lacag-bixinta, iyo warbixinnada — oo dhammaan hal meel ka shaqeeya.',
       client: 'Iskuul Gaar ah',
+      category: 'CUSTOM_SOFTWARE' as const,
       order: 1,
     },
     {
@@ -250,6 +251,7 @@ async function main(): Promise<void> {
       description:
         'App iOS iyo Android ah oo isku xiran API ammaan ah, macaamiishu ku bixin karaan biilasha oo ay la socon karaan mashruucyadooda.',
       client: 'Shirkad Dhaqaale',
+      category: 'MOBILE_APP' as const,
       order: 2,
     },
   ];

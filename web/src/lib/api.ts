@@ -16,6 +16,8 @@ import {
   type PublicTestimonial,
   type PublicTeamMember,
   type PublicFaq,
+  type SiteContent,
+  type PublicHomepage,
 } from '@somwave/shared';
 
 const API_URL = import.meta.env.PUBLIC_API_URL;
@@ -39,6 +41,14 @@ async function getData<T>(path: string): Promise<T> {
 
 export function fetchServices(): Promise<PublicService[]> {
   return getData<PublicService[]>('/public/services');
+}
+
+export function fetchSiteContent(): Promise<SiteContent> {
+  return getData<SiteContent>('/public/site-content');
+}
+
+export function fetchHomepage(): Promise<PublicHomepage> {
+  return getData<PublicHomepage>('/public/homepage');
 }
 
 export async function fetchService(slug: string): Promise<PublicServiceDetail | null> {

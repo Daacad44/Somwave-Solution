@@ -1,0 +1,42 @@
+---
+import { displayFaq } from '../../lib/seedTranslations';
+import type { PublicFaq } from '@somwave/shared';
+
+interface Props { faqs: PublicFaq[] | null }
+const { faqs: source } = Astro.props;
+const failed = source === null;
+const faqs = (source ?? []).slice(0, 6).map(displayFaq);
+---
+
+<section class="bg-surface" aria-labelledby="faq-heading">
+  <div class="section-shell">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p class="section-kicker">FAQ</p>
+        <h2 id="faq-heading" class="section-title mt-4">Frequently Asked Questions</h2>
+      </div>
+      <a href="/su-aalaha" class="inline-flex min-h-11 items-center text-sm font-bold text-brand hover:text-brand-600">View all questions →</a>
+    </div>
+    {failed ? (
+      <p class="mt-9 rounded-lg border border-border bg-surface-alt p-6 text-muted">Questions are unavailable right now. Please try again later.</p>
+    ) : faqs.length === 0 ? (
+      <p class="mt-9 rounded-lg border border-border bg-surface-alt p-6 text-muted">No questions have been published yet.</p>
+    ) : (
+      <div class="mt-9 grid gap-3 md:grid-cols-2">
+        {faqs.map((faq) => (
+          <details class="faq-item group h-fit rounded-md border border-border bg-surface px-5 py-4 shadow-sm">
+            <summary class="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-bold text-primary marker:hidden">
+              {faq.question}<span class="text-xl font-normal text-brand transition-transform group-open:rotate-45" aria-hidden="true">+</span>
+            </summary>
+            <p class="mt-3 whitespace-pre-line border-t border-border pt-3 text-sm leading-7 text-muted">{faq.answer}</p>
+          </details>
+        ))}
+      </div>
+    )}
+  </div>
+</section>
+
+<style>
+  .faq-item summary::-webkit-details-marker { display: none; }
+  @media (prefers-reduced-motion: reduce) { .faq-item summary span { transition: none; } }
+</style>

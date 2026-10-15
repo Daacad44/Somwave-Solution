@@ -2,6 +2,8 @@
 // Base HTML shell for public pages (SYSTEM_PROMPT §6). Owns <head>, SEO meta,
 // fonts, and the shared global stylesheet. English is the default locale.
 import '../styles/global.css';
+import '@fontsource-variable/plus-jakarta-sans/wght.css';
+import latinFontUrl from '@fontsource-variable/plus-jakarta-sans/files/plus-jakarta-sans-latin-wght-normal.woff2?url';
 
 interface Props {
   title: string;
@@ -67,6 +69,8 @@ const articleSchema =
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="preload" href={latinFontUrl} as="font" type="font/woff2" crossorigin />
     <link rel="canonical" href={canonical} />
 
     <!-- Open Graph -->
@@ -87,12 +91,6 @@ const articleSchema =
     <meta name="twitter:image" content={imageUrl} />
 
     <meta name="generator" content={Astro.generator} />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
     <title>{title}</title>
     <script type="application/ld+json" set:html={JSON.stringify(organizationSchema)} is:inline />
     {

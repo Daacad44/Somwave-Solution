@@ -14,6 +14,10 @@ export const publicRouter: Router = Router();
 
 publicRouter.use(publicRateLimiter);
 
+publicRouter.get('/homepage', publicController.getHomepage);
+
+publicRouter.get('/site-content', publicController.getSiteContent);
+
 publicRouter.get('/services', publicController.getServices);
 publicRouter.get('/services/:slug', publicController.getService);
 

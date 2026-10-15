@@ -17,6 +17,7 @@ import type {
   CreateFaqInput,
   UpdateFaqInput,
   UploadArticleImageInput,
+  SiteContent,
 } from '@somwave/shared';
 import { AppError, sendData } from '../lib/http';
 import * as serviceService from '../services/service.service';
@@ -28,6 +29,31 @@ import * as teamService from '../services/team.service';
 import * as faqService from '../services/faq.service';
 import * as subscriberService from '../services/subscriber.service';
 import * as articleImageService from '../services/articleImage.service';
+import * as siteContentService from '../services/site-content.service';
+
+export async function getSiteContent(
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    sendData(res, await siteContentService.readSiteContent());
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function putSiteContent(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    sendData(res, await siteContentService.updateSiteContent(req.body as SiteContent));
+  } catch (err) {
+    next(err);
+  }
+}
 
 export async function listServices(
   _req: Request,

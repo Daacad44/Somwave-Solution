@@ -66,6 +66,7 @@ export function PortfolioAdminPage(): ReactNode {
               <Tr>
                 <Th>Title</Th>
                 <Th>Client</Th>
+                <Th>Category</Th>
                 <Th>Order</Th>
                 <Th>Status</Th>
                 <Th className="text-end">Actions</Th>
@@ -76,6 +77,7 @@ export function PortfolioAdminPage(): ReactNode {
                 <Tr key={item.id}>
                   <Td className="font-medium">{item.title}</Td>
                   <Td className="text-muted">{item.client ?? '—'}</Td>
+                  <Td className="text-muted">{item.category?.replaceAll('_', ' ') ?? '—'}</Td>
                   <Td>{item.order}</Td>
                   <Td>
                     <Badge tone={item.isPublished ? 'success' : 'neutral'}>

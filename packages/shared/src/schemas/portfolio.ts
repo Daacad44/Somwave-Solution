@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+export const portfolioCategorySchema = z.enum(['WEBSITE', 'MOBILE_APP', 'CUSTOM_SOFTWARE']);
+export type PortfolioCategory = z.infer<typeof portfolioCategorySchema>;
+
 // Summary shape for GET /api/v1/public/portfolio (list). §10.
 export const publicPortfolioItemSchema = z.object({
   id: z.string(),
@@ -7,6 +10,7 @@ export const publicPortfolioItemSchema = z.object({
   title: z.string(),
   summary: z.string(),
   client: z.string().nullable(),
+  category: portfolioCategorySchema.nullable().optional(),
   coverImage: z.string().nullable(),
   order: z.number().int(),
 });
@@ -28,6 +32,7 @@ export const adminPortfolioItemSchema = z.object({
   summary: z.string(),
   description: z.string().nullable(),
   client: z.string().nullable(),
+  category: portfolioCategorySchema.nullable(),
   coverImage: z.string().nullable(),
   order: z.number().int(),
   isPublished: z.boolean(),
@@ -48,6 +53,7 @@ export const createPortfolioItemSchema = z.object({
   summary: z.string().trim().min(1, 'Summary is required').max(500),
   description: z.string().trim().max(5000).optional(),
   client: z.string().trim().max(200).optional(),
+  category: portfolioCategorySchema.optional(),
   coverImage: z.string().url('Enter a valid URL').optional(),
   order: z.number().int().nonnegative().default(0),
   isPublished: z.boolean().default(true),
@@ -68,6 +74,7 @@ export const updatePortfolioItemSchema = z
     summary: z.string().trim().min(1).max(500).optional(),
     description: z.string().trim().max(5000).nullable().optional(),
     client: z.string().trim().max(200).nullable().optional(),
+    category: portfolioCategorySchema.nullable().optional(),
     coverImage: z.string().url('Enter a valid URL').nullable().optional(),
     order: z.number().int().nonnegative().optional(),
     isPublished: z.boolean().optional(),

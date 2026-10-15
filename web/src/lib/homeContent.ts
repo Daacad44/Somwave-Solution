@@ -2,12 +2,24 @@
 // The articles section is not here: it reads published posts from the API.
 
 export const trustedClients = [
-  { name: 'Hormuud Telecom', logo: '/clients/hormuud.png', width: 321, height: 135 },
-  { name: 'Somtel', logo: '/clients/somtel.png', width: 270, height: 122 },
-  { name: 'Dahabshiil', logo: '/clients/dahabshiil.png', width: 271, height: 151 },
-  { name: 'TAAJ', logo: '/clients/taaj.png', width: 259, height: 134 },
-  { name: 'Premier Bank', logo: '/clients/premier-bank.png', width: 250, height: 158 },
-  { name: 'Amal Bank', logo: '/clients/amal-bank.png', width: 256, height: 153 },
+  { id: 'hormuud', name: 'Hormuud Telecom', logo: '/clients/hormuud.png', width: 321, height: 135 },
+  { id: 'somtel', name: 'Somtel', logo: '/clients/somtel.png', width: 270, height: 122 },
+  {
+    id: 'dahabshiil',
+    name: 'Dahabshiil',
+    logo: '/clients/dahabshiil.png',
+    width: 271,
+    height: 151,
+  },
+  { id: 'taaj', name: 'TAAJ', logo: '/clients/taaj.png', width: 259, height: 134 },
+  {
+    id: 'premier-bank',
+    name: 'Premier Bank',
+    logo: '/clients/premier-bank.png',
+    width: 250,
+    height: 158,
+  },
+  { id: 'amal-bank', name: 'Amal Bank', logo: '/clients/amal-bank.png', width: 256, height: 153 },
 ] as const;
 
 export const homeServices = [

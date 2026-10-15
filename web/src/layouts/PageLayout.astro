@@ -3,6 +3,7 @@
 import BaseLayout from './BaseLayout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import { defaultSiteContent, type SiteContent } from '@somwave/shared';
 
 interface Props {
   title: string;
@@ -11,8 +12,10 @@ interface Props {
   ogType?: 'website' | 'article';
   publishedAt?: string | null;
   authorName?: string | null;
+  siteContent?: SiteContent;
 }
-const { title, description, image, ogType, publishedAt, authorName } = Astro.props;
+const { title, description, image, ogType, publishedAt, authorName, siteContent = defaultSiteContent } = Astro.props;
+const refreshSiteContent = !Astro.props.siteContent;
 ---
 
 <BaseLayout
@@ -33,5 +36,20 @@ const { title, description, image, ogType, publishedAt, authorName } = Astro.pro
   <main id="main">
     <slot />
   </main>
-  <Footer />
+  <Footer content={siteContent} refresh={refreshSiteContent} />
 </BaseLayout>
+
+<script>
+  const revealItems = document.querySelectorAll<HTMLElement>('[data-reveal]');
+  if ('IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('motion-reveal');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.08 });
+    revealItems.forEach((item) => observer.observe(item));
+  }
+</script>

@@ -18,6 +18,7 @@ import {
   updateFaqSchema,
   uploadArticleImageSchema,
   PERMISSIONS,
+  siteContentSchema,
 } from '@somwave/shared';
 import { requireAuth } from '../middleware/auth';
 import { rbac, rbacAny } from '../middleware/rbac';
@@ -27,6 +28,9 @@ import * as cmsController from '../controllers/cms.controller';
 export const cmsRouter: Router = Router();
 
 cmsRouter.use(requireAuth);
+
+cmsRouter.get('/site-content', rbac(PERMISSIONS.CONTENT_READ), cmsController.getSiteContent);
+cmsRouter.put('/site-content', rbac(PERMISSIONS.CONTENT_UPDATE), validate(siteContentSchema), cmsController.putSiteContent);
 
 cmsRouter.get('/services', rbac(PERMISSIONS.CONTENT_READ), cmsController.listServices);
 cmsRouter.post(

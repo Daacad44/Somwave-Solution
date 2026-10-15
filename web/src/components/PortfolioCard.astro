@@ -1,13 +1,16 @@
 ---
 // A portfolio item on the listing (SYSTEM_PROMPT §6). Links to its detail page.
+import type { PortfolioCategory } from '@somwave/shared';
 interface Props {
   slug: string;
   title: string;
   summary: string;
   client: string | null;
+  category?: PortfolioCategory | null;
   coverImage: string | null;
 }
-const { slug, title, summary, client, coverImage } = Astro.props;
+const { slug, title, summary, client, category, coverImage } = Astro.props;
+const categoryLabel = category ? { WEBSITE: 'Websites', MOBILE_APP: 'Mobile Apps', CUSTOM_SOFTWARE: 'Custom Software' }[category] : null;
 ---
 
 <a
@@ -31,6 +34,7 @@ const { slug, title, summary, client, coverImage } = Astro.props;
     }
   </div>
   <div class="flex flex-1 flex-col p-5">
+    {categoryLabel ? <span class="text-xs font-semibold uppercase tracking-[0.12em] text-brand">{categoryLabel}</span> : null}
     {client ? <span class="text-xs font-semibold uppercase tracking-[0.12em] text-accent-600">{client}</span> : null}
     <h3 class="mt-1 text-lg font-semibold text-ink">{title}</h3>
     <p class="mt-2 text-[15px] leading-relaxed text-muted">{summary}</p>

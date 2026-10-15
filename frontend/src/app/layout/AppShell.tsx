@@ -44,6 +44,7 @@ import { GlobalSearch } from './GlobalSearch';
 
 const ICONS: Record<string, LucideIcon> = {
   '/cms/services': LayoutGrid,
+  '/cms/site-content': LayoutGrid,
   '/cms/posts': FileText,
   '/cms/portfolio': Image,
   '/cms/careers': Briefcase,
