@@ -24,7 +24,7 @@ const testimonials = source ?? [];
       </div>
       <div class="testimonial-track mt-9 flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4">
         {testimonials.map((item) => (
-          <figure class="premium-card flex min-w-[min(85vw,350px)] max-w-[350px] snap-start flex-col p-6">
+          <figure class="premium-card flex min-w-[min(85vw,350px)] max-w-[350px] snap-start flex-col p-6" data-reveal>
             <HomeIcon name="quote" class="h-8 w-8 text-brand" />
             <blockquote class="mt-4 flex-1 text-sm leading-7 text-primary">“{item.quote}”</blockquote>
             <figcaption class="mt-6 flex items-center gap-3 border-t border-border pt-4">
