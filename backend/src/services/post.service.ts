@@ -16,7 +16,7 @@ import { AppError } from '../lib/http';
 import { releaseArticleImageUrl, resolveArticleCover } from './articleImage.service';
 
 const CACHE_TTL_SECONDS = 300;
-const CACHE_PREFIX = 'public:posts:';
+const CACHE_PREFIX = 'public:posts:v2:';
 
 interface PostRow {
   id: string;
@@ -27,9 +27,10 @@ interface PostRow {
   authorName: string | null;
   publishedAt: Date | null;
   category: { slug: string; name: string } | null;
+  body?: string;
 }
 
-function toSummary(row: PostRow): PublicPostSummary {
+function toSummary(row: PostRow, includeReadingTime = false): PublicPostSummary {
   return {
     id: row.id,
     slug: row.slug,
@@ -39,6 +40,9 @@ function toSummary(row: PostRow): PublicPostSummary {
     authorName: row.authorName,
     publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
     category: row.category,
+    ...(includeReadingTime && row.body
+      ? { readingMinutes: Math.max(1, Math.ceil(row.body.trim().split(/\s+/).length / 220)) }
+      : {}),
   };
 }
 
@@ -56,6 +60,7 @@ const publicPostSelect = {
   authorName: true,
   publishedAt: true,
   category: { select: { slug: true, name: true } },
+  body: true,
 } as const;
 
 /** Blank CMS input is stored as null so public pages omit the byline. */
@@ -99,7 +104,12 @@ export async function listPublishedPosts(page: number, pageSize: number): Promis
     prisma.post.count({ where }),
   ]);
 
-  const result: PostPage = { items: rows.map(toSummary), total, page: current, pageSize: size };
+  const result: PostPage = {
+    items: rows.map((row) => toSummary(row, true)),
+    total,
+    page: current,
+    pageSize: size,
+  };
   await safeSet(cacheKey, JSON.stringify(result));
   return result;
 }

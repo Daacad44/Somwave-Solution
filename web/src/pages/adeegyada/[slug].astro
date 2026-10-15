@@ -4,9 +4,11 @@ export const prerender = false;
 
 import PageLayout from '../../layouts/PageLayout.astro';
 import { fetchService } from '../../lib/api';
+import { displayService } from '../../lib/serviceDisplay';
 
 const { slug } = Astro.params;
-const service = slug ? await fetchService(slug) : null;
+const fetched = slug ? await fetchService(slug) : null;
+const service = fetched ? displayService(fetched) : null;
 
 if (!service) {
   Astro.response.status = 404;

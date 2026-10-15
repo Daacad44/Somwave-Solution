@@ -5,6 +5,7 @@ import type {
   PublicPortfolioItem,
   PublicPortfolioDetail,
   AdminPortfolioItem,
+  PortfolioCategory,
   CreatePortfolioItemInput,
   UpdatePortfolioItemInput,
 } from '@somwave/shared';
@@ -12,7 +13,7 @@ import { prisma } from '../lib/prisma';
 import { redis } from '../lib/redis';
 import { AppError } from '../lib/http';
 
-const LIST_CACHE_KEY = 'public:portfolio';
+const LIST_CACHE_KEY = 'public:portfolio:v2';
 const CACHE_TTL_SECONDS = 300;
 
 export async function listPublishedPortfolio(): Promise<PublicPortfolioItem[]> {
@@ -28,6 +29,7 @@ export async function listPublishedPortfolio(): Promise<PublicPortfolioItem[]> {
       title: true,
       summary: true,
       client: true,
+      category: true,
       coverImage: true,
       order: true,
     },
@@ -47,6 +49,7 @@ export function getPortfolioBySlug(slug: string): Promise<PublicPortfolioDetail 
       summary: true,
       description: true,
       client: true,
+      category: true,
       coverImage: true,
       order: true,
     },
@@ -78,6 +81,7 @@ const adminSelect = {
   summary: true,
   description: true,
   client: true,
+  category: true,
   coverImage: true,
   order: true,
   isPublished: true,
@@ -92,6 +96,7 @@ type PortfolioRow = {
   summary: string;
   description: string | null;
   client: string | null;
+  category: PortfolioCategory | null;
   coverImage: string | null;
   order: number;
   isPublished: boolean;
@@ -107,6 +112,7 @@ function toAdmin(row: PortfolioRow): AdminPortfolioItem {
     summary: row.summary,
     description: row.description,
     client: row.client,
+    category: row.category,
     coverImage: row.coverImage,
     order: row.order,
     isPublished: row.isPublished,
@@ -136,6 +142,7 @@ export async function createPortfolioItem(
       summary: input.summary,
       description: input.description ?? null,
       client: input.client ?? null,
+      category: input.category ?? null,
       coverImage: input.coverImage ?? null,
       order: input.order,
       isPublished: input.isPublished,
@@ -169,6 +176,7 @@ export async function updatePortfolioItem(
       ...(input.summary !== undefined ? { summary: input.summary } : {}),
       ...(input.description !== undefined ? { description: input.description } : {}),
       ...(input.client !== undefined ? { client: input.client } : {}),
+      ...(input.category !== undefined ? { category: input.category } : {}),
       ...(input.coverImage !== undefined ? { coverImage: input.coverImage } : {}),
       ...(input.order !== undefined ? { order: input.order } : {}),
       ...(input.isPublished !== undefined ? { isPublished: input.isPublished } : {}),

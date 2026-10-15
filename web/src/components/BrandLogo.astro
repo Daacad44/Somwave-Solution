@@ -1,6 +1,7 @@
 ---
 // Original Somwave Solution wordmark. Do not redraw, recolor, or crop the artwork.
-// The source PNG includes large empty canvas; this frame zooms to the mark only.
+// This optimized, trimmed derivative preserves the official artwork and avoids
+// downloading the large transparent source canvas on every page.
 interface Props {
   class?: string;
   size?: 'sm' | 'md';
@@ -10,11 +11,13 @@ const { class: className = '', size = 'md' } = Astro.props;
 
 <span class:list={['brand-logo', size === 'sm' ? 'brand-logo-sm' : 'brand-logo-md', className]}>
   <img
-    src="/brand/somwave-logo.png"
+    src="/brand/somwave-logo-compact.webp"
     alt="Somwave Solution"
-    width="2000"
-    height="667"
-    decoding="async"
+    width="403"
+    height="146"
+    decoding="sync"
+    loading="eager"
+    fetchpriority="high"
     class="brand-logo-img"
   />
 </span>
@@ -23,7 +26,6 @@ const { class: className = '', size = 'md' } = Astro.props;
   .brand-logo {
     position: relative;
     display: inline-block;
-    overflow: hidden;
     flex-shrink: 0;
   }
   .brand-logo-sm {
@@ -35,12 +37,7 @@ const { class: className = '', size = 'md' } = Astro.props;
     height: 48px;
   }
   .brand-logo-img {
-    position: absolute;
-    left: 50%;
-    top: 50%;
     width: auto;
-    max-width: none;
-    height: 229%;
-    transform: translate(-50%, -50%);
+    height: 100%;
   }
 </style>

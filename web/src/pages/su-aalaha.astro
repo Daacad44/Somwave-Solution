@@ -5,12 +5,13 @@ export const prerender = false;
 
 import PageLayout from '../layouts/PageLayout.astro';
 import { fetchFaqs } from '../lib/api';
+import { displayFaq } from '../lib/seedTranslations';
 import type { PublicFaq } from '@somwave/shared';
 
 let faqs: PublicFaq[] = [];
 let failed = false;
 try {
-  faqs = await fetchFaqs();
+  faqs = (await fetchFaqs()).map(displayFaq);
 } catch {
   failed = true;
 }

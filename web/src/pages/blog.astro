@@ -6,6 +6,7 @@ export const prerender = false;
 import PageLayout from '../layouts/PageLayout.astro';
 import PostCard from '../components/PostCard.astro';
 import { fetchPosts } from '../lib/api';
+import { displayPostSummary } from '../lib/seedTranslations';
 import { markCmsPageFresh } from '../lib/publicCache';
 import type { PublicPostSummary } from '@somwave/shared';
 
@@ -20,7 +21,7 @@ let pageSize = 20;
 let failed = false;
 try {
   const result = await fetchPosts({ page });
-  posts = result.items;
+  posts = result.items.map(displayPostSummary);
   total = result.total;
   pageSize = result.pageSize;
 } catch {

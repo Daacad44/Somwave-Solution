@@ -1,7 +1,11 @@
 ---
+import { defaultSiteContent, type SiteContent } from '@somwave/shared';
+interface Props { content?: SiteContent['cta'] }
+const { content = defaultSiteContent.cta } = Astro.props;
 ---
 
 <section class="relative overflow-hidden bg-primary text-surface" aria-labelledby="cta-heading">
+  {content.backgroundImageUrl && <img src={content.backgroundImageUrl} alt="" loading="lazy" class="absolute inset-0 h-full w-full object-cover opacity-25" aria-hidden="true" />}
   <div class="home-cta-wave pointer-events-none absolute inset-y-0 end-0 w-1/2" aria-hidden="true">
   </div>
   <div class="relative mx-auto max-w-site px-4 py-20 sm:px-6">
@@ -9,23 +13,23 @@
       id="cta-heading"
       class="max-w-xl text-3xl font-extrabold tracking-tight sm:text-4xl"
     >
-      Ready to move<br />your business forward?
+      {content.headline}
     </h2>
     <p class="mt-4 max-w-lg text-base leading-relaxed text-surface/75">
-      Tell us what you are building. We will help turn your idea into a solution that works.
+      {content.description}
     </p>
     <div class="mt-8 flex flex-wrap gap-3">
       <a
         href="/nala-soo-xiriir"
         class="inline-flex h-12 items-center rounded-md bg-brand px-6 text-sm font-semibold text-surface transition-colors hover:bg-brand-600"
       >
-        Get in touch
+        Contact Us
       </a>
       <a
-        href="tel:+252612345678"
+        href="/shaqooyinka"
         class="inline-flex h-12 items-center rounded-md border border-surface/25 px-6 text-sm font-semibold text-surface transition-colors hover:bg-surface/10"
       >
-        Talk to our team
+        View Our Portfolio
       </a>
     </div>
   </div>

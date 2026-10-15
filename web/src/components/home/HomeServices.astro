@@ -1,39 +1,55 @@
 ---
-import { homeServices } from '../../lib/homeContent';
+import { additionalServices, displayService } from '../../lib/serviceDisplay';
 import HomeIcon from './HomeIcon.astro';
+import type { PublicService } from '@somwave/shared';
+
+interface Props { services: PublicService[] | null }
+const { services: source } = Astro.props;
+const failed = source === null;
+const services = (source ?? []).map(displayService);
+const icons = ['software', 'web', 'mobile', 'consult'] as const;
 ---
 
 <section id="adeegyada" class="bg-surface" aria-labelledby="services-heading">
-  <div class="mx-auto max-w-site px-4 py-20 sm:px-6">
-    <p class="text-sm font-semibold text-brand">Our services</p>
-    <h2
-      id="services-heading"
-      class="mt-2 max-w-xl text-3xl font-extrabold tracking-tight text-ink sm:text-4xl"
-    >
-      Digital solutions<br />for modern businesses
-    </h2>
+  <div class="section-shell">
+    <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <p class="section-kicker">Our services</p>
+        <h2 id="services-heading" class="section-title mt-4">Comprehensive IT Solutions for Your Business</h2>
+      </div>
+      <div class="max-w-sm">
+        <p class="text-sm leading-7 text-muted">Explore the services currently offered by Somwave, from planning through launch and support.</p>
+        <a href="/adeegyada" class="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-bold text-brand hover:text-brand-600">View all services <HomeIcon name="arrow" class="h-4 w-4" /></a>
+      </div>
+    </div>
 
-    <div class="mt-10 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-      {
-        homeServices.map((item) => (
-          <article class="flex flex-col rounded-lg border border-border bg-surface p-6 shadow-sm transition-shadow hover:shadow-md">
-            <div
-              class="mb-5 flex h-11 w-11 items-center justify-center rounded-md bg-brand-soft text-brand"
-            >
-              <HomeIcon name={item.icon} />
+    {failed ? (
+      <p class="mt-9 rounded-lg border border-border bg-surface-alt p-6 text-muted">Services are unavailable right now. Please try again later.</p>
+    ) : services.length === 0 ? (
+      <p class="mt-9 rounded-lg border border-border bg-surface-alt p-6 text-muted">No services have been published yet.</p>
+    ) : (
+      <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {services.slice(0, 6).map((item, index) => (
+          <article class="premium-card group flex min-h-64 flex-col p-6" data-reveal>
+            <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-md bg-brand text-surface transition-transform group-hover:scale-105">
+              <HomeIcon name={icons[index % icons.length] ?? 'web'} class="h-6 w-6" />
             </div>
-            <h3 class="text-lg font-semibold text-ink">{item.title}</h3>
-            <p class="mt-2 flex-1 text-[15px] leading-relaxed text-muted">{item.description}</p>
-            <a
-              href={item.href}
-              class="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-brand"
-            >
-              Learn more
-              <HomeIcon name="arrow" class="h-4 w-4" />
+            <h3 class="text-lg font-bold text-primary">{item.title}</h3>
+            <p class="mt-3 flex-1 text-sm leading-7 text-muted">{item.summary}</p>
+            <a href={`/adeegyada/${item.slug}`} class="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-bold text-brand hover:text-brand-600">
+              Explore {item.title} <HomeIcon name="arrow" class="h-4 w-4" />
             </a>
           </article>
-        ))
-      }
-    </div>
+        ))}
+        {additionalServices.filter((extra) => !services.some((item) => item.title.toLowerCase() === extra.title.toLowerCase())).slice(0, Math.max(0, 6 - services.length)).map((item) => (
+          <article class="premium-card group flex min-h-64 flex-col p-6" data-reveal>
+            <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-md bg-brand text-surface transition-transform group-hover:scale-105"><HomeIcon name={item.icon} class="h-6 w-6" /></div>
+            <h3 class="text-lg font-bold text-primary">{item.title}</h3>
+            <p class="mt-3 flex-1 text-sm leading-7 text-muted">{item.summary}</p>
+            <a href="/nala-soo-xiriir" class="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-bold text-brand hover:text-brand-600">Discuss {item.title} <HomeIcon name="arrow" class="h-4 w-4" /></a>
+          </article>
+        ))}
+      </div>
+    )}
   </div>
 </section>

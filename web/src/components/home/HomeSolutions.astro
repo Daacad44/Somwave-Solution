@@ -1,0 +1,90 @@
+---
+import BrandLogo from '../BrandLogo.astro';
+import HomeIcon from './HomeIcon.astro';
+
+const left = [
+  { title: 'Websites', note: 'A clear digital first impression', icon: 'web' as const },
+  { title: 'Mobile Apps', note: 'Experiences on the move', icon: 'mobile' as const },
+  { title: 'Custom Software', note: 'Tools shaped around your work', icon: 'software' as const },
+  { title: 'IT Consulting', note: 'Practical technical guidance', icon: 'consult' as const },
+];
+const right = [
+  { title: 'Payments', note: 'Connected transaction flows', icon: 'payment' as const },
+  { title: 'CRM', note: 'Customer relationships in view', icon: 'crm' as const },
+  { title: 'Automation', note: 'Less repetitive work', icon: 'automation' as const },
+  { title: 'Analytics', note: 'Useful insights from your data', icon: 'analytics' as const },
+];
+---
+
+<section id="solutions" class="solutions relative overflow-hidden" aria-labelledby="solutions-heading">
+  <div class="section-shell relative z-10 text-center">
+    <p class="section-kicker">Our approach</p>
+    <h2 id="solutions-heading" class="section-title mx-auto mt-4">All-in-One Digital Solutions</h2>
+    <p class="mx-auto mt-4 max-w-2xl text-sm leading-7 text-muted sm:text-base">We connect the digital tools your business needs into a clearer, more useful experience.</p>
+
+    <div class="solution-layout relative mt-12">
+      <svg class="connectors pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1200 480" preserveAspectRatio="none" fill="none" aria-hidden="true">
+        {[65, 180, 300, 415].map((y) => (
+          <>
+            <path d={`M 475 240 C 400 240, 390 ${y}, 285 ${y}`} />
+            <path d={`M 725 240 C 800 240, 810 ${y}, 915 ${y}`} />
+            <circle cx="285" cy={y} r="4" />
+            <circle cx="915" cy={y} r="4" />
+          </>
+        ))}
+      </svg>
+
+      <div class="solution-side solution-left">
+        {left.map((item) => (
+          <div class="solution-node" data-reveal>
+            <span class="solution-icon"><HomeIcon name={item.icon} class="h-5 w-5" /></span>
+            <div><h3>{item.title}</h3><p>{item.note}</p></div>
+          </div>
+        ))}
+      </div>
+
+      <div class="solution-center" data-reveal>
+        <div class="solution-core">
+          <BrandLogo size="md" />
+          <p>One connected ecosystem</p>
+        </div>
+      </div>
+
+      <div class="solution-side solution-right">
+        {right.map((item) => (
+          <div class="solution-node" data-reveal>
+            <span class="solution-icon"><HomeIcon name={item.icon} class="h-5 w-5" /></span>
+            <div><h3>{item.title}</h3><p>{item.note}</p></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .solutions { background: radial-gradient(circle at 50% 45%, var(--color-surface) 0, var(--color-sky) 72%); }
+  .solution-layout { display: grid; grid-template-areas: 'center' 'left' 'right'; gap: 2rem; align-items: center; }
+  .solution-left { grid-area: left; }
+  .solution-center { grid-area: center; display: flex; justify-content: center; }
+  .solution-right { grid-area: right; }
+  .solution-side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+  .solution-node { display: flex; min-width: 0; align-items: center; gap: 0.75rem; text-align: start; }
+  .solution-icon { display: inline-flex; width: 2.9rem; height: 2.9rem; flex: none; align-items: center; justify-content: center; border-radius: 50%; background: var(--color-brand); color: white; box-shadow: var(--shadow-md); }
+  .solution-node h3 { color: var(--color-primary); font-size: 0.9rem; font-weight: 800; }
+  .solution-node p { margin-top: 0.1rem; color: var(--color-muted); font-size: 0.75rem; line-height: 1.5; }
+  .solution-core { display: flex; width: min(70vw, 250px); aspect-ratio: 1; flex-direction: column; align-items: center; justify-content: center; border: 1px solid color-mix(in srgb, var(--color-brand) 20%, var(--color-border)); border-radius: 50%; background: white; box-shadow: 0 0 0 14px rgb(255 255 255 / 0.5), var(--shadow-float); }
+  .solution-core p { margin-top: 0.5rem; color: var(--color-muted); font-size: 0.7rem; font-weight: 700; }
+  .connectors { display: none; }
+  .connectors path { stroke: var(--color-brand); stroke-width: 1.2; stroke-dasharray: 4 5; opacity: 0.38; animation: dash 14s linear infinite; }
+  .connectors circle { fill: var(--color-brand); opacity: 0.55; }
+  @keyframes dash { to { stroke-dashoffset: -90; } }
+  @media (min-width: 1024px) {
+    .solution-layout { min-height: 480px; grid-template-columns: 1fr 280px 1fr; grid-template-areas: 'left center right'; gap: 5rem; }
+    .solution-side { grid-template-columns: 1fr; gap: 2rem; }
+    .solution-left .solution-node { flex-direction: row-reverse; text-align: end; }
+    .connectors { display: block; }
+  }
+  @media (max-width: 390px) { .solution-side { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { .connectors path { animation: none; } }
+</style>

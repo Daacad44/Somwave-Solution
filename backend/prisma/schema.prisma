@@ -364,6 +364,12 @@ model Post {
   @@map("posts")
 }
 
+enum PortfolioCategory {
+  WEBSITE
+  MOBILE_APP
+  CUSTOM_SOFTWARE
+}
+
 model PortfolioItem {
   id          String    @id @default(cuid())
   slug        String    @unique
@@ -371,6 +377,7 @@ model PortfolioItem {
   summary     String
   description String?
   client      String?
+  category    PortfolioCategory?
   coverImage  String?   @map("cover_image")
   order       Int       @default(0)
   isPublished Boolean   @default(true) @map("is_published")

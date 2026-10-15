@@ -1,50 +1,49 @@
 ---
-import { homeTestimonials } from '../../lib/homeContent';
 import HomeIcon from './HomeIcon.astro';
+import type { PublicTestimonial } from '@somwave/shared';
+
+interface Props { testimonials: PublicTestimonial[] | null }
+const { testimonials: source } = Astro.props;
+const testimonials = source ?? [];
 ---
 
-<section id="marag-furka-home" class="bg-surface" aria-labelledby="testimonials-heading">
-  <div class="mx-auto max-w-site px-4 py-20 sm:px-6">
-    <p class="text-sm font-semibold text-brand">Testimonials</p>
-    <h2
-      id="testimonials-heading"
-      class="mt-2 max-w-xl text-3xl font-extrabold tracking-tight text-ink sm:text-4xl"
-    >
-      What our clients<br />say about us
-    </h2>
-
-    <div class="mt-10 grid gap-5 md:grid-cols-3">
-      {
-        homeTestimonials.map((item) => (
-          <figure class="flex h-full flex-col rounded-lg border border-border bg-surface p-6 shadow-sm">
-            <HomeIcon name="quote" class="h-7 w-7 text-brand" />
-            <blockquote class="mt-4 flex-1 text-[15px] leading-relaxed text-ink">
-              “{item.quote}”
-            </blockquote>
-            <figcaption class="mt-5 flex items-center gap-3">
-              <span
-                class="flex h-11 w-11 items-center justify-center rounded-full bg-brand-soft text-sm font-semibold text-brand"
-                aria-hidden="true"
-              >
-                {item.author.charAt(0)}
-              </span>
-              <div>
-                <p class="text-sm font-semibold text-ink">{item.author}</p>
-                <p class="text-xs text-muted">
-                  {item.role} · {item.company}
-                </p>
-                <div class="mt-1 flex gap-0.5" aria-label={`${item.rating} out of 5 stars`}>
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <span class={i < item.rating ? 'text-brand' : 'text-border'} aria-hidden="true">
-                      ★
-                    </span>
-                  ))}
-                </div>
-              </div>
+{testimonials.length > 0 && (
+  <section id="marag-furka-home" class="bg-surface" aria-labelledby="testimonials-heading">
+    <div class="section-shell">
+      <div class="flex items-end justify-between gap-4">
+        <div>
+          <p class="section-kicker">Testimonials</p>
+          <h2 id="testimonials-heading" class="section-title mt-4">What Our Clients Say</h2>
+        </div>
+        {testimonials.length > 1 && (
+          <div class="flex gap-2">
+            <button type="button" class="testimonial-prev flex h-11 w-11 items-center justify-center rounded-full border border-border text-brand hover:border-brand" aria-label="Previous testimonial">←</button>
+            <button type="button" class="testimonial-next flex h-11 w-11 items-center justify-center rounded-full border border-border text-brand hover:border-brand" aria-label="Next testimonial">→</button>
+          </div>
+        )}
+      </div>
+      <div class="testimonial-track mt-9 flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4">
+        {testimonials.map((item) => (
+          <figure class="premium-card flex min-w-[min(85vw,350px)] max-w-[350px] snap-start flex-col p-6">
+            <HomeIcon name="quote" class="h-8 w-8 text-brand" />
+            <blockquote class="mt-4 flex-1 text-sm leading-7 text-primary">“{item.quote}”</blockquote>
+            <figcaption class="mt-6 flex items-center gap-3 border-t border-border pt-4">
+              {item.avatarUrl ? <img src={item.avatarUrl} alt="" width="44" height="44" loading="lazy" class="h-11 w-11 rounded-full object-cover" /> : <span class="flex h-11 w-11 items-center justify-center rounded-full bg-brand-soft font-bold text-brand" aria-hidden="true">{item.author.charAt(0)}</span>}
+              <span><strong class="block text-sm text-primary">{item.author}</strong>{item.role || item.company ? <small class="text-xs text-muted">{[item.role, item.company].filter(Boolean).join(' · ')}</small> : null}</span>
+              {item.rating ? <span class="ml-auto text-xs font-bold text-brand" aria-label={`${item.rating} out of 5 stars`}>{item.rating}/5</span> : null}
             </figcaption>
           </figure>
-        ))
-      }
+        ))}
+      </div>
     </div>
-  </div>
-</section>
+  </section>
+)}
+
+<script>
+  const track = document.querySelector<HTMLElement>('.testimonial-track');
+  const previous = document.querySelector<HTMLButtonElement>('.testimonial-prev');
+  const next = document.querySelector<HTMLButtonElement>('.testimonial-next');
+  const move = (direction: number) => track?.scrollBy({ left: direction * ((track.querySelector('figure')?.getBoundingClientRect().width ?? 350) + 20), behavior: 'smooth' });
+  previous?.addEventListener('click', () => move(-1));
+  next?.addEventListener('click', () => move(1));
+</script>

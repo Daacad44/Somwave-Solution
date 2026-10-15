@@ -5,32 +5,42 @@ export const prerender = false;
 
 import PageLayout from '../layouts/PageLayout.astro';
 import { markCmsPageFresh } from '../lib/publicCache';
+import { fetchHomepage } from '../lib/api';
+import { defaultSiteContent, type PublicHomepage } from '@somwave/shared';
 import Hero from '../components/Hero.astro';
 import TrustedLogos from '../components/home/TrustedLogos.astro';
 import HomeServices from '../components/home/HomeServices.astro';
+import HomeSolutions from '../components/home/HomeSolutions.astro';
 import WhySomwave from '../components/home/WhySomwave.astro';
-import HomeProcess from '../components/home/HomeProcess.astro';
 import HomePortfolio from '../components/home/HomePortfolio.astro';
-import HomeStats from '../components/home/HomeStats.astro';
 import HomeTestimonials from '../components/home/HomeTestimonials.astro';
 import HomeArticles from '../components/home/HomeArticles.astro';
+import HomeFaq from '../components/home/HomeFaq.astro';
 import FinalCta from '../components/home/FinalCta.astro';
 
 markCmsPageFresh(Astro.response.headers);
+let homepage: PublicHomepage = { siteContent: defaultSiteContent, services: null, portfolio: null, testimonials: null, posts: null, faqs: null };
+try {
+  homepage = await fetchHomepage();
+} catch {
+  // Keep the verified defaults when the CMS is temporarily unavailable.
+}
+const siteContent = homepage.siteContent;
 ---
 
 <PageLayout
   title="Somwave Solution — Technology for what comes next"
   description="Somwave Solution builds websites, mobile apps, custom software, and digital tools for growing businesses."
+  siteContent={siteContent}
 >
-  <Hero />
-  <TrustedLogos />
-  <HomeServices />
+  <Hero content={siteContent.hero} />
+  <TrustedLogos content={siteContent.trusted} />
+  <HomeServices services={homepage.services} />
+  <HomeSolutions />
+  <HomePortfolio projects={homepage.portfolio} />
   <WhySomwave />
-  <HomeProcess />
-  <HomePortfolio />
-  <HomeStats />
-  <HomeTestimonials />
-  <HomeArticles />
-  <FinalCta />
+  <HomeTestimonials testimonials={homepage.testimonials} />
+  <HomeArticles posts={homepage.posts} />
+  <HomeFaq faqs={homepage.faqs} />
+  <FinalCta content={siteContent.cta} />
 </PageLayout>

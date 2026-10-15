@@ -68,6 +68,9 @@ const MilestonesPage = lazy(() =>
 const ServicesAdminPage = lazy(() =>
   import('../features/cms/ServicesAdminPage').then((m) => ({ default: m.ServicesAdminPage })),
 );
+const SiteContentAdminPage = lazy(() =>
+  import('../features/cms/SiteContentAdminPage').then((m) => ({ default: m.SiteContentAdminPage })),
+);
 const PostsAdminPage = lazy(() =>
   import('../features/cms/PostsAdminPage').then((m) => ({ default: m.PostsAdminPage })),
 );
@@ -315,6 +318,14 @@ export function App(): ReactNode {
             element={
               <Guarded permission={PERMISSIONS.MILESTONES_READ}>
                 <MilestonesPage />
+              </Guarded>
+            }
+          />
+          <Route
+            path="/cms/site-content"
+            element={
+              <Guarded permission={PERMISSIONS.CONTENT_READ}>
+                <SiteContentAdminPage />
               </Guarded>
             }
           />

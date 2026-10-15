@@ -1,16 +1,24 @@
 ---
 import { trustedClients } from '../../lib/homeContent';
+import { defaultSiteContent, type SiteContent } from '@somwave/shared';
+
+interface Props { content?: SiteContent['trusted'] }
+const { content = defaultSiteContent.trusted } = Astro.props;
+const clients = trustedClients.filter((client) => content.visibleIds.includes(client.id));
 ---
 
-<section class="border-y border-border bg-surface" aria-labelledby="trusted-heading">
-  <div class="mx-auto max-w-site px-4 py-12 sm:px-6">
-    <h2 id="trusted-heading" class="sr-only">Companies that trust Somwave</h2>
-    <div class="logo-viewport">
+{content.approved && clients.length > 0 && <section class="bg-surface" aria-labelledby="trusted-heading">
+  <div class="section-shell !pt-10">
+    <div class="mb-6 flex flex-wrap items-center justify-center gap-3 text-center">
+      <h2 id="trusted-heading" class="text-sm font-bold tracking-wide text-primary sm:text-base">Trusted by leading businesses in Somalia</h2>
+      <button id="logo-motion-toggle" type="button" class="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted hover:border-brand hover:text-brand" aria-label="Pause logo carousel" aria-pressed="false">Pause</button>
+    </div>
+    <div class="logo-viewport rounded-lg border border-border bg-surface px-3 py-5 shadow-sm">
       <div class="logo-track">
         {
           [false, true].map((duplicate) => (
             <ul class="logo-group" aria-hidden={duplicate ? 'true' : undefined}>
-              {trustedClients.map((client) => (
+              {clients.map((client) => (
                 <li class="logo-item">
                   <img
                     src={client.logo}
@@ -28,7 +36,7 @@ import { trustedClients } from '../../lib/homeContent';
       </div>
     </div>
   </div>
-</section>
+</section>}
 
 <style>
   .logo-viewport {
@@ -43,7 +51,9 @@ import { trustedClients } from '../../lib/homeContent';
   }
 
   .logo-viewport:hover .logo-track,
-  .logo-viewport:focus-within .logo-track {
+  .logo-viewport:focus-within .logo-track,
+  .logo-viewport.is-paused .logo-track,
+  .logo-viewport.is-offscreen .logo-track {
     animation-play-state: paused;
   }
 
@@ -82,6 +92,7 @@ import { trustedClients } from '../../lib/homeContent';
   }
 
   @media (prefers-reduced-motion: reduce) {
+    #logo-motion-toggle { display: none; }
     .logo-viewport {
       overflow: visible;
       mask-image: none;
@@ -120,3 +131,22 @@ import { trustedClients } from '../../lib/homeContent';
     }
   }
 </style>
+
+<script>
+  const viewport = document.querySelector<HTMLElement>('.logo-viewport');
+  const toggle = document.querySelector<HTMLButtonElement>('#logo-motion-toggle');
+  if (viewport && toggle) {
+    toggle.addEventListener('click', () => {
+      const paused = viewport.classList.toggle('is-paused');
+      toggle.setAttribute('aria-pressed', String(paused));
+      toggle.setAttribute('aria-label', paused ? 'Resume logo carousel' : 'Pause logo carousel');
+      toggle.textContent = paused ? 'Play' : 'Pause';
+    });
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver(([entry]) => {
+        viewport.classList.toggle('is-offscreen', !entry?.isIntersecting);
+      });
+      observer.observe(viewport);
+    }
+  }
+</script>

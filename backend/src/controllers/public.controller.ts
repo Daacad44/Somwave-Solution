@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import type { CreateInquiryInput, CreateJobApplicationInput } from '@somwave/shared';
 import { AppError, sendData } from '../lib/http';
-import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from '@somwave/shared';
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, defaultSiteContent } from '@somwave/shared';
 import { listPublishedServices, getPublishedServiceBySlug } from '../services/service.service';
 import { createInquiry as createInquiryService } from '../services/inquiry.service';
 import { listPublishedPortfolio, getPortfolioBySlug } from '../services/portfolio.service';
@@ -12,11 +12,47 @@ import { listPublishedTestimonials } from '../services/testimonial.service';
 import { listPublishedTeam } from '../services/team.service';
 import { listPublishedFaqs } from '../services/faq.service';
 import { subscribe as subscribeService } from '../services/subscriber.service';
+import { readSiteContent } from '../services/site-content.service';
+
+export async function getHomepage(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const [siteContent, services, portfolio, testimonials, posts, faqs] = await Promise.allSettled([
+      readSiteContent(),
+      listPublishedServices(),
+      listPublishedPortfolio(),
+      listPublishedTestimonials(),
+      listPublishedPosts(1, 3),
+      listPublishedFaqs(),
+    ]);
+    sendData(res, {
+      siteContent: siteContent.status === 'fulfilled' ? siteContent.value : defaultSiteContent,
+      services: services.status === 'fulfilled' ? services.value : null,
+      portfolio: portfolio.status === 'fulfilled' ? portfolio.value : null,
+      testimonials: testimonials.status === 'fulfilled' ? testimonials.value : null,
+      posts: posts.status === 'fulfilled' ? posts.value.items : null,
+      faqs: faqs.status === 'fulfilled' ? faqs.value : null,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
 import type { CreateSubscriberInput } from '@somwave/shared';
 
 function parsePositiveInt(value: unknown, fallback: number): number {
   const parsed = typeof value === 'string' ? Number.parseInt(value, 10) : NaN;
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+export async function getSiteContent(
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    sendData(res, await readSiteContent());
+  } catch (err) {
+    next(err);
+  }
 }
 
 export async function getServices(_req: Request, res: Response, next: NextFunction): Promise<void> {

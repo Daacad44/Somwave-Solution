@@ -5,12 +5,14 @@ export const prerender = false;
 
 import PageLayout from '../../layouts/PageLayout.astro';
 import { fetchPost } from '../../lib/api';
+import { displayPostDetail } from '../../lib/seedTranslations';
 import { markCmsPageFresh } from '../../lib/publicCache';
 
 markCmsPageFresh(Astro.response.headers);
 
 const { slug } = Astro.params;
-const post = slug ? await fetchPost(slug) : null;
+const fetched = slug ? await fetchPost(slug) : null;
+const post = fetched ? displayPostDetail(fetched) : null;
 
 if (!post) {
   Astro.response.status = 404;

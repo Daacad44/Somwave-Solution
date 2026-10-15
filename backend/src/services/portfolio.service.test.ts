@@ -30,6 +30,7 @@ const item = {
   title: 'Web',
   summary: 'Sites',
   client: 'Acme',
+  category: 'WEBSITE',
   coverImage: null,
   order: 1,
 };
@@ -81,6 +82,7 @@ const createInput = {
   slug: 'web',
   title: 'Web',
   summary: 'Sites',
+  category: 'WEBSITE' as const,
   order: 1,
   isPublished: true,
 };
@@ -94,10 +96,11 @@ describe('createPortfolioItem', () => {
 
     expect(result.slug).toBe('web');
     const arg = vi.mocked(prisma.portfolioItem.create).mock.calls[0]?.[0] as {
-      data: { publishedAt: Date | null };
+      data: { publishedAt: Date | null; category: string | null };
     };
     expect(arg.data.publishedAt).toBeInstanceOf(Date);
-    expect(redis.del).toHaveBeenCalledWith('public:portfolio');
+    expect(arg.data.category).toBe('WEBSITE');
+    expect(redis.del).toHaveBeenCalledWith('public:portfolio:v2');
   });
 
   it('rejects a duplicate slug with CONFLICT', async () => {
@@ -136,6 +139,6 @@ describe('deletePortfolioItem', () => {
     await deletePortfolioItem('p1');
 
     expect(prisma.portfolioItem.delete).toHaveBeenCalledWith({ where: { id: 'p1' } });
-    expect(redis.del).toHaveBeenCalledWith('public:portfolio');
+    expect(redis.del).toHaveBeenCalledWith('public:portfolio:v2');
   });
 });

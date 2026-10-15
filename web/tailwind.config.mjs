@@ -21,6 +21,8 @@ export default {
         ink: 'var(--color-ink)',
         muted: 'var(--color-muted)',
         border: 'var(--color-border)',
+        sky: 'var(--color-sky)',
+        cyan: 'var(--color-cyan)',
       },
       fontFamily: {
         sans: ['var(--font-sans)'],
@@ -35,6 +37,7 @@ export default {
         sm: 'var(--shadow-sm)',
         md: 'var(--shadow-md)',
         lg: 'var(--shadow-lg)',
+        float: 'var(--shadow-float)',
       },
       maxWidth: {
         content: '1120px',

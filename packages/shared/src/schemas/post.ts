@@ -25,6 +25,7 @@ export const publicPostSummarySchema = z.object({
   authorName: z.string().nullable(),
   publishedAt: z.string().nullable(), // ISO 8601
   category: publicCategorySchema.nullable(),
+  readingMinutes: z.number().int().positive().optional(),
 });
 
 export type PublicPostSummary = z.infer<typeof publicPostSummarySchema>;

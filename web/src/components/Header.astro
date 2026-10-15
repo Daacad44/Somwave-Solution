@@ -8,26 +8,24 @@ const t = chrome[DEFAULT_LOCALE];
 const path = Astro.url.pathname;
 const links = [
   { href: '/', key: 'nav.home' },
+  { href: '/ku-saabsan', key: 'nav.about' },
   { href: '/adeegyada', key: 'nav.services' },
+  { href: '/#solutions', key: 'nav.solutions' },
   { href: '/shaqooyinka', key: 'nav.portfolio' },
-  { href: '/blog', key: 'nav.blog' },
-  { href: '/kooxda', key: 'nav.team' },
-  { href: '/marag-furka', key: 'nav.testimonials' },
-  { href: '/su-aalaha', key: 'nav.faq' },
-  { href: '/fursado-shaqo', key: 'nav.careers' },
   { href: '/nala-soo-xiriir', key: 'nav.contact' },
 ];
 const portalUrl = 'https://app.somwave.botandev.com';
 
 function isActive(href: string): boolean {
   if (href === '/') return path === '/';
+  if (href.startsWith('/#')) return false;
   return path === href || path.startsWith(`${href}/`);
 }
 ---
 
-<header class="sticky top-0 z-40 border-b border-border bg-surface">
+<header id="site-header" class="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur-md">
   <nav
-    class="mx-auto flex h-[72px] max-w-site items-center justify-between gap-3 px-4 sm:px-6"
+    class="mx-auto flex h-[76px] max-w-site items-center justify-between gap-3 px-4 sm:px-6"
     aria-label="Main navigation"
   >
     <a href="/" class="flex min-h-11 shrink-0 items-center">
@@ -35,7 +33,7 @@ function isActive(href: string): boolean {
       <span class="hidden sm:inline-flex"><BrandLogo size="md" /></span>
     </a>
 
-    <ul class="hidden min-w-0 items-center justify-center gap-x-3 xl:flex">
+    <ul class="hidden min-w-0 items-center justify-center gap-x-5 xl:flex">
       {
         links.map((link) => (
           <li>
@@ -43,7 +41,7 @@ function isActive(href: string): boolean {
               href={link.href}
               data-i18n={link.key}
               class:list={[
-                'inline-flex min-h-11 items-center whitespace-nowrap text-[12.5px] font-medium transition-colors hover:text-brand',
+                'inline-flex min-h-11 items-center whitespace-nowrap text-[13px] font-semibold transition-colors hover:text-brand',
                 isActive(link.href) ? 'text-brand' : 'text-ink/75',
               ]}
               aria-current={isActive(link.href) ? 'page' : undefined}
@@ -60,11 +58,10 @@ function isActive(href: string): boolean {
         <LanguageSwitcher />
       </div>
       <a
-        href={portalUrl}
-        data-i18n="cta.portal"
-        class="hidden h-11 min-w-max shrink-0 items-center whitespace-nowrap rounded-md bg-brand px-4 text-sm font-semibold text-surface transition-colors hover:bg-brand-600 sm:inline-flex"
+        href="/nala-soo-xiriir"
+        class="hidden h-11 min-w-max shrink-0 items-center whitespace-nowrap rounded-md bg-brand px-5 text-sm font-semibold text-surface shadow-md transition-all hover:-translate-y-0.5 hover:bg-brand-600 hover:shadow-lg sm:inline-flex"
       >
-        {t['cta.portal']}
+        <span data-i18n="cta.start">{t['cta.start']}</span><span class="ms-2" aria-hidden="true">→</span>
       </a>
       <button
         type="button"
@@ -80,7 +77,7 @@ function isActive(href: string): boolean {
     </div>
   </nav>
 
-  <div id="mobile-nav" class="hidden border-t border-border bg-surface xl:hidden" hidden>
+  <div id="mobile-nav" class="absolute inset-x-0 hidden max-h-[calc(100vh-76px)] overflow-y-auto border-t border-border bg-surface shadow-lg xl:hidden" hidden>
     <ul class="mx-auto flex max-w-site flex-col gap-1 px-4 py-3 sm:px-6">
       {
         links.map((link) => (
@@ -92,6 +89,7 @@ function isActive(href: string): boolean {
                 'flex min-h-11 items-center rounded-md px-3 text-sm font-medium',
                 isActive(link.href) ? 'bg-brand-soft text-brand' : 'text-ink hover:bg-surface-alt',
               ]}
+              aria-current={isActive(link.href) ? 'page' : undefined}
             >
               {t[link.key]}
             </a>
@@ -101,7 +99,7 @@ function isActive(href: string): boolean {
       <li class="px-3 py-3">
         <LanguageSwitcher />
       </li>
-      <li class="px-3 pb-2 sm:hidden">
+      <li class="px-3 pb-2">
         <a
           href={portalUrl}
           data-i18n="cta.portal"
@@ -119,6 +117,10 @@ function isActive(href: string): boolean {
   const panel = document.getElementById('mobile-nav');
   const openIcon = toggle?.querySelector('.nav-open-icon');
   const closeIcon = toggle?.querySelector('.nav-close-icon');
+  const header = document.getElementById('site-header');
+  const updateHeader = () => header?.classList.toggle('header-scrolled', window.scrollY > 12);
+  updateHeader();
+  window.addEventListener('scroll', updateHeader, { passive: true });
   if (toggle && panel) {
     toggle.addEventListener('click', () => {
       const open = toggle.getAttribute('aria-expanded') === 'true';
@@ -129,5 +131,25 @@ function isActive(href: string): boolean {
       openIcon?.classList.toggle('hidden', !open);
       closeIcon?.classList.toggle('hidden', open);
     });
+    panel.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => {
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.setAttribute('aria-label', 'Open menu');
+      panel.hidden = true;
+      panel.classList.add('hidden');
+      openIcon?.classList.remove('hidden');
+      closeIcon?.classList.add('hidden');
+    }));
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') {
+        toggle.click();
+        toggle.focus();
+      }
+    });
   }
 </script>
+
+<style>
+  #site-header { transition: box-shadow var(--motion-fast) ease; }
+  #site-header.header-scrolled { box-shadow: 0 8px 28px rgb(11 31 58 / 0.08); }
+  @media (prefers-reduced-motion: reduce) { #site-header { transition: none; } }
+</style>

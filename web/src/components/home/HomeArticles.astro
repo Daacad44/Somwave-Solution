@@ -1,15 +1,12 @@
 ---
-import { fetchLatestPosts } from '../../lib/api';
+import { displayPostSummary } from '../../lib/seedTranslations';
 import HomeIcon from './HomeIcon.astro';
 import type { PublicPostSummary } from '@somwave/shared';
 
-let posts: PublicPostSummary[] = [];
-let failed = false;
-try {
-  posts = await fetchLatestPosts();
-} catch {
-  failed = true;
-}
+interface Props { posts: PublicPostSummary[] | null }
+const { posts: source } = Astro.props;
+const failed = source === null;
+const posts = (source ?? []).map(displayPostSummary);
 
 function dateLabel(iso: string): string {
   return new Intl.DateTimeFormat('en', {
@@ -20,20 +17,20 @@ function dateLabel(iso: string): string {
 ---
 
 <section class="bg-surface" aria-labelledby="articles-heading">
-  <div class="mx-auto max-w-site px-4 py-20 sm:px-6">
+  <div class="section-shell">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <p class="text-sm font-semibold text-brand">Latest articles</p>
+        <p class="section-kicker">Our insights</p>
         <h2
           id="articles-heading"
-          class="mt-2 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl"
+          class="section-title mt-4"
         >
-          Ideas worth exploring
+          Latest Articles & Resources
         </h2>
       </div>
       <a
         href="/blog"
-        class="inline-flex h-12 w-fit items-center rounded-md border border-border px-5 text-sm font-semibold text-ink transition-colors hover:border-brand hover:text-brand"
+        class="inline-flex min-h-11 items-center text-sm font-bold text-brand hover:text-brand-600"
       >
         View all articles
       </a>
@@ -51,7 +48,7 @@ function dateLabel(iso: string): string {
       ) : (
         <div class="mt-10 grid gap-5 md:grid-cols-3">
           {posts.map((item) => (
-            <article class="flex flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-sm transition-shadow hover:shadow-md">
+            <article class="premium-card flex flex-col overflow-hidden" data-reveal>
               <div class="aspect-[16/9] overflow-hidden bg-surface-alt">
                 {
                   item.coverImage ? (
@@ -62,7 +59,7 @@ function dateLabel(iso: string): string {
                       height="720"
                       loading="lazy"
                       decoding="async"
-                      class="block h-full w-full object-cover"
+                      class="block h-full w-full object-cover transition-transform duration-300 hover:scale-105"
                     />
                   ) : (
                     <span class="flex h-full min-h-[168px] items-center justify-center" aria-hidden="true">
@@ -72,7 +69,7 @@ function dateLabel(iso: string): string {
                 }
               </div>
               <div class="flex flex-1 flex-col p-5">
-                <div class="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-accent-600">
+                <div class="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-brand">
                   {item.category ? <span>{item.category.name}</span> : null}
                   {item.authorName ? (
                     <span class="font-medium normal-case tracking-normal text-muted">{item.authorName}</span>
@@ -84,13 +81,10 @@ function dateLabel(iso: string): string {
                   </a>
                 </h3>
                 <p class="mt-2 line-clamp-3 flex-1 text-sm leading-relaxed text-muted">{item.excerpt}</p>
-                {
-                  item.publishedAt ? (
-                    <time class="mt-2 text-xs font-medium text-muted" datetime={item.publishedAt}>
-                      {dateLabel(item.publishedAt)}
-                    </time>
-                  ) : null
-                }
+                <div class="mt-3 flex flex-wrap gap-2 text-xs font-medium text-muted">
+                  {item.publishedAt ? <time datetime={item.publishedAt}>{dateLabel(item.publishedAt)}</time> : null}
+                  {item.readingMinutes ? <span>· About {item.readingMinutes} min read</span> : null}
+                </div>
                 <a
                   href={`/blog/${item.slug}`}
                   class="mt-4 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-brand"

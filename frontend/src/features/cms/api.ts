@@ -24,8 +24,20 @@ import type {
   CreateFaqInput,
   UpdateFaqInput,
   AdminSubscriber,
+  SiteContent,
 } from '@somwave/shared';
 import { apiFetch, apiUpload } from '../../lib/apiClient';
+
+export function getSiteContent(): Promise<SiteContent> {
+  return apiFetch<SiteContent>('/cms/site-content');
+}
+
+export function saveSiteContent(content: SiteContent): Promise<SiteContent> {
+  return apiFetch<SiteContent>('/cms/site-content', {
+    method: 'PUT',
+    body: JSON.stringify(content),
+  });
+}
 
 export function listServices(): Promise<AdminService[]> {
   return apiFetch<AdminService[]>('/cms/services');

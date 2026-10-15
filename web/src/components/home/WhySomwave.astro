@@ -1,35 +1,35 @@
 ---
-import { whyItems } from '../../lib/homeContent';
 import HomeIcon from './HomeIcon.astro';
+
+const benefits = [
+  { title: 'Experienced Team', description: 'People who bring practical technical judgment to your project.', icon: 'skill' as const },
+  { title: 'Quality & Security', description: 'Thoughtful design and security-minded engineering from the start.', icon: 'trust' as const },
+  { title: 'On-Time Delivery', description: 'Clear milestones and communication throughout the work.', icon: 'value' as const },
+  { title: 'Ongoing Support', description: 'Help to maintain and improve your solution after launch.', icon: 'support' as const },
+];
 ---
 
-<section class="bg-primary text-surface" aria-labelledby="why-heading">
-  <div class="mx-auto max-w-site px-4 py-20 sm:px-6">
-    <p class="text-sm font-semibold text-surface/70">Why Somwave?</p>
-    <div class="mt-2 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-      <h2 id="why-heading" class="max-w-xl text-3xl font-extrabold tracking-tight sm:text-4xl">
-        Why businesses<br />choose Somwave
-      </h2>
-      <a
-        href="/nala-soo-xiriir"
-        class="inline-flex h-12 w-fit items-center rounded-md bg-brand px-6 text-sm font-semibold text-surface transition-colors hover:bg-brand-600"
-      >
-        Work with us
-      </a>
+<section class="why-section relative overflow-hidden bg-primary text-surface" aria-labelledby="why-heading">
+  <div class="section-shell relative grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-16">
+    <div>
+      <p class="section-kicker">Why choose Somwave</p>
+      <h2 id="why-heading" class="mt-5 max-w-xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl">Your Technology Partner for Success</h2>
+      <p class="mt-5 max-w-lg text-sm leading-7 text-surface/75 sm:text-base">We combine design, technology, and practical planning to build solutions around your business goals.</p>
+      <a href="/ku-saabsan" class="mt-7 inline-flex min-h-12 items-center gap-2 rounded-md bg-brand px-6 text-sm font-bold text-surface transition-colors hover:bg-brand-600">Learn about Somwave <HomeIcon name="arrow" class="h-4 w-4" /></a>
     </div>
-
-    <div class="mt-10 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-      {
-        whyItems.map((item) => (
-          <article class="rounded-lg bg-surface p-6 text-ink shadow-sm">
-            <div class="mb-5 flex h-11 w-11 items-center justify-center rounded-md bg-brand-soft text-brand">
-              <HomeIcon name={item.icon} />
-            </div>
-            <h3 class="text-lg font-semibold">{item.title}</h3>
-            <p class="mt-2 text-[15px] leading-relaxed text-muted">{item.description}</p>
-          </article>
-        ))
-      }
+    <div class="grid gap-4 sm:grid-cols-2">
+      {benefits.map((item) => (
+        <article class="rounded-lg border border-surface/15 bg-surface/5 p-5 backdrop-blur-sm transition-colors hover:border-brand/80 hover:bg-surface/10" data-reveal>
+          <div class="mb-5 flex h-12 w-12 items-center justify-center rounded-md border border-brand/50 bg-brand/15 text-cyan"><HomeIcon name={item.icon} class="h-6 w-6" /></div>
+          <h3 class="text-base font-bold">{item.title}</h3>
+          <p class="mt-2 text-sm leading-6 text-surface/70">{item.description}</p>
+        </article>
+      ))}
     </div>
   </div>
 </section>
+
+<style>
+  .why-section { background-image: radial-gradient(circle at 85% 5%, color-mix(in srgb, var(--color-brand) 27%, transparent), transparent 37%); }
+  .why-section .section-kicker { background: rgb(255 255 255 / 0.1); color: var(--color-surface); border-color: rgb(255 255 255 / 0.2); }
+</style>

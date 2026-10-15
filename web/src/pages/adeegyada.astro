@@ -6,12 +6,13 @@ export const prerender = false;
 import PageLayout from '../layouts/PageLayout.astro';
 import ServiceCard from '../components/ServiceCard.astro';
 import { fetchServices } from '../lib/api';
+import { additionalServices, displayService } from '../lib/serviceDisplay';
 import type { PublicService } from '@somwave/shared';
 
 let services: PublicService[] = [];
 let failed = false;
 try {
-  services = await fetchServices();
+  services = (await fetchServices()).map(displayService);
 } catch {
   failed = true;
 }
@@ -49,6 +50,9 @@ try {
               description={service.summary}
               href={`/adeegyada/${service.slug}`}
             />
+          ))}
+          {additionalServices.filter((extra) => !services.some((service) => service.title.toLowerCase() === extra.title.toLowerCase())).map((extra) => (
+            <ServiceCard title={extra.title} description={extra.summary} href="/nala-soo-xiriir" />
           ))}
         </div>
       )

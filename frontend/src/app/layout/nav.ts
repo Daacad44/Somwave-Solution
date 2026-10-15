@@ -13,6 +13,7 @@ export type NavGroup = {
 };
 
 const WEBSITE_ITEMS: NavItem[] = [
+  { to: '/cms/site-content', label: 'Website Content', permission: PERMISSIONS.CONTENT_READ },
   { to: '/cms/services', label: 'Services', permission: PERMISSIONS.CONTENT_READ },
   { to: '/cms/posts', label: 'Articles', permission: PERMISSIONS.CONTENT_READ },
   { to: '/cms/portfolio', label: 'Portfolio', permission: PERMISSIONS.CONTENT_READ },

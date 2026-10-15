@@ -42,6 +42,7 @@ export function PortfolioFormModal({ open, onClose, item }: PortfolioFormModalPr
       summary: item?.summary ?? '',
       description: item?.description ?? '',
       client: item?.client ?? undefined,
+      category: item?.category ?? undefined,
       coverImage: item?.coverImage ?? undefined,
       order: item?.order ?? 0,
       isPublished: item?.isPublished ?? true,
@@ -66,6 +67,7 @@ export function PortfolioFormModal({ open, onClose, item }: PortfolioFormModalPr
             summary: values.summary,
             description: orUndefined(values.description) ?? null,
             client: orUndefined(values.client) ?? null,
+            category: values.category || null,
             coverImage: orUndefined(values.coverImage) ?? null,
             order: values.order,
             isPublished: values.isPublished,
@@ -76,6 +78,7 @@ export function PortfolioFormModal({ open, onClose, item }: PortfolioFormModalPr
           ...values,
           description: orUndefined(values.description),
           client: orUndefined(values.client),
+          category: values.category || undefined,
           coverImage: orUndefined(values.coverImage),
         });
       }
@@ -124,6 +127,19 @@ export function PortfolioFormModal({ open, onClose, item }: PortfolioFormModalPr
             {...register('order', { valueAsNumber: true })}
           />
         </div>
+
+        <label className="flex flex-col gap-1 text-sm font-medium text-ink">
+          Category
+          <select
+            className="h-11 rounded-md border border-border bg-surface px-3 text-base text-ink"
+            {...register('category', { setValueAs: (value: string) => value || undefined })}
+          >
+            <option value="">Select a category</option>
+            <option value="WEBSITE">Websites</option>
+            <option value="MOBILE_APP">Mobile Apps</option>
+            <option value="CUSTOM_SOFTWARE">Custom Software</option>
+          </select>
+        </label>
 
         <Input
           label="Image URL (optional)"
