@@ -1,5 +1,6 @@
 ---
-import { EMPLOYMENT_TYPE_LABELS, type EmploymentType } from '@somwave/shared';
+import type { EmploymentType } from '@somwave/shared';
+import { employmentTypeLabels } from '../lib/employmentTypes';
 
 interface Props {
   slug: string;
@@ -16,11 +17,11 @@ const { slug, title, location, employmentType, summary } = Astro.props;
   class="flex flex-col rounded-lg border border-border bg-surface p-6 shadow-sm transition-shadow hover:shadow-md"
 >
   <div class="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em]">
-    <span class="text-accent-600">{EMPLOYMENT_TYPE_LABELS[employmentType]}</span>
+    <span class="text-accent-600">{employmentTypeLabels[employmentType]}</span>
     <span class="text-border" aria-hidden="true">•</span>
     <span class="text-muted">{location}</span>
   </div>
   <h3 class="mt-2 text-lg font-semibold text-ink">{title}</h3>
   <p class="mt-2 flex-1 text-[15px] leading-relaxed text-muted">{summary}</p>
-  <span class="mt-4 text-sm font-semibold text-accent-600">Faahfaahin &amp; codso →</span>
+  <span class="mt-4 text-sm font-semibold text-accent-600">Details &amp; apply →</span>
 </a>

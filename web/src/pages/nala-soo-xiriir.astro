@@ -8,25 +8,25 @@ const fieldClass =
 ---
 
 <PageLayout
-  title="Nala soo xiriir — Somwave"
-  description="La xiriir Somwave si aad u bilowdo mashruucaaga dijital ah."
+  title="Contact — Somwave"
+  description="Contact Somwave to talk about your next digital project."
 >
   <section class="mx-auto max-w-content px-4 py-20 sm:px-6">
     <div class="grid gap-12 md:grid-cols-[1fr_1.1fr]">
       <div class="max-w-md">
         <p class="text-sm font-semibold uppercase tracking-[0.14em] text-accent-600">
-          Nala soo xiriir
+          Contact us
         </p>
         <h1 class="mt-2 text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
-          Aan wada hadalno mashruucaaga
+          Let's talk about your project
         </h1>
         <p class="mt-4 text-lg leading-relaxed text-muted">
-          Sheeg waxa aad rabto inaad dhisto — website, nidaam gudaha ah, ama app mobil — waxaanan
-          kula soo noqonaynaa qorshe iyo qiimo cad.
+          Tell us what you want to build — a website, business system, or mobile app — and we will
+          get back to you with a clear plan and price.
         </p>
         <p class="mt-6 text-[15px] text-muted">
-          Macaamiil hore? <a href="https://app.somwave.botandev.com" class="font-semibold text-accent-600"
-            >Portal-ka gal</a
+          Already a client? <a href="https://app.somwave.botandev.com" class="font-semibold text-accent-600"
+            >Open the portal</a
           >.
         </p>
       </div>
@@ -34,19 +34,19 @@ const fieldClass =
       <form id="inquiry-form" class="rounded-lg border border-border bg-surface p-6 shadow-sm" novalidate>
         <div class="grid gap-4">
           <label class="grid gap-1.5">
-            <span class="text-sm font-medium text-ink">Magaca</span>
+            <span class="text-sm font-medium text-ink">Name</span>
             <input class={fieldClass} type="text" name="name" autocomplete="name" required />
           </label>
           <label class="grid gap-1.5">
-            <span class="text-sm font-medium text-ink">Iimayl</span>
+            <span class="text-sm font-medium text-ink">Email</span>
             <input class={fieldClass} type="email" name="email" autocomplete="email" required />
           </label>
           <label class="grid gap-1.5">
-            <span class="text-sm font-medium text-ink">Telefoon <span class="text-muted">(ikhtiyaari)</span></span>
+            <span class="text-sm font-medium text-ink">Phone <span class="text-muted">(optional)</span></span>
             <input class={fieldClass} type="tel" name="phone" autocomplete="tel" />
           </label>
           <label class="grid gap-1.5">
-            <span class="text-sm font-medium text-ink">Fariinta</span>
+            <span class="text-sm font-medium text-ink">Message</span>
             <textarea
               class="min-h-32 w-full rounded-md border border-border bg-surface px-3 py-2 text-base text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               name="message"
@@ -59,7 +59,7 @@ const fieldClass =
           type="submit"
           class="mt-5 inline-flex h-11 w-full items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-surface transition-colors hover:bg-primary-600 disabled:opacity-50"
         >
-          Dir fariinta
+          Send message
         </button>
 
         <p id="form-status" class="mt-3 text-sm text-muted" role="status" aria-live="polite"></p>
@@ -86,18 +86,18 @@ const fieldClass =
       };
 
       if (button) button.disabled = true;
-      statusEl.textContent = 'Waa la dirayaa…';
+      statusEl.textContent = 'Sending…';
       statusEl.style.color = 'var(--color-muted)';
 
       try {
         await submitInquiry(input, crypto.randomUUID());
         form.reset();
         statusEl.textContent =
-          'Waad ku mahadsan tahay! Fariintaada waa la helay — dhawaan waan kula soo noqonaynaa.';
+          'Thank you! We received your message and will get back to you soon.';
         statusEl.style.color = 'var(--color-success)';
       } catch (error) {
         statusEl.textContent =
-          error instanceof Error ? error.message : 'Cilad ayaa dhacday. Fadlan mar kale isku day.';
+          error instanceof Error ? error.message : 'Something went wrong. Please try again.';
         statusEl.style.color = 'var(--color-error)';
       } finally {
         if (button) button.disabled = false;

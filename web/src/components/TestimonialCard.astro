@@ -15,7 +15,7 @@ const subtitle = [role, company].filter(Boolean).join(' · ');
 <figure class="flex h-full flex-col rounded-lg border border-border bg-surface p-6 shadow-sm">
   {
     rating ? (
-      <div class="flex gap-0.5" aria-label={`${rating} shan ka mid`}>
+      <div class="flex gap-0.5" aria-label={`${rating} out of 5 stars`}>
         {Array.from({ length: 5 }).map((_s, i) => (
           <span class={i < rating ? 'text-accent' : 'text-border'} aria-hidden="true">
             ★

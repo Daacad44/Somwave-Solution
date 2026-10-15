@@ -28,10 +28,10 @@ const support = [
         <BrandLogo size="md" />
       </a>
       <p class="mt-4 max-w-xs text-sm leading-relaxed text-muted">
-        Waxaan u dhisnaa ganacsiyada xalal digital ah oo casri ah — website, nidaamyo gudaha ah, iyo
-        barnaamijyo mobil.
+        We build practical digital solutions for businesses, from websites and mobile apps to
+        custom systems.
       </p>
-      <ul class="mt-5 flex items-center gap-2" aria-label="Shabakadaha bulshada">
+      <ul class="mt-5 flex items-center gap-2" aria-label="Social media">
         {
           [
             { label: 'Facebook', d: 'M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z' },
@@ -98,14 +98,14 @@ const support = [
     <div>
       <h2 class="text-sm font-semibold text-ink" data-i18n="footer.contact">{t['footer.contact']}</h2>
       <ul class="mt-4 space-y-3 text-sm leading-relaxed text-muted">
-        <li>Mogadishu, Soomaaliya</li>
+        <li>Mogadishu, Somalia</li>
         <li>
           <a class="hover:text-brand" href="mailto:info@somwave.so">info@somwave.so</a>
         </li>
         <li>
           <a class="hover:text-brand" href="tel:+252612345678">+252 61 234 5678</a>
         </li>
-        <li>Isniin - Jimco: 8:00 - 17:00</li>
+        <li>Monday - Friday: 8:00 - 17:00</li>
       </ul>
     </div>
   </div>
@@ -124,8 +124,8 @@ const support = [
           name="email"
           required
           autocomplete="email"
-          placeholder="iimaylkaaga@tusaale.com"
-          aria-label="Iimaylkaaga"
+          placeholder="you@example.com"
+          aria-label="Your email address"
           class="h-11 min-w-56 flex-1 rounded-md border border-border bg-surface px-3 text-base text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         />
         <button
@@ -149,15 +149,15 @@ const support = [
       </p>
       <ul class="flex flex-wrap gap-x-5 gap-y-2">
         <li>
-          <a href="/su-aalaha" class="hover:text-brand" data-i18n="footer.privacy"
+          <a href="/asturnaanta" class="hover:text-brand" data-i18n="footer.privacy"
             >{t['footer.privacy']}</a
           >
         </li>
         <li>
-          <a href="/su-aalaha" class="hover:text-brand" data-i18n="footer.terms">{t['footer.terms']}</a>
+          <a href="/shuruudaha" class="hover:text-brand" data-i18n="footer.terms">{t['footer.terms']}</a>
         </li>
         <li>
-          <a href="/su-aalaha" class="hover:text-brand" data-i18n="footer.cookies"
+          <a href="/asturnaanta#cookies" class="hover:text-brand" data-i18n="footer.cookies"
             >{t['footer.cookies']}</a
           >
         </li>
@@ -177,16 +177,16 @@ const support = [
       event.preventDefault();
       const email = String(new FormData(form).get('email') ?? '').trim();
       if (button) button.disabled = true;
-      statusEl.textContent = 'Waa la diiwaangelinayaa…';
+      statusEl.textContent = 'Subscribing…';
       statusEl.style.color = 'var(--color-muted)';
       try {
         await subscribe(email);
         form.reset();
-        statusEl.textContent = 'Waad ku mahadsan tahay! Waa lagu diiwaangeliyay.';
+        statusEl.textContent = 'Thank you! You are subscribed.';
         statusEl.style.color = 'var(--color-success)';
       } catch (error) {
         statusEl.textContent =
-          error instanceof Error ? error.message : 'Cilad ayaa dhacday. Fadlan mar kale isku day.';
+          error instanceof Error ? error.message : 'Something went wrong. Please try again.';
         statusEl.style.color = 'var(--color-error)';
       } finally {
         if (button) button.disabled = false;

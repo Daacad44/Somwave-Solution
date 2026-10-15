@@ -1,4 +1,4 @@
-// Homepage teaser copy — matches the supplied Somwave website UI exactly.
+// Homepage teaser copy. Project examples and client logos use the existing assets.
 // The articles section is not here: it reads published posts from the API.
 
 export const trustedClients = [
@@ -13,25 +13,25 @@ export const trustedClients = [
 export const homeServices = [
   {
     title: 'Web Development',
-    description: 'Website-yo dhaqso ah oo naqshad casri ah, ku habboon mobil iyo kombuyuutar.',
+    description: 'Fast, thoughtfully designed websites that work across mobile and desktop.',
     href: '/adeegyada',
     icon: 'web' as const,
   },
   {
     title: 'Mobile App Development',
-    description: 'Apps iOS iyo Android ah oo isku xiran API-gaaga iyo macaamiishaada.',
+    description: 'iOS and Android apps that connect your services with your customers.',
     href: '/adeegyada',
     icon: 'mobile' as const,
   },
   {
     title: 'Custom Software',
-    description: 'Nidaamyo gaar ah oo ku habboon habka shaqada ee shirkaddaada.',
+    description: 'Software shaped around the way your team actually works.',
     href: '/adeegyada',
     icon: 'software' as const,
   },
   {
     title: 'IT Consulting',
-    description: 'Talo iyo qorshe teknoolojiyadeed oo kuu horseeda go’aanno cad.',
+    description: 'Clear technical advice and planning to help you make confident decisions.',
     href: '/adeegyada',
     icon: 'consult' as const,
   },
@@ -39,23 +39,23 @@ export const homeServices = [
 
 export const whyItems = [
   {
-    title: 'Khibrad & Karti',
-    description: 'Koox khibrad u leh dhisidda nidaamyo iyo website-yo lagu kalsoonaan karo.',
+    title: 'Experienced team',
+    description: 'People who know how to build dependable websites and business systems.',
     icon: 'skill' as const,
   },
   {
-    title: 'Xalal La Isku Halayn Karo',
-    description: 'Nidaamyo ammaan ah, dhaqso ah, oo sii shaqeeya marka ganacsigaagu koro.',
+    title: 'Reliable solutions',
+    description: 'Secure, responsive systems designed to grow with your business.',
     icon: 'trust' as const,
   },
   {
-    title: 'Taageero Joogto ah',
-    description: 'Ka dib bilawga, waan ku ilaalinaa, waan hagaajinnaa, waan horumarinnaa.',
+    title: 'Ongoing support',
+    description: 'We maintain, improve, and support your product after launch.',
     icon: 'support' as const,
   },
   {
-    title: 'Qiimo Macquul ah',
-    description: 'Xalal tayo sare leh oo ku habboon miisaaniyadda ganacsigaaga.',
+    title: 'Practical value',
+    description: 'Quality solutions planned around your goals and budget.',
     icon: 'value' as const,
   },
 ] as const;
@@ -63,23 +63,23 @@ export const whyItems = [
 export const processSteps = [
   {
     n: '01',
-    title: 'Falanqayn',
-    description: 'Waxaan si qoto dheer u barannaa baahidaada iyo yoolalkaaga.',
+    title: 'Discover',
+    description: 'We learn about your needs, your users, and your goals.',
   },
   {
     n: '02',
-    title: 'Naqshadeyn',
-    description: 'Waxaan sameynaa naqshad cad oo aad aragto kahor intaan la dhisin.',
+    title: 'Design',
+    description: 'We shape and review a clear design before development begins.',
   },
   {
     n: '03',
-    title: 'Horumarin',
-    description: 'Waxaan ku dhisnaa teknoolojiyad casri ah oo la isku halayn karo.',
+    title: 'Build',
+    description: 'We develop the solution with dependable technology.',
   },
   {
     n: '04',
-    title: 'Daah-fur',
-    description: 'Waxaan si nadiif ah u daah-furnaa, ka dibna waan ku taageernaa.',
+    title: 'Launch',
+    description: 'We launch carefully and stay alongside you afterwards.',
   },
 ] as const;
 
@@ -88,17 +88,16 @@ export const homeProjects = [
     slug: 'e-commerce-platform',
     title: 'E-Commerce Platform',
     category: 'Web Development',
-    description:
-      'Madal e-commerce casri ah oo loogu talagalay ganacsiyada doonaya inay si fudud online uga iibiyaan alaabtooda.',
+    description: 'An e-commerce platform for businesses that want to sell their products online.',
     image: '/works/ecommerce.png',
     imageWidth: 1536,
     imageHeight: 1024,
-    highlights: ['Dukaanka', 'Bogga alaabta', 'Shanta', 'Bixinta', 'Dashboard maamul'],
+    highlights: ['Storefront', 'Products', 'Cart', 'Checkout', 'Admin dashboard'],
     features: [
-      'Liiska alaabta iyo shaandhaynta',
-      'Bog faahfaahin oo leh noocyo iyo kayd',
-      'Shanta iyo bixinta dalabka',
-      'Dashboard maamul oo dalabyada laga socdo',
+      'Product catalogue and filtering',
+      'Product details, variants, and stock',
+      'Cart and order checkout',
+      'Order management dashboard',
     ],
     technologies: ['Web', 'Dashboard', 'Mobile'],
   },
@@ -107,16 +106,16 @@ export const homeProjects = [
     title: 'School Management',
     category: 'Custom Software',
     description:
-      'Nidaam maamul iskuul oo isku keena ardayda, macallimiinta, xaadirinta, imtixaanaadka, iyo lacag-bixinta.',
+      'A school management system connecting students, teachers, attendance, exams, and payments.',
     image: '/works/school.png',
     imageWidth: 1536,
     imageHeight: 1024,
-    highlights: ['Dashboard', 'Arday', 'Macallimiin', 'Xaadirin', 'Jadwal', 'Warbixin'],
+    highlights: ['Dashboard', 'Students', 'Teachers', 'Attendance', 'Timetable', 'Reports'],
     features: [
-      'Diiwaanka ardayda iyo macallimiinta',
-      'Xaadirinta fasalka',
-      'Imtixaanaadka iyo lacag-bixinta',
-      'Jadwalka toddobaadka iyo warbixinada',
+      'Student and teacher records',
+      'Class attendance',
+      'Exams and payments',
+      'Weekly timetables and reports',
     ],
     technologies: ['Custom Software', 'Dashboard', 'Reports'],
   },
@@ -125,16 +124,16 @@ export const homeProjects = [
     title: 'Travel Agency',
     category: 'Web & Mobile',
     description:
-      'Website iyo app safar oo diiwaangelinta duulimaadyada, huteelada, iyo xirmooyinka hal meel ka socda.',
+      'A travel website and app bringing flights, hotels, and packages into one booking experience.',
     image: '/works/travel.png',
     imageWidth: 1536,
     imageHeight: 1024,
-    highlights: ['Bogga hore', 'Duulimaad', 'Huteel', 'Xirmooyin', 'Diiwaangelin'],
+    highlights: ['Homepage', 'Flights', 'Hotels', 'Packages', 'Booking'],
     features: [
-      'Raadinta duulimaad iyo huteel',
-      'Meelaha caan ah iyo xirmooyinka safarka',
-      'Diiwaangelinta macaamiisha',
-      'Dashboard ballamaha',
+      'Flight and hotel search',
+      'Destinations and travel packages',
+      'Customer registration',
+      'Booking dashboard',
     ],
     technologies: ['Web', 'Mobile', 'Booking'],
   },
@@ -143,50 +142,49 @@ export const homeProjects = [
     title: 'Real Estate Platform',
     category: 'Web Development',
     description:
-      'Suuq guryo oo leh raadinta hantida, khariidadda, wakiilada, iyo dashboard-ka milkiilaha.',
+      'A property marketplace with search, maps, agent profiles, and an owner dashboard.',
     image: '/works/estate.png',
     imageWidth: 1536,
     imageHeight: 1024,
-    highlights: ['Raadin', 'Guryo', 'Faahfaahin', 'Khariidad', 'Wakiilo', 'Dashboard'],
+    highlights: ['Search', 'Properties', 'Details', 'Map', 'Agents', 'Dashboard'],
     features: [
-      'Raadinta guryaha iyo nooca hantida',
-      'Bog faahfaahin iyo wakiilka',
-      'Khariidad meelaha',
-      'Dashboard milkiilaha iyo su’aalaha',
+      'Property and category search',
+      'Property details and agent contact',
+      'Location map',
+      'Owner dashboard and inquiries',
     ],
     technologies: ['Web', 'Map', 'Dashboard'],
   },
 ] as const;
 
 export const homeStats = [
-  { value: '100+', label: 'Macaamiil ku kalsoon' },
-  { value: '250+', label: 'Mashruuc oo la dhammeystiray' },
-  { value: '5+', label: 'Sano oo khibrad ah' },
-  { value: '99%', label: 'Kalsooni macaamil' },
+  { value: '100+', label: 'Clients served' },
+  { value: '250+', label: 'Projects completed' },
+  { value: '5+', label: 'Years of experience' },
+  { value: '99%', label: 'Client satisfaction' },
 ] as const;
 
 export const homeTestimonials = [
   {
     author: 'Faadumo Cabdi',
-    role: 'Maamulaha Guud',
-    company: 'Iskuul Gaar ah',
+    role: 'Director',
+    company: 'Private school',
     quote:
-      'Somwave waxay nagu dhistay nidaam maamul oo casri ah — hawshu waa fududaatay, khaladaadkuna way yaraadeen.',
+      'Somwave built a modern management system for us. Our work became easier and mistakes decreased.',
     rating: 5,
   },
   {
     author: 'Axmed Nuur',
-    role: 'Milkiile',
-    company: 'Shirkad Dhaqaale',
-    quote: 'App-ka ay noo sameeyeen macaamiisheena aad buu u helay — lacag-bixintu way fududaatay.',
+    role: 'Owner',
+    company: 'Financial services company',
+    quote: 'Our customers welcomed the app they built for us, and payments became easier.',
     rating: 5,
   },
   {
     author: 'Hodan Maxamed',
-    role: 'Agaasime IT',
-    company: 'Shirkad Ganacsi',
-    quote:
-      'Waa koox xirfad leh. Waxay inaga caawiyeen inaan ka gudubno Excel una gudubno nidaam buuxa.',
+    role: 'IT Director',
+    company: 'Trading company',
+    quote: 'A professional team. They helped us move from spreadsheets to a complete system.',
     rating: 5,
   },
 ] as const;

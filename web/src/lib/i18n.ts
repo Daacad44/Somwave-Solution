@@ -1,12 +1,12 @@
-// i18n for the public site chrome (W5.5, §17). Somali is the default locale;
+// i18n for the public site chrome. English is the default locale;
 // English and Arabic (RTL) are switchable. This covers the shared chrome — the
 // header navigation, the footer, and the language switcher. Page-body content
-// remains Somali (the default locale) until translated per surface.
+// is authored in English by default; CMS content retains its authored language.
 
 export const LOCALES = ['so', 'en', 'ar'] as const;
 export type Locale = (typeof LOCALES)[number];
 
-export const DEFAULT_LOCALE: Locale = 'so';
+export const DEFAULT_LOCALE: Locale = 'en';
 export const RTL_LOCALES: readonly Locale[] = ['ar'];
 export const LOCALE_LABELS: Record<Locale, string> = { so: 'SO', en: 'EN', ar: 'AR' };
 export const LOCALE_NAMES: Record<Locale, string> = {
@@ -15,8 +15,8 @@ export const LOCALE_NAMES: Record<Locale, string> = {
   ar: 'العربية',
 };
 
-// Chrome strings, keyed by a dotted path. Somali is the source of truth; the
-// server renders Somali and the client swaps to the stored locale on load.
+// Chrome strings, keyed by a dotted path. The server renders English and the
+// client swaps to a stored locale on load when one has been selected.
 export const chrome: Record<Locale, Record<string, string>> = {
   so: {
     'nav.home': 'Guriga',

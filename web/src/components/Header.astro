@@ -28,7 +28,7 @@ function isActive(href: string): boolean {
 <header class="sticky top-0 z-40 border-b border-border bg-surface">
   <nav
     class="mx-auto flex h-[72px] max-w-site items-center justify-between gap-3 px-4 sm:px-6"
-    aria-label="Navigation-ka weyn"
+    aria-label="Main navigation"
   >
     <a href="/" class="flex min-h-11 shrink-0 items-center">
       <span class="sm:hidden"><BrandLogo size="sm" /></span>
@@ -72,7 +72,7 @@ function isActive(href: string): boolean {
         class="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border text-ink xl:hidden"
         aria-controls="mobile-nav"
         aria-expanded="false"
-        aria-label="Fur liiska"
+        aria-label="Open menu"
       >
         <HomeIcon name="menu" class="nav-open-icon h-5 w-5" />
         <HomeIcon name="close" class="nav-close-icon hidden h-5 w-5" />
@@ -123,7 +123,7 @@ function isActive(href: string): boolean {
     toggle.addEventListener('click', () => {
       const open = toggle.getAttribute('aria-expanded') === 'true';
       toggle.setAttribute('aria-expanded', String(!open));
-      toggle.setAttribute('aria-label', open ? 'Fur liiska' : 'Xir liiska');
+      toggle.setAttribute('aria-label', open ? 'Open menu' : 'Close menu');
       panel.hidden = open;
       panel.classList.toggle('hidden', open);
       openIcon?.classList.toggle('hidden', !open);

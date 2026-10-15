@@ -142,7 +142,9 @@ export async function applyToCareer(
     error?: { message?: string };
   } | null;
   if (!res.ok || !body?.data) {
-    throw new Error(body?.error?.message ?? 'Codsigaaga lama dirin. Fadlan mar kale isku day.');
+    throw new Error(
+      body?.error?.message ?? 'Your application could not be submitted. Please try again.',
+    );
   }
   return body.data;
 }
@@ -158,7 +160,7 @@ export async function subscribe(email: string): Promise<{ id: string }> {
     error?: { message?: string };
   } | null;
   if (!res.ok || !body?.data) {
-    throw new Error(body?.error?.message ?? 'Diiwaangelintu ma dhicin. Fadlan mar kale isku day.');
+    throw new Error(body?.error?.message ?? 'Subscription failed. Please try again.');
   }
   return body.data;
 }
@@ -177,7 +179,7 @@ export async function submitInquiry(
     error?: { message?: string };
   } | null;
   if (!res.ok || !body?.data) {
-    throw new Error(body?.error?.message ?? 'Fariinta lama dirin. Fadlan mar kale isku day.');
+    throw new Error(body?.error?.message ?? 'Your message could not be sent. Please try again.');
   }
   return body.data;
 }

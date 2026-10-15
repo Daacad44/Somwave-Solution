@@ -32,28 +32,28 @@ const pageHref = (next: number): string => (next <= 1 ? '/blog' : `/blog?page=${
 ---
 
 <PageLayout
-  title="Maqaallada — Somwave"
-  description="Talooyin iyo fikrado ku saabsan teknoolajiyada iyo horumarinta ganacsiga online."
+  title="Articles — Somwave"
+  description="Ideas and insights on technology and digital business."
 >
   <section class="mx-auto max-w-content px-4 py-20 sm:px-6">
     <div class="max-w-2xl">
-      <p class="text-sm font-semibold uppercase tracking-[0.14em] text-accent-600">Maqaallada</p>
+      <p class="text-sm font-semibold uppercase tracking-[0.14em] text-accent-600">Articles</p>
       <h1 class="mt-2 text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
-        Talooyin iyo fikrado
+        Ideas and insights
       </h1>
       <p class="mt-4 text-lg leading-relaxed text-muted">
-        Waxyaabaha aan ka barannay dhisidda xalal dijital ah oo shaqeeya.
+        What we have learned from building digital solutions that work.
       </p>
     </div>
 
     {
       failed ? (
         <p class="mt-10 rounded-lg border border-border bg-surface-alt p-6 text-muted">
-          Cilad ayaa dhacday markii maqaallada la soo raadinayay. Fadlan mar kale isku day.
+          Articles are unavailable right now. Please try again later.
         </p>
       ) : posts.length === 0 ? (
         <p class="mt-10 rounded-lg border border-border bg-surface-alt p-6 text-muted">
-          Weli maqaallo lama daabicin.
+          No articles have been published yet.
         </p>
       ) : (
         <div class="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -74,26 +74,26 @@ const pageHref = (next: number): string => (next <= 1 ? '/blog' : `/blog?page=${
 
     {
       !failed && totalPages > 1 ? (
-        <nav class="mt-10 flex items-center justify-between gap-4" aria-label="Bogagga maqaallada">
+        <nav class="mt-10 flex items-center justify-between gap-4" aria-label="Article pages">
           {page > 1 ? (
             <a
               href={pageHref(page - 1)}
               class="inline-flex h-11 items-center rounded-md border border-border px-4 text-sm font-semibold text-ink hover:border-primary"
             >
-              Bogga hore
+              Previous page
             </a>
           ) : (
             <span />
           )}
           <p class="text-sm text-muted">
-            Bogga {page} / {totalPages}
+            Page {page} of {totalPages}
           </p>
           {page < totalPages ? (
             <a
               href={pageHref(page + 1)}
               class="inline-flex h-11 items-center rounded-md border border-border px-4 text-sm font-semibold text-ink hover:border-primary"
             >
-              Bogga xiga
+              Next page
             </a>
           ) : (
             <span />
