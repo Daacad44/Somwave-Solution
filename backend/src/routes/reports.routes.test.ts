@@ -28,4 +28,15 @@ describe('reports query validation', () => {
     expect(() => parseReportQuery(request({ pageSize: '10000' }), 'projects')).toThrow();
     expect(() => parseReportQuery(request({ clientId: 'private' }), 'audit')).toThrow();
   });
+
+  it('accepts scoped receivables filters and rejects an unsupported status', () => {
+    const parsed = parseReportQuery(
+      request({ to: '2026-10-31', clientId: 'client-1', search: 'INV-42' }),
+      'receivables-aging',
+    );
+    expect(parsed.to.toISOString()).toBe('2026-10-31T21:00:00.000Z');
+    expect(parsed.clientId).toBe('client-1');
+    expect(parsed.search).toBe('INV-42');
+    expect(() => parseReportQuery(request({ status: 'PAID' }), 'receivables-aging')).toThrow();
+  });
 });

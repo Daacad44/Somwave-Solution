@@ -8,6 +8,7 @@ import {
   createProjectInquirySchema,
   verifyProjectInquirySchema,
   activateProjectInquirySchema,
+  uploadPublicProjectInquiryAttachmentSchema,
 } from '@somwave/shared';
 import { publicRateLimiter, submissionRateLimiter } from '../middleware/rateLimit';
 import { validate } from '../middleware/validate';
@@ -76,6 +77,12 @@ publicRouter.post(
   loginIpRateLimiter,
   validate(activateProjectInquirySchema),
   projectInquiryController.activate,
+);
+publicRouter.post(
+  '/project-inquiries/:id/attachments',
+  loginIpRateLimiter,
+  validate(uploadPublicProjectInquiryAttachmentSchema),
+  projectInquiryController.uploadPublicAttachment,
 );
 
 publicRouter.post(

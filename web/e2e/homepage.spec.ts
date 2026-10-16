@@ -252,3 +252,74 @@ test('project request verifies email and creates a portal account', async ({ pag
     'https://app.somwave.botandev.com/login?next=%2Fportal%2Fprojects',
   );
 });
+
+test('supporting files upload after verification and retry only the remaining file', async ({
+  page,
+}) => {
+  const uploads: string[] = [];
+  let secondFileFailed = false;
+  await page.route('**/api/v1/public/project-inquiries**', (route) => {
+    if (route.request().method() === 'OPTIONS')
+      return route.fulfill({
+        status: 204,
+        headers: {
+          'access-control-allow-origin': '*',
+          'access-control-allow-methods': 'POST, OPTIONS',
+          'access-control-allow-headers': 'content-type, idempotency-key',
+        },
+      });
+    const url = route.request().url();
+    let data: Record<string, unknown> = { id: 'inquiry-2', verificationRequired: true };
+    let status = 201;
+    if (url.endsWith('/verify'))
+      data = { status: 'EMAIL_VERIFIED', accountExists: true, activationToken: 'verified-proof' };
+    if (url.endsWith('/attachments')) {
+      const input = route.request().postDataJSON();
+      expect(input.activationToken).toBe('verified-proof');
+      expect(input.contentBase64).toMatch(/^[A-Za-z0-9+/=]+$/);
+      uploads.push(input.fileName);
+      if (input.fileName === 'plan.png' && !secondFileFailed) {
+        secondFileFailed = true;
+        status = 503;
+      } else
+        data = {
+          id: `attachment-${uploads.length}`,
+          fileName: input.fileName,
+          mimeType: input.mimeType,
+          sizeBytes: 8,
+          createdAt: new Date().toISOString(),
+        };
+    }
+    return route.fulfill({
+      status,
+      contentType: 'application/json',
+      headers: { 'access-control-allow-origin': '*' },
+      body: JSON.stringify(
+        status === 503 ? { error: { message: 'Upload interrupted.' } } : { data },
+      ),
+    });
+  });
+  await page.goto('/request-project');
+  const request = page.locator('#project-inquiry-form');
+  await request.locator('[name="name"]').fill('Test Client');
+  await request.locator('[name="email"]').fill('client@example.com');
+  await request.locator('[name="projectType"]').fill('Website');
+  await request.locator('[name="description"]').fill('I need a website for my business.');
+  await request.locator('[name="attachments"]').setInputFiles([
+    { name: 'brief.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7') },
+    { name: 'plan.png', mimeType: 'image/png', buffer: Buffer.from('89504e470d0a1a0a', 'hex') },
+  ]);
+  await request.getByRole('button', { name: 'Send project request' }).click();
+  const verify = page.locator('#verify-inquiry-form');
+  await verify.locator('[name="code"]').fill('123456');
+  await verify.getByRole('button', { name: 'Verify email' }).click();
+  const files = page.locator('#upload-inquiry-files');
+  await expect(files).toBeVisible();
+  await files.getByRole('button', { name: 'Upload files and continue' }).click();
+  await expect(files.getByRole('status')).toContainText('Upload interrupted.');
+  expect(uploads).toEqual(['brief.pdf', 'plan.png']);
+  await files.getByRole('button', { name: 'Upload files and continue' }).click();
+  await expect(page.locator('#request-complete')).toBeVisible();
+  expect(uploads).toEqual(['brief.pdf', 'plan.png', 'plan.png']);
+  await expect(page.locator('#request-complete a')).toHaveAttribute('href', /inquiry=inquiry-2$/);
+});

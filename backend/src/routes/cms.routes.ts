@@ -30,11 +30,31 @@ export const cmsRouter: Router = Router();
 cmsRouter.use(requireAuth);
 
 cmsRouter.get('/site-content', rbac(PERMISSIONS.CONTENT_READ), cmsController.getSiteContent);
+cmsRouter.get(
+  '/site-content/draft',
+  rbac(PERMISSIONS.CONTENT_READ),
+  cmsController.getSiteContentDraft,
+);
 cmsRouter.put(
   '/site-content',
   rbac(PERMISSIONS.CONTENT_UPDATE),
   validate(siteContentSchema),
   cmsController.putSiteContent,
+);
+cmsRouter.post(
+  '/site-content/draft/submit',
+  rbac(PERMISSIONS.CONTENT_UPDATE),
+  cmsController.submitSiteContentDraft,
+);
+cmsRouter.post(
+  '/site-content/draft/approve',
+  rbac(PERMISSIONS.CONTENT_UPDATE),
+  cmsController.approveSiteContentDraft,
+);
+cmsRouter.post(
+  '/site-content/draft/publish',
+  rbac(PERMISSIONS.CONTENT_UPDATE),
+  cmsController.publishSiteContentDraft,
 );
 
 cmsRouter.get('/services', rbac(PERMISSIONS.CONTENT_READ), cmsController.listServices);

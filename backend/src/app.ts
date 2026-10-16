@@ -77,6 +77,9 @@ export function createApp(): Express {
   app.use('/api/v1/documents', express.json({ limit: '35mb' }));
   app.use('/api/v1/projects/:projectId/documentation', express.json({ limit: '35mb' }));
   app.use('/api/v1/engineering/tasks/:taskId/attachments', express.json({ limit: '35mb' }));
+  // A 5 MiB file becomes about 6.7 MiB when encoded in the inquiry upload JSON.
+  app.use('/api/v1/public/project-inquiries/:id/attachments', express.json({ limit: '8mb' }));
+  app.use('/api/v1/portal/project-inquiries/:id/attachments', express.json({ limit: '8mb' }));
   app.use(express.json({ limit: '1mb' }));
   app.use(pinoHttp({ logger }));
   app.use(withRequestContext);

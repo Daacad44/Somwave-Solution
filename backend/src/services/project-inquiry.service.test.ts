@@ -207,6 +207,23 @@ describe('project request verification', () => {
     await expect(verifyProjectInquiry(base.id, code)).rejects.toMatchObject({ code: 'CONFLICT' });
   });
 
+  it('returns upload proof after verification even when an account already exists', async () => {
+    const code = '123456';
+    const hash = createHmac('sha256', 'test-secret-with-at-least-thirty-two-characters')
+      .update(`project-inquiry:${base.id}:${code}`)
+      .digest('hex');
+    vi.mocked(prisma.projectInquiry.findUnique).mockResolvedValue({
+      ...base,
+      verificationCodeHash: hash,
+      verificationExpiresAt: new Date(Date.now() + 60_000),
+    } as never);
+    vi.mocked(prisma.projectInquiry.updateMany).mockResolvedValue({ count: 1 } as never);
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: 'existing-user' } as never);
+    const result = await verifyProjectInquiry(base.id, code);
+    expect(result.accountExists).toBe(true);
+    expect(result.activationToken).toMatch(/^[A-Za-z0-9_-]{40,}$/);
+  });
+
   it('requires activation proof before hashing a password', async () => {
     vi.mocked(prisma.projectInquiry.findUnique).mockResolvedValue({
       ...base,

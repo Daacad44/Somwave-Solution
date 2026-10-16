@@ -15,6 +15,7 @@ import {
   chargeEvcPaymentSchema,
   reviewProjectInquirySchema,
   convertProjectInquirySchema,
+  uploadClientProjectInquiryAttachmentSchema,
 } from '@somwave/shared';
 import { requireAuth } from '../middleware/auth';
 import { rbac } from '../middleware/rbac';
@@ -48,6 +49,16 @@ leadsRouter.post(
   rbac(PERMISSIONS.PROJECTS_CREATE),
   validate(convertProjectInquirySchema),
   projectInquiryController.convert,
+);
+leadsRouter.get(
+  '/project-inquiries/:id/attachments',
+  rbac(PERMISSIONS.LEADS_READ),
+  projectInquiryController.listAdminAttachments,
+);
+leadsRouter.get(
+  '/project-inquiries/:id/attachments/:attachmentId/file',
+  rbac(PERMISSIONS.LEADS_READ),
+  projectInquiryController.downloadAdminAttachment,
 );
 leadsRouter.get('/', rbac(PERMISSIONS.LEADS_READ), leadController.list);
 leadsRouter.post('/:id/convert', rbac(PERMISSIONS.LEADS_UPDATE), leadController.convert);
@@ -151,6 +162,22 @@ portalRouter.get(
   projectInquiryController.listUnlinked,
 );
 portalRouter.post('/project-inquiries/:id/link', projectInquiryController.link);
+portalRouter.get(
+  '/project-inquiries/:id/attachments',
+  rbac(PERMISSIONS.PORTAL_READ),
+  projectInquiryController.listClientAttachments,
+);
+portalRouter.post(
+  '/project-inquiries/:id/attachments',
+  rbac(PERMISSIONS.PORTAL_READ),
+  validate(uploadClientProjectInquiryAttachmentSchema),
+  projectInquiryController.uploadClientAttachment,
+);
+portalRouter.get(
+  '/project-inquiries/:id/attachments/:attachmentId/file',
+  rbac(PERMISSIONS.PORTAL_READ),
+  projectInquiryController.downloadClientAttachment,
+);
 portalRouter.post(
   '/project-inquiries/:id/approve-proposal',
   rbac(PERMISSIONS.PORTAL_READ),

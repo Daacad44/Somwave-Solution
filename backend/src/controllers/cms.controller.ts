@@ -19,6 +19,7 @@ import type {
   UploadArticleImageInput,
   SiteContent,
 } from '@somwave/shared';
+import { ROLES } from '@somwave/shared';
 import { AppError, sendData } from '../lib/http';
 import * as serviceService from '../services/service.service';
 import * as postService from '../services/post.service';
@@ -49,7 +50,71 @@ export async function putSiteContent(
   next: NextFunction,
 ): Promise<void> {
   try {
-    sendData(res, await siteContentService.updateSiteContent(req.body as SiteContent));
+    if (!req.authUser) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+    sendData(
+      res,
+      await siteContentService.updateSiteContent(req.body as SiteContent, req.authUser.id),
+    );
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getSiteContentDraft(
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    sendData(res, await siteContentService.readSiteContentDraft());
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function submitSiteContentDraft(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    sendData(res, await siteContentService.submitSiteContentDraft(req.authUser!.id));
+  } catch (err) {
+    next(err);
+  }
+}
+
+function requireWebsitePublisher(req: Request): void {
+  if (!req.authUser?.roles.some((role) => role === ROLES.ADMIN || role === ROLES.SUPER_ADMIN)) {
+    throw new AppError(
+      'FORBIDDEN',
+      403,
+      'Administrator role required to approve or publish website content',
+    );
+  }
+}
+
+export async function approveSiteContentDraft(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    requireWebsitePublisher(req);
+    sendData(res, await siteContentService.approveSiteContentDraft(req.authUser!.id));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function publishSiteContentDraft(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    requireWebsitePublisher(req);
+    sendData(res, await siteContentService.publishSiteContentDraft(req.authUser!.id));
   } catch (err) {
     next(err);
   }

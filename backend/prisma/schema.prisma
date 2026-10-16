@@ -444,6 +444,7 @@ model ProjectInquiry {
   clientId String? @map("client_id")
   projectId String? @unique @map("project_id")
   proposalSummary String? @map("proposal_summary")
+  attachmentCount Int @default(0) @map("attachment_count")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -451,11 +452,29 @@ model ProjectInquiry {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
   client Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
   project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  attachments ProjectInquiryAttachment[]
 
   @@index([email, createdAt])
   @@index([clientId, createdAt])
   @@index([status, createdAt])
   @@map("project_inquiries")
+}
+
+model ProjectInquiryAttachment {
+  id String @id @default(cuid())
+  inquiryId String @map("inquiry_id")
+  storageKey String @unique @map("storage_key")
+  contentHash String @map("content_hash")
+  fileName String @map("file_name")
+  mimeType String @map("mime_type")
+  sizeBytes Int @map("size_bytes")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  inquiry ProjectInquiry @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+
+  @@index([inquiryId, createdAt])
+  @@unique([inquiryId, contentHash])
+  @@map("project_inquiry_attachments")
 }
 
 // Website enquiries. These become CRM leads in Internal (I5.1).

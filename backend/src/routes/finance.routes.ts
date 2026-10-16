@@ -1,5 +1,7 @@
 import { Router, type NextFunction, type Request, type Response } from 'express';
 import {
+  DEFAULT_PAGE_SIZE,
+  MAX_PAGE_SIZE,
   PERMISSIONS,
   createFinanceAccountSchema,
   createFinanceTransactionSchema,
@@ -74,6 +76,94 @@ function csvCell(value: string): string {
   return `"${safe.replaceAll('"', '""')}"`;
 }
 
+type FinanceHistoryKind = 'transactions' | 'journals';
+function historyValue(req: Request, name: string): string | undefined {
+  const raw = req.query[name];
+  if (raw === undefined) return undefined;
+  if (typeof raw !== 'string' || raw.trim().length === 0)
+    throw new AppError('VALIDATION_ERROR', 400, `Invalid ${name}`);
+  return raw.trim();
+}
+function historyDate(raw: string): Date {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw))
+    throw new AppError('VALIDATION_ERROR', 400, 'Use YYYY-MM-DD dates');
+  const date = new Date(`${raw}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== raw)
+    throw new AppError('VALIDATION_ERROR', 400, 'Invalid accounting date');
+  return date;
+}
+function historyInteger(raw: string | undefined, fallback: number, maximum: number): number {
+  if (raw === undefined) return fallback;
+  if (!/^[1-9]\d*$/.test(raw)) throw new AppError('VALIDATION_ERROR', 400, 'Invalid pagination');
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value > maximum)
+    throw new AppError('VALIDATION_ERROR', 400, 'Invalid pagination');
+  return value;
+}
+export function parseFinanceHistoryQuery(
+  req: Request,
+  kind: 'transactions',
+): finance.TransactionHistoryQuery;
+export function parseFinanceHistoryQuery(
+  req: Request,
+  kind: 'journals',
+): finance.JournalHistoryQuery;
+export function parseFinanceHistoryQuery(
+  req: Request,
+  kind: FinanceHistoryKind,
+): finance.TransactionHistoryQuery | finance.JournalHistoryQuery {
+  const allowed = new Set([
+    'page',
+    'pageSize',
+    'from',
+    'to',
+    'accountId',
+    'currency',
+    'search',
+    ...(kind === 'transactions' ? ['status', 'type'] : ['sourceType']),
+  ]);
+  for (const key of Object.keys(req.query)) {
+    if (!allowed.has(key)) throw new AppError('VALIDATION_ERROR', 400, `Unsupported ${key} filter`);
+  }
+  const page = historyInteger(historyValue(req, 'page'), 1, 10_000);
+  const pageSize = historyInteger(historyValue(req, 'pageSize'), DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
+  const fromRaw = historyValue(req, 'from');
+  const toRaw = historyValue(req, 'to');
+  const from = fromRaw ? historyDate(fromRaw) : undefined;
+  const to = toRaw ? historyDate(toRaw) : undefined;
+  if (from && to && from >= to)
+    throw new AppError('VALIDATION_ERROR', 400, 'End date must follow start date');
+  const accountId = historyValue(req, 'accountId');
+  if (accountId && accountId.length > 128)
+    throw new AppError('VALIDATION_ERROR', 400, 'Account ID is too long');
+  const currency = historyValue(req, 'currency');
+  if (currency && !/^[A-Z]{3}$/.test(currency))
+    throw new AppError('VALIDATION_ERROR', 400, 'Use a three-letter currency code');
+  const search = historyValue(req, 'search');
+  if (search && search.length > 100)
+    throw new AppError('VALIDATION_ERROR', 400, 'Search is too long');
+  const common = { page, pageSize, from, to, accountId, currency, search };
+  if (kind === 'journals') {
+    const sourceType = historyValue(req, 'sourceType');
+    if (sourceType && sourceType !== 'FINANCE_TRANSACTION' && sourceType !== 'REVERSAL')
+      throw new AppError('VALIDATION_ERROR', 400, 'Unknown journal source');
+    return { ...common, sourceType: sourceType as finance.JournalHistoryQuery['sourceType'] };
+  }
+  const type = historyValue(req, 'type');
+  if (type && type !== 'INCOME' && type !== 'EXPENSE')
+    throw new AppError('VALIDATION_ERROR', 400, 'Unknown transaction type');
+  const status = historyValue(req, 'status');
+  const statuses = status?.split(',');
+  const known = ['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'POSTED', 'CANCELLED'] as const;
+  if (statuses?.some((item) => !known.some((value) => value === item)))
+    throw new AppError('VALIDATION_ERROR', 400, 'Unknown transaction status');
+  return {
+    ...common,
+    type: type as finance.TransactionHistoryQuery['type'],
+    statuses: statuses as finance.TransactionHistoryQuery['statuses'],
+  };
+}
+
 financeRouter.get(
   '/accounts',
   rbac(PERMISSIONS.FINANCE_READ),
@@ -104,11 +194,8 @@ financeRouter.get(
   '/transactions',
   rbac(PERMISSIONS.FINANCE_READ),
   handle(async (req, res) => {
-    const allowed = ['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'POSTED', 'CANCELLED'] as const;
-    const status = typeof req.query.status === 'string' ? req.query.status : undefined;
-    if (status && !allowed.some((item) => item === status))
-      throw new AppError('VALIDATION_ERROR', 400, 'Unknown transaction status');
-    sendData(res, await finance.listTransactions(status as (typeof allowed)[number] | undefined));
+    const result = await finance.listTransactions(parseFinanceHistoryQuery(req, 'transactions'));
+    sendData(res, result.data, 200, result.meta);
   }),
 );
 financeRouter.post(
@@ -178,8 +265,9 @@ financeRouter.post(
 financeRouter.get(
   '/journals',
   rbac(PERMISSIONS.FINANCE_READ),
-  handle(async (_req, res) => {
-    sendData(res, await finance.listJournals());
+  handle(async (req, res) => {
+    const result = await finance.listJournals(parseFinanceHistoryQuery(req, 'journals'));
+    sendData(res, result.data, 200, result.meta);
   }),
 );
 financeRouter.post(

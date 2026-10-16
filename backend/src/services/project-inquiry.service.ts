@@ -265,7 +265,7 @@ export async function verifyProjectInquiry(id: string, code: string) {
   return {
     status: 'EMAIL_VERIFIED' as const,
     accountExists: Boolean(existing),
-    activationToken: existing ? null : activationToken,
+    activationToken,
   };
 }
 

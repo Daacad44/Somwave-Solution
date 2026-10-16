@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PERMISSIONS, ROLES, type AuthUser } from '@somwave/shared';
+import { Prisma } from '@prisma/client';
 
 vi.mock('../lib/prisma', () => ({
   prisma: {
+    $queryRaw: vi.fn(),
     project: { count: vi.fn(), findMany: vi.fn() },
     task: { groupBy: vi.fn() },
     projectInquiry: { count: vi.fn(), findMany: vi.fn() },
@@ -44,6 +46,7 @@ describe('Reports access', () => {
     expect(listReportCatalog(financeUser).reports).toEqual([]);
     expect(listReportCatalog(financeUser, Date.now()).reports.map((item) => item.key)).toEqual([
       'trial-balance',
+      'receivables-aging',
     ]);
   });
 
@@ -164,6 +167,69 @@ describe('Reports access', () => {
     const result = await getReport(editor, 'portfolio', query);
     expect(result.rows[0]).toMatchObject({ demoClicks: 7 });
     expect(result.columns.some((column) => column.key === 'views')).toBe(false);
+  });
+
+  it('ages only outstanding issued invoices as of local day, without mixing unknown currencies', async () => {
+    const financeUser = {
+      ...engineer,
+      permissions: [PERMISSIONS.FINANCE_READ],
+      twoFactorEnabled: true,
+      clientId: 'client-1',
+    };
+    const asOfQuery = { ...query, to: new Date('2026-10-31T21:00:00.000Z') };
+    await expect(getReport(financeUser, 'receivables-aging', asOfQuery)).rejects.toMatchObject({
+      status: 403,
+    });
+    expect(prisma.invoice.findMany).not.toHaveBeenCalled();
+    vi.mocked(prisma.$queryRaw)
+      .mockResolvedValueOnce([{ count: 2, overdueCount: 1 }])
+      .mockResolvedValueOnce([
+        {
+          id: 'invoice-1',
+          number: 'INV-1',
+          issueDate: new Date('2026-09-01T00:00:00Z'),
+          dueDate: new Date('2026-09-16T00:00:00Z'),
+          total: new Prisma.Decimal('100.00'),
+          client: 'Scoped client',
+          remaining: new Prisma.Decimal('75.00'),
+        },
+        {
+          id: 'invoice-2',
+          number: 'INV-2',
+          issueDate: new Date('2026-10-01T00:00:00Z'),
+          dueDate: new Date('2026-11-20T00:00:00Z'),
+          total: new Prisma.Decimal('70.00'),
+          client: 'Scoped client',
+          remaining: new Prisma.Decimal('70.00'),
+        },
+      ] as never);
+    const result = await getReport(financeUser, 'receivables-aging', asOfQuery, Date.now());
+    expect(result.meta.total).toBe(2);
+    expect(result.rows).toEqual([
+      expect.objectContaining({
+        number: 'INV-1',
+        daysOverdue: 45,
+        bucket: '31–60 days',
+        currency: 'Not recorded',
+        outstanding: '75.00',
+      }),
+      expect.objectContaining({
+        number: 'INV-2',
+        daysOverdue: 0,
+        bucket: 'Current',
+        outstanding: '70.00',
+      }),
+    ]);
+    expect(result.summary).toEqual({ invoicesOutstanding: 2, overdueInvoices: 1 });
+    expect(result.summary).not.toHaveProperty('amount');
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
+    const countQuery = vi.mocked(prisma.$queryRaw).mock.calls[0]?.[0] as Prisma.Sql;
+    const pageQuery = vi.mocked(prisma.$queryRaw).mock.calls[1]?.[0] as Prisma.Sql;
+    expect(countQuery?.sql).toContain('i.client_id =');
+    expect(countQuery?.values).toContain('client-1');
+    expect(pageQuery?.sql).toContain('ORDER BY i.due_date ASC, i.id ASC OFFSET');
+    expect(pageQuery?.sql).toContain('LIMIT');
+    expect(pageQuery?.values).toContain(25);
   });
 });
 

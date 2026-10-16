@@ -17,6 +17,7 @@ export type ReportKey =
   | 'articles'
   | 'audit'
   | 'trial-balance'
+  | 'receivables-aging'
   | 'my-projects'
   | 'my-invoices';
 export type ReportFilter = 'status' | 'projectId' | 'clientId' | 'engineerId' | 'search';
@@ -245,6 +246,27 @@ const definitions: Record<
       { key: 'balance', label: 'Net debit' },
     ],
   },
+  'receivables-aging': {
+    label: 'Receivables aging',
+    category: 'Finance',
+    description:
+      'Issued invoice balances by due-date age as of the selected To date (Africa/Mogadishu). Legacy invoices have no currency or issue/settlement event history, so amounts cannot be totaled across invoices and historical balances are estimates, not posted ledger revenue.',
+    permission: PERMISSIONS.FINANCE_READ,
+    filters: ['projectId', 'clientId', 'search'],
+    columns: [
+      { key: 'number', label: 'Invoice' },
+      { key: 'client', label: 'Client' },
+      { key: 'currency', label: 'Currency' },
+      { key: 'issueDate', label: 'Issued' },
+      { key: 'dueDate', label: 'Due' },
+      { key: 'daysOverdue', label: 'Days overdue' },
+      { key: 'bucket', label: 'Age bucket' },
+      { key: 'total', label: 'Invoice amount' },
+      { key: 'settled', label: 'Completed payments by as-of' },
+      { key: 'outstanding', label: 'Outstanding' },
+      { key: 'href', label: 'Link' },
+    ],
+  },
   'my-projects': {
     label: 'My projects',
     category: 'Client',
@@ -297,7 +319,8 @@ function authorized(user: AuthUser, key: string, mfaVerifiedAt?: number | null):
     throw new AppError('FORBIDDEN', 403, 'Insufficient permissions');
   if ((reportKey === 'my-projects' || reportKey === 'my-invoices') && !user.clientId)
     throw new AppError('FORBIDDEN', 403, 'Client account required');
-  if (reportKey === 'trial-balance') financeProof(user, mfaVerifiedAt);
+  if (reportKey === 'trial-balance' || reportKey === 'receivables-aging')
+    financeProof(user, mfaVerifiedAt);
   return reportKey;
 }
 function period(query: ReportQuery) {
@@ -339,7 +362,8 @@ export function listReportCatalog(user: AuthUser, mfaVerifiedAt?: number | null)
       .filter(
         ([key, item]) =>
           can(user, item.permission) &&
-          (key !== 'trial-balance' || (user.twoFactorEnabled && !!mfaVerifiedAt)) &&
+          (!['trial-balance', 'receivables-aging'].includes(key) ||
+            (user.twoFactorEnabled && !!mfaVerifiedAt)) &&
           ((key !== 'my-projects' && key !== 'my-invoices') || !!user.clientId),
       )
       .map(([key, item]) => ({
@@ -439,6 +463,7 @@ export async function getReport(
   const metadata = definitions[reportKey];
   let rows: ReportRow[] = [];
   let total = 0;
+  let summary: Record<string, string | number | null> | undefined;
   const paging = page(query);
   const date = { gte: query.from, lt: query.to };
   const project = accessibleProject(user);
@@ -893,12 +918,87 @@ export async function getReport(
       }));
       break;
     }
+    case 'receivables-aging': {
+      // Invoice currency and a durable issued-at timestamp do not exist in the legacy schema.
+      // A row-level operational view avoids inventing exchange rates or ledger revenue.
+      const conditions: Prisma.Sql[] = [
+        Prisma.sql`i.deleted_at IS NULL`,
+        Prisma.sql`i.status NOT IN ('DRAFT', 'VOID')`,
+        Prisma.sql`i.issue_date < ${query.to}`,
+      ];
+      if (user.clientId) conditions.push(Prisma.sql`i.client_id = ${user.clientId}`);
+      if (query.clientId) conditions.push(Prisma.sql`i.client_id = ${query.clientId}`);
+      if (query.projectId) conditions.push(Prisma.sql`i.project_id = ${query.projectId}`);
+      if (query.search) {
+        const searchTerm = `%${query.search.replace(/[!%_]/g, '!$&')}%`;
+        conditions.push(
+          Prisma.sql`(i.number ILIKE ${searchTerm} ESCAPE '!' OR c.company_name ILIKE ${searchTerm} ESCAPE '!')`,
+        );
+      }
+      // Aggregate in PostgreSQL before OFFSET/LIMIT; paid invoices do not consume page slots.
+      const settledSql = Prisma.sql`COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.invoice_id = i.id AND p.deleted_at IS NULL AND p.status = 'COMPLETED' AND p.updated_at < ${query.to}), 0)`;
+      const remainingSql = Prisma.sql`(i.total - ${settledSql})`;
+      const source = Prisma.sql`FROM invoices i JOIN clients c ON c.id = i.client_id WHERE ${Prisma.join(conditions, ' AND ')} AND ${remainingSql} > 0`;
+      const asOfStart = new Date(query.to.getTime() - 86_400_000);
+      const [counts] = await prisma.$queryRaw<{ count: number; overdueCount: number }[]>(
+        Prisma.sql`SELECT COUNT(*)::integer AS count, COUNT(*) FILTER (WHERE i.due_date < ${asOfStart})::integer AS "overdueCount" ${source}`,
+      );
+      const items = await prisma.$queryRaw<
+        {
+          id: string;
+          number: string;
+          issueDate: Date;
+          dueDate: Date;
+          total: Prisma.Decimal;
+          client: string;
+          remaining: Prisma.Decimal;
+        }[]
+      >(
+        Prisma.sql`SELECT i.id, i.number, i.issue_date AS "issueDate", i.due_date AS "dueDate", i.total, c.company_name AS client, ${remainingSql} AS remaining ${source} ORDER BY i.due_date ASC, i.id ASC OFFSET ${paging.skip} LIMIT ${paging.take}`,
+      );
+      const asOfDay = Math.floor((query.to.getTime() + 3 * 3600_000) / 86_400_000) - 1;
+      rows = items.map((item) => {
+        const settled = item.total.sub(item.remaining);
+        const dueDay = Math.floor((item.dueDate.getTime() + 3 * 3600_000) / 86_400_000);
+        const daysOverdue = Math.max(0, asOfDay - dueDay);
+        const bucket =
+          daysOverdue === 0
+            ? 'Current'
+            : daysOverdue <= 30
+              ? '1–30 days'
+              : daysOverdue <= 60
+                ? '31–60 days'
+                : daysOverdue <= 90
+                  ? '61–90 days'
+                  : '90+ days';
+        return {
+          id: item.id,
+          number: item.number,
+          client: item.client,
+          currency: 'Not recorded',
+          issueDate: iso(item.issueDate),
+          dueDate: iso(item.dueDate),
+          daysOverdue,
+          bucket,
+          total: item.total.toFixed(2),
+          settled: settled.toFixed(2),
+          outstanding: item.remaining.toFixed(2),
+          href: `/invoices/${item.id}`,
+        };
+      });
+      total = counts?.count ?? 0;
+      summary = {
+        invoicesOutstanding: total,
+        overdueInvoices: counts?.overdueCount ?? 0,
+      };
+      break;
+    }
   }
   return {
     key: reportKey,
     columns: metadata.columns,
     rows,
-    summary: { total },
+    summary: summary ?? { total },
     period: period(query),
     generatedAt: new Date().toISOString(),
     meta: { page: query.page, pageSize: query.pageSize, total },

@@ -92,7 +92,8 @@ export function useReviewProjectInquiry() {
 export function useConvertProjectInquiry() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: convertProjectInquiry,
+    mutationFn: ({ id, managerId }: { id: string; managerId?: string }) =>
+      convertProjectInquiry(id, managerId),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ['admin-project-inquiries'] });
       void client.invalidateQueries({ queryKey: ['projects'] });

@@ -5,7 +5,35 @@ import type {
   FinanceAccountRecord,
   FinanceTransactionRecord,
 } from '@somwave/shared';
-import { apiDownload, apiFetch } from '../../lib/apiClient';
+import { apiDownload, apiFetch, apiFetchPaged, type PaginationMeta } from '../../lib/apiClient';
+
+export interface FinanceHistoryFilters {
+  page: number;
+  pageSize: number;
+  from?: string;
+  to?: string;
+  accountId?: string;
+  currency?: string;
+  search?: string;
+}
+export interface TransactionHistoryFilters extends FinanceHistoryFilters {
+  status?: string;
+  type?: 'INCOME' | 'EXPENSE';
+}
+export interface JournalHistoryFilters extends FinanceHistoryFilters {
+  sourceType?: 'FINANCE_TRANSACTION' | 'REVERSAL';
+}
+export type FinanceHistoryPage<T> = { data: T[]; meta: PaginationMeta };
+
+function historyQuery(
+  filters: FinanceHistoryFilters & { status?: string; type?: string; sourceType?: string },
+): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== '') params.set(key, String(value));
+  }
+  return params.toString();
+}
 
 export type FinanceDashboard = {
   from: string;
@@ -77,7 +105,8 @@ export const financeApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  transactions: () => apiFetch<FinanceTransactionRecord[]>('/finance/transactions'),
+  transactions: (filters: TransactionHistoryFilters) =>
+    apiFetchPaged<FinanceTransactionRecord[]>(`/finance/transactions?${historyQuery(filters)}`),
   createTransaction: (data: CreateFinanceTransactionInput) =>
     apiFetch<FinanceTransactionRecord>('/finance/transactions', {
       method: 'POST',
@@ -97,7 +126,8 @@ export const financeApi = {
       `/finance/transactions/${encodeURIComponent(id)}/${action}`,
       { method: 'POST', body: JSON.stringify(reason ? { reason } : {}) },
     ),
-  journals: () => apiFetch<FinanceJournalRecord[]>('/finance/journals'),
+  journals: (filters: JournalHistoryFilters) =>
+    apiFetchPaged<FinanceJournalRecord[]>(`/finance/journals?${historyQuery(filters)}`),
   reverse: (id: string, reason: string) =>
     apiFetch<{ id: string; reference: string }>(
       `/finance/journals/${encodeURIComponent(id)}/reverse`,

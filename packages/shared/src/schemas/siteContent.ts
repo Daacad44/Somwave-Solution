@@ -117,7 +117,36 @@ export const defaultEcosystem = {
   ],
 };
 
+export const homeSectionIds = [
+  'trusted',
+  'introduction',
+  'solutions',
+  'services',
+  'portfolio',
+  'why',
+  'process',
+  'testimonials',
+  'articles',
+  'faq',
+  'contact',
+  'cta',
+] as const;
+export const homeSectionIdSchema = z.enum(homeSectionIds);
+export type HomeSectionId = z.infer<typeof homeSectionIdSchema>;
+export const homeSectionOrderSchema = z
+  .array(homeSectionIdSchema)
+  .length(homeSectionIds.length)
+  .refine(
+    (ids) => new Set(ids).size === homeSectionIds.length,
+    'Include every homepage section once',
+  );
+
 export const siteContentSchema = z.object({
+  sectionOrder: homeSectionOrderSchema.default([...homeSectionIds]),
+  hiddenSections: z
+    .array(homeSectionIdSchema)
+    .refine((ids) => new Set(ids).size === ids.length, 'Choose each hidden section once')
+    .default([]),
   hero: z.object({
     badge: z.string().trim().min(1).max(120),
     headline: z.string().trim().min(1).max(180),
@@ -187,6 +216,8 @@ export const siteContentSchema = z.object({
 export type SiteContent = z.infer<typeof siteContentSchema>;
 
 export const defaultSiteContent: SiteContent = {
+  sectionOrder: [...homeSectionIds],
+  hiddenSections: [],
   hero: {
     badge: 'Technology partner for growing businesses',
     headline: 'Innovative Technology Solutions for a Brighter Tomorrow.',

@@ -33,6 +33,7 @@ const firstId = siteContent.heroSlideOrder[0];
 const firstSlide = firstId === 'intro' ? siteContent.hero : siteContent.heroSlides.find((slide) => slide.id === firstId);
 const firstImage = firstSlide?.imageUrl === '/images/hero-somwave.png' ? '/images/hero-devices-1200.webp' : firstSlide?.imageUrl;
 const defaultDevices = firstImage === '/images/hero-devices-1200.webp';
+const visibleSections = siteContent.sectionOrder.filter((id) => !siteContent.hiddenSections.includes(id));
 ---
 
 <PageLayout
@@ -44,16 +45,20 @@ const defaultDevices = firstImage === '/images/hero-devices-1200.webp';
   preloadImageSrcset={defaultDevices ? '/images/hero-devices-768.webp 768w, /images/hero-devices-1200.webp 1200w' : undefined}
 >
   <Hero content={siteContent} />
-  <TrustedLogos content={siteContent.trusted} />
-  <HomeIntroduction content={siteContent.hero} />
-  <HomeSolutions content={siteContent.ecosystem} />
-  <HomeServices services={homepage.services} />
-  <HomePortfolio projects={homepage.portfolio} />
-  <WhySomwave />
-  <HomeProcess />
-  <HomeTestimonials testimonials={homepage.testimonials} />
-  <HomeArticles posts={homepage.posts} />
-  <HomeFaq faqs={homepage.faqs} />
-  <HomeContact contact={siteContent.contact} />
-  <FinalCta content={siteContent.cta} />
+  {visibleSections.map((id) => {
+    switch (id) {
+      case 'trusted': return <TrustedLogos content={siteContent.trusted} />;
+      case 'introduction': return <HomeIntroduction content={siteContent.hero} />;
+      case 'solutions': return <HomeSolutions content={siteContent.ecosystem} />;
+      case 'services': return <HomeServices services={homepage.services} />;
+      case 'portfolio': return <HomePortfolio projects={homepage.portfolio} />;
+      case 'why': return <WhySomwave />;
+      case 'process': return <HomeProcess />;
+      case 'testimonials': return <HomeTestimonials testimonials={homepage.testimonials} />;
+      case 'articles': return <HomeArticles posts={homepage.posts} />;
+      case 'faq': return <HomeFaq faqs={homepage.faqs} />;
+      case 'contact': return <HomeContact contact={siteContent.contact} />;
+      case 'cta': return <FinalCta content={siteContent.cta} />;
+    }
+  })}
 </PageLayout>

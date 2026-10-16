@@ -32,11 +32,34 @@ export function getSiteContent(): Promise<SiteContent> {
   return apiFetch<SiteContent>('/cms/site-content');
 }
 
-export function saveSiteContent(content: SiteContent): Promise<SiteContent> {
-  return apiFetch<SiteContent>('/cms/site-content', {
+export interface SiteContentDraft {
+  content: SiteContent;
+  status: 'DRAFT' | 'IN_REVIEW' | 'APPROVED';
+  authorId: string;
+  reviewerId: string | null;
+}
+
+export function getSiteContentDraft(): Promise<SiteContentDraft | null> {
+  return apiFetch<SiteContentDraft | null>('/cms/site-content/draft');
+}
+
+export function saveSiteContent(content: SiteContent): Promise<SiteContentDraft> {
+  return apiFetch<SiteContentDraft>('/cms/site-content', {
     method: 'PUT',
     body: JSON.stringify(content),
   });
+}
+
+export function submitSiteContentDraft(): Promise<SiteContentDraft> {
+  return apiFetch('/cms/site-content/draft/submit', { method: 'POST' });
+}
+
+export function approveSiteContentDraft(): Promise<SiteContentDraft> {
+  return apiFetch('/cms/site-content/draft/approve', { method: 'POST' });
+}
+
+export function publishSiteContentDraft(): Promise<SiteContent> {
+  return apiFetch('/cms/site-content/draft/publish', { method: 'POST' });
 }
 
 export function listServices(): Promise<AdminService[]> {

@@ -59,12 +59,13 @@ export function reviewProjectInquiry(
 }
 export function convertProjectInquiry(
   id: string,
+  managerId?: string,
 ): Promise<{ projectId: string; created: boolean }> {
   return apiFetch<{ projectId: string; created: boolean }>(
     `/leads/project-inquiries/${id}/convert`,
     {
       method: 'POST',
-      body: JSON.stringify({}),
+      body: JSON.stringify(managerId ? { managerId } : {}),
     },
   );
 }

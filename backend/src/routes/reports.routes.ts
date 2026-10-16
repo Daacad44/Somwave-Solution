@@ -43,6 +43,7 @@ const filters: Partial<Record<ReportKey, readonly string[]>> = {
   articles: ['status', 'search'],
   audit: ['search'],
   'trial-balance': [],
+  'receivables-aging': ['projectId', 'clientId', 'search'],
   'my-projects': ['status', 'projectId', 'search'],
   'my-invoices': ['status', 'projectId'],
 };

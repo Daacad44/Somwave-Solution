@@ -269,3 +269,22 @@ export function activateProjectInquiry(
 export function resendProjectInquiryCode(id: string): Promise<{ sent: boolean }> {
   return postProjectInquiry(`/public/project-inquiries/${encodeURIComponent(id)}/resend`, {});
 }
+
+export interface ProjectInquiryAttachment {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export function uploadProjectInquiryAttachment(
+  id: string,
+  activationToken: string,
+  file: { fileName: string; mimeType: string; contentBase64: string },
+): Promise<ProjectInquiryAttachment> {
+  return postProjectInquiry(`/public/project-inquiries/${encodeURIComponent(id)}/attachments`, {
+    activationToken,
+    ...file,
+  });
+}

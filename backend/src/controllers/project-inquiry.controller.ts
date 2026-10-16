@@ -1,7 +1,8 @@
 import type { NextFunction, Request, Response } from 'express';
-import type { CreateProjectInquiryInput } from '@somwave/shared';
+import type { CreateProjectInquiryInput, ProjectInquiryAttachmentInput } from '@somwave/shared';
 import { AppError, sendData } from '../lib/http';
 import * as inquiries from '../services/project-inquiry.service';
+import * as attachments from '../services/project-inquiry-attachment.service';
 
 function id(req: Request): string {
   const value = req.params.id;
@@ -89,4 +90,63 @@ export const convert = handle(async (req, res) => {
     (req.body as { managerId?: string | null }).managerId,
   );
   sendData(res, result, result.created ? 201 : 200);
+});
+
+export const uploadPublicAttachment = handle(async (req, res) => {
+  const body = req.body as ProjectInquiryAttachmentInput & { activationToken: string };
+  const result = await attachments.uploadProjectInquiryAttachment(id(req), body, {
+    kind: 'proof',
+    activationToken: body.activationToken,
+  });
+  sendData(res, result, 201);
+});
+
+export const uploadClientAttachment = handle(async (req, res) => {
+  const result = await attachments.uploadProjectInquiryAttachment(
+    id(req),
+    req.body as ProjectInquiryAttachmentInput,
+    { kind: 'client', clientId: clientId(req) },
+    user(req).id,
+  );
+  sendData(res, result, 201);
+});
+
+export const listClientAttachments = handle(async (req, res) => {
+  sendData(
+    res,
+    await attachments.listProjectInquiryAttachments(id(req), {
+      kind: 'client',
+      clientId: clientId(req),
+    }),
+  );
+});
+
+export const listAdminAttachments = handle(async (req, res) => {
+  sendData(res, await attachments.listProjectInquiryAttachments(id(req), { kind: 'admin' }));
+});
+
+async function download(
+  req: Request,
+  res: Response,
+  access: { kind: 'client'; clientId: string } | { kind: 'admin' },
+) {
+  const attachmentId = req.params.attachmentId;
+  if (!attachmentId) throw new AppError('NOT_FOUND', 404, 'Attachment not found');
+  const file = await attachments.readProjectInquiryAttachment(id(req), attachmentId, access);
+  res.setHeader('Content-Type', file.mimeType);
+  res.setHeader('Content-Length', file.bytes.length);
+  res.setHeader('Content-Disposition', `attachment; filename="${file.fileName}"`);
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Content-Security-Policy', 'sandbox');
+  res.setHeader('X-Download-Options', 'noopen');
+  res.send(file.bytes);
+}
+
+export const downloadClientAttachment = handle(async (req, res) => {
+  await download(req, res, { kind: 'client', clientId: clientId(req) });
+});
+
+export const downloadAdminAttachment = handle(async (req, res) => {
+  await download(req, res, { kind: 'admin' });
 });

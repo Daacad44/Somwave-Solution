@@ -12,7 +12,13 @@ import { Input } from '../../components/ui/Input';
 import { EmptyState, ErrorState, LoadingState } from '../../components/states';
 import { useHasPermission } from '../../lib/rbac';
 import { useCurrentUser } from '../auth/hooks';
-import { financeApi } from './api';
+import {
+  financeApi,
+  type FinanceHistoryFilters,
+  type FinanceJournalRecord,
+  type JournalHistoryFilters,
+  type TransactionHistoryFilters,
+} from './api';
 
 type Tab =
   'Overview' | 'Transactions' | 'Approvals' | 'Projects' | 'Chart of Accounts' | 'General Ledger';
@@ -25,6 +31,7 @@ const tabs: Tab[] = [
   'General Ledger',
 ];
 const accountTypes = ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'DIRECT_COST', 'EXPENSE'] as const;
+const HISTORY_PAGE_SIZE = 20;
 const fieldClass =
   'h-11 w-full rounded-md border border-border bg-surface px-3 text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent';
 function today(): string {
@@ -49,6 +56,15 @@ export function FinancePage(): ReactNode {
   const [to, setTo] = useState(nextMonth);
   const [message, setMessage] = useState('');
   const [editing, setEditing] = useState<FinanceTransactionRecord | null>(null);
+  const [transactionFilters, setTransactionFilters] = useState<TransactionHistoryFilters>({
+    page: 1,
+    pageSize: HISTORY_PAGE_SIZE,
+  });
+  const [approvalPage, setApprovalPage] = useState(1);
+  const [journalFilters, setJournalFilters] = useState<JournalHistoryFilters>({
+    page: 1,
+    pageSize: HISTORY_PAGE_SIZE,
+  });
   const queryClient = useQueryClient();
   const canCreate = useHasPermission(PERMISSIONS.FINANCE_CREATE);
   const canApprove = useHasPermission(PERMISSIONS.FINANCE_APPROVE);
@@ -61,8 +77,18 @@ export function FinancePage(): ReactNode {
     queryFn: financeApi.linkOptions,
   });
   const transactions = useQuery({
-    queryKey: ['finance-transactions'],
-    queryFn: financeApi.transactions,
+    queryKey: ['finance-transactions', tab, transactionFilters, approvalPage],
+    queryFn: () =>
+      financeApi.transactions({
+        ...transactionFilters,
+        page: tab === 'Approvals' ? approvalPage : transactionFilters.page,
+        status: tab === 'Approvals' ? 'SUBMITTED,APPROVED' : transactionFilters.status,
+      }),
+    enabled:
+      (tab === 'Transactions' || tab === 'Approvals') &&
+      (!transactionFilters.from ||
+        !transactionFilters.to ||
+        transactionFilters.from < transactionFilters.to),
   });
   const dashboard = useQuery({
     queryKey: ['finance-dashboard', from, to],
@@ -80,9 +106,11 @@ export function FinancePage(): ReactNode {
     enabled: from < to && tab === 'Projects',
   });
   const journals = useQuery({
-    queryKey: ['finance-journals'],
-    queryFn: financeApi.journals,
-    enabled: tab === 'General Ledger',
+    queryKey: ['finance-journals', journalFilters],
+    queryFn: () => financeApi.journals(journalFilters),
+    enabled:
+      tab === 'General Ledger' &&
+      (!journalFilters.from || !journalFilters.to || journalFilters.from < journalFilters.to),
   });
   const refresh = (): void => {
     void queryClient.invalidateQueries({ queryKey: ['finance-accounts'] });
@@ -220,8 +248,59 @@ export function FinancePage(): ReactNode {
               onCancelEdit={() => setEditing(null)}
             />
           )}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="text-sm font-medium">
+              Status
+              <select
+                className={fieldClass}
+                value={transactionFilters.status ?? ''}
+                onChange={(event) =>
+                  setTransactionFilters((current) => ({
+                    ...current,
+                    status: event.target.value || undefined,
+                    page: 1,
+                  }))
+                }
+              >
+                <option value="">All statuses</option>
+                {['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'POSTED', 'CANCELLED'].map(
+                  (status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ),
+                )}
+              </select>
+            </label>
+            <label className="text-sm font-medium">
+              Type
+              <select
+                className={fieldClass}
+                value={transactionFilters.type ?? ''}
+                onChange={(event) =>
+                  setTransactionFilters((current) => ({
+                    ...current,
+                    type: (event.target.value || undefined) as TransactionHistoryFilters['type'],
+                    page: 1,
+                  }))
+                }
+              >
+                <option value="">All types</option>
+                <option value="INCOME">Income</option>
+                <option value="EXPENSE">Expense</option>
+              </select>
+            </label>
+          </div>
+          <FinanceHistoryFilters
+            filters={transactionFilters}
+            accounts={accounts.data ?? []}
+            onChange={(patch) =>
+              setTransactionFilters((current) => ({ ...current, ...patch, page: 1 }))
+            }
+            kind="transactions"
+          />
           <TransactionList
-            rows={transactions.data ?? []}
+            rows={transactions.data?.data ?? []}
             loading={transactions.isLoading}
             error={transactions.isError}
             userId={user?.id}
@@ -231,25 +310,33 @@ export function FinancePage(): ReactNode {
             action={action.mutate}
             onEdit={setEditing}
           />
+          <HistoryPagination
+            meta={transactions.data?.meta}
+            onPage={(page) => setTransactionFilters((current) => ({ ...current, page }))}
+          />
         </div>
       )}
       {tab === 'Approvals' && (
-        <TransactionList
-          rows={(transactions.data ?? []).filter(
-            (row) => row.status === 'SUBMITTED' || row.status === 'APPROVED',
-          )}
-          loading={transactions.isLoading}
-          error={transactions.isError}
-          userId={user?.id}
-          canCreate={canCreate}
-          canApprove={canApprove}
-          canPost={canPost}
-          action={action.mutate}
-          onEdit={(row) => {
-            setEditing(row);
-            setTab('Transactions');
-          }}
-        />
+        <div className="space-y-4">
+          <p className="text-sm text-muted">
+            Submitted and approved transactions requiring action.
+          </p>
+          <TransactionList
+            rows={transactions.data?.data ?? []}
+            loading={transactions.isLoading}
+            error={transactions.isError}
+            userId={user?.id}
+            canCreate={canCreate}
+            canApprove={canApprove}
+            canPost={canPost}
+            action={action.mutate}
+            onEdit={(row) => {
+              setEditing(row);
+              setTab('Transactions');
+            }}
+          />
+          <HistoryPagination meta={transactions.data?.meta} onPage={setApprovalPage} />
+        </div>
       )}
       {tab === 'Projects' && (
         <section className="space-y-3">
@@ -418,7 +505,34 @@ export function FinancePage(): ReactNode {
             )}
           </section>
           <section>
-            <h2 className="mb-3 text-lg font-semibold">Recent posted journals</h2>
+            <h2 className="mb-3 text-lg font-semibold">Posted journal history</h2>
+            <label className="mb-3 block text-sm font-medium">
+              Source
+              <select
+                className={fieldClass}
+                value={journalFilters.sourceType ?? ''}
+                onChange={(event) =>
+                  setJournalFilters((current) => ({
+                    ...current,
+                    sourceType: (event.target.value ||
+                      undefined) as JournalHistoryFilters['sourceType'],
+                    page: 1,
+                  }))
+                }
+              >
+                <option value="">All sources</option>
+                <option value="FINANCE_TRANSACTION">Finance transaction</option>
+                <option value="REVERSAL">Reversal</option>
+              </select>
+            </label>
+            <FinanceHistoryFilters
+              filters={journalFilters}
+              accounts={accounts.data ?? []}
+              onChange={(patch) =>
+                setJournalFilters((current) => ({ ...current, ...patch, page: 1 }))
+              }
+              kind="journals"
+            />
             {journals.isLoading ? (
               <LoadingState rows={4} />
             ) : journals.isError ? (
@@ -426,11 +540,11 @@ export function FinancePage(): ReactNode {
                 description="Could not load journals."
                 onRetry={() => void journals.refetch()}
               />
-            ) : !journals.data?.length ? (
+            ) : !journals.data?.data.length ? (
               <EmptyState title="No posted journals yet" />
             ) : (
               <ul className="space-y-3">
-                {journals.data.map((row) => (
+                {journals.data.data.map((row) => (
                   <JournalCard
                     key={row.id}
                     row={row}
@@ -443,6 +557,10 @@ export function FinancePage(): ReactNode {
                 ))}
               </ul>
             )}
+            <HistoryPagination
+              meta={journals.data?.meta}
+              onPage={(page) => setJournalFilters((current) => ({ ...current, page }))}
+            />
           </section>
         </div>
       )}
@@ -811,6 +929,156 @@ function TransactionForm({
   );
 }
 
+function FinanceHistoryFilters({
+  filters,
+  accounts,
+  onChange,
+  kind,
+}: {
+  filters: FinanceHistoryFilters;
+  accounts: FinanceAccountRecord[];
+  onChange: (patch: Partial<FinanceHistoryFilters>) => void;
+  kind: 'transactions' | 'journals';
+}): ReactNode {
+  const [searchText, setSearchText] = useState(filters.search ?? '');
+  const invalidDates = Boolean(filters.from && filters.to && filters.from >= filters.to);
+  return (
+    <form
+      className="space-y-3 rounded-lg border border-border bg-surface p-4"
+      aria-label={`${kind === 'transactions' ? 'Transaction' : 'Journal'} history filters`}
+      onSubmit={(event) => {
+        event.preventDefault();
+        onChange({ search: searchText.trim() || undefined });
+      }}
+    >
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Input
+          type="date"
+          label="From (inclusive)"
+          value={filters.from ?? ''}
+          onChange={(event) => onChange({ from: event.target.value || undefined })}
+        />
+        <Input
+          type="date"
+          label="To (exclusive)"
+          value={filters.to ?? ''}
+          onChange={(event) => onChange({ to: event.target.value || undefined })}
+        />
+        <label className="text-sm font-medium">
+          Account
+          <select
+            className={fieldClass}
+            value={filters.accountId ?? ''}
+            onChange={(event) => onChange({ accountId: event.target.value || undefined })}
+          >
+            <option value="">All accounts</option>
+            {accounts.map((account) => (
+              <option key={account.id} value={account.id}>
+                {account.code} · {account.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm font-medium">
+          Currency
+          <select
+            className={fieldClass}
+            value={filters.currency ?? ''}
+            onChange={(event) => onChange({ currency: event.target.value || undefined })}
+          >
+            <option value="">All currencies</option>
+            {[
+              ...new Set([
+                'USD',
+                'SOS',
+                ...accounts
+                  .map((account) => account.currency)
+                  .filter((value): value is string => Boolean(value)),
+              ]),
+            ].map((currency) => (
+              <option key={currency} value={currency}>
+                {currency}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="flex flex-wrap items-end gap-3">
+        <Input
+          label="Search"
+          value={searchText}
+          maxLength={100}
+          onChange={(event) => setSearchText(event.target.value)}
+          placeholder={
+            kind === 'transactions'
+              ? 'Description, category or reference'
+              : 'Reference, memo or source ID'
+          }
+        />
+        <Button type="submit" variant="secondary">
+          Apply search
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => {
+            setSearchText('');
+            onChange({
+              from: undefined,
+              to: undefined,
+              accountId: undefined,
+              currency: undefined,
+              search: undefined,
+            });
+          }}
+        >
+          Clear common filters
+        </Button>
+      </div>
+      {invalidDates ? <p className="text-sm text-error">End date must follow start date.</p> : null}
+    </form>
+  );
+}
+
+function HistoryPagination({
+  meta,
+  onPage,
+}: {
+  meta?: { page: number; pageSize: number; total: number };
+  onPage: (page: number) => void;
+}): ReactNode {
+  if (!meta || meta.total === 0) return null;
+  const pages = Math.ceil(meta.total / meta.pageSize);
+  return (
+    <nav
+      aria-label="History pages"
+      className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm"
+    >
+      <span>
+        Page {meta.page} of {pages} · {meta.total} records
+      </span>
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={meta.page <= 1}
+          onClick={() => onPage(meta.page - 1)}
+        >
+          Previous
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={meta.page >= pages}
+          onClick={() => onPage(meta.page + 1)}
+        >
+          Next
+        </Button>
+      </div>
+    </nav>
+  );
+}
+
 function TransactionList({
   rows,
   loading,
@@ -941,7 +1209,7 @@ function JournalCard({
   canManage,
   onDone,
 }: {
-  row: Awaited<ReturnType<typeof financeApi.journals>>[number];
+  row: FinanceJournalRecord;
   canManage: boolean;
   onDone: (message: string) => void;
 }): ReactNode {

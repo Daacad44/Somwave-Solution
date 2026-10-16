@@ -1,13 +1,16 @@
 import { type ReactNode, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { PERMISSIONS } from '@somwave/shared';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
+import { Select } from '../../components/ui/Select';
 import { Table, TBody, Td, Th, THead, Tr } from '../../components/ui/Table';
 import { EmptyState, ErrorState, LoadingState } from '../../components/states';
 import { ApiError } from '../../lib/apiClient';
 import { formatDate } from '../../lib/date';
 import { useHasPermission } from '../../lib/rbac';
+import { listUsers } from '../users-roles/api';
 import { PROJECT_INQUIRY_STATUS_LABELS } from './api';
 import {
   useAdminProjectInquiries,
@@ -21,8 +24,28 @@ export function ProjectInquiriesPanel(): ReactNode {
   const convert = useConvertProjectInquiry();
   const canReview = useHasPermission(PERMISSIONS.LEADS_UPDATE);
   const canCreateProject = useHasPermission(PERMISSIONS.PROJECTS_CREATE);
+  const canReadUsers = useHasPermission(PERMISSIONS.USERS_READ);
   const [proposalId, setProposalId] = useState<string | null>(null);
   const [proposalSummary, setProposalSummary] = useState('');
+  const [managerIds, setManagerIds] = useState<Record<string, string>>({});
+  const managers = useQuery({
+    queryKey: ['project-inquiry-managers'],
+    enabled: canCreateProject && canReadUsers,
+    queryFn: async () => {
+      const first = await listUsers({ page: 1, pageSize: 100 });
+      const rows = [...first.data];
+      for (let page = 2; page <= Math.ceil(first.meta.total / 100); page += 1) {
+        rows.push(...(await listUsers({ page, pageSize: 100 })).data);
+      }
+      return rows.filter(
+        (person) =>
+          person.isActive &&
+          person.roles.some((role) =>
+            ['PROJECT_MANAGER', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'].includes(role),
+          ),
+      );
+    },
+  });
 
   return (
     <section className="mt-10" aria-labelledby="project-inquiries-heading">
@@ -161,14 +184,40 @@ export function ProjectInquiriesPanel(): ReactNode {
                       )
                     ) : null}
                     {canCreateProject && request.status === 'APPROVED' ? (
-                      <Button
-                        size="sm"
-                        type="button"
-                        isLoading={convert.isPending && convert.variables === request.id}
-                        onClick={() => convert.mutate(request.id)}
-                      >
-                        Create project
-                      </Button>
+                      <div className="space-y-2">
+                        {canReadUsers ? (
+                          <Select
+                            label="Project manager"
+                            value={managerIds[request.id] ?? ''}
+                            onChange={(event) =>
+                              setManagerIds((current) => ({
+                                ...current,
+                                [request.id]: event.target.value,
+                              }))
+                            }
+                            options={[
+                              { value: '', label: 'Assign later' },
+                              ...(managers.data ?? []).map((person) => ({
+                                value: person.id,
+                                label: person.name,
+                              })),
+                            ]}
+                          />
+                        ) : null}
+                        <Button
+                          size="sm"
+                          type="button"
+                          isLoading={convert.isPending && convert.variables?.id === request.id}
+                          onClick={() =>
+                            convert.mutate({
+                              id: request.id,
+                              managerId: managerIds[request.id] || undefined,
+                            })
+                          }
+                        >
+                          Create project
+                        </Button>
+                      </div>
                     ) : null}
                     {canReview &&
                     ['ACCOUNT_CREATED', 'UNDER_REVIEW', 'PROPOSAL_SENT'].includes(
@@ -191,7 +240,7 @@ export function ProjectInquiriesPanel(): ReactNode {
                           : 'Could not update request.'}
                       </p>
                     ) : null}
-                    {convert.isError && convert.variables === request.id ? (
+                    {convert.isError && convert.variables?.id === request.id ? (
                       <p role="alert" className="mt-2 text-sm text-error">
                         {convert.error instanceof ApiError
                           ? convert.error.message

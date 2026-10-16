@@ -50,6 +50,34 @@ export const convertProjectInquirySchema = z.object({
   managerId: z.string().nullable().optional(),
 });
 
+const attachmentPayloadSchema = z.object({
+  fileName: z.string().trim().min(1).max(120),
+  mimeType: z.enum(['application/pdf', 'image/jpeg', 'image/png']),
+  contentBase64: z
+    .string()
+    .min(4)
+    .max(6_990_508)
+    .refine(
+      (value) => value.length % 4 === 0 && /^[A-Za-z0-9+/]*={0,2}$/.test(value),
+      'Enter valid base64 file content',
+    ),
+});
+
+export const uploadPublicProjectInquiryAttachmentSchema = attachmentPayloadSchema.extend({
+  activationToken: z.string().min(32).max(128),
+});
+export const uploadClientProjectInquiryAttachmentSchema = attachmentPayloadSchema;
+export type ProjectInquiryAttachmentInput = z.infer<typeof attachmentPayloadSchema>;
+
+export const projectInquiryAttachmentSchema = z.object({
+  id: z.string(),
+  fileName: z.string(),
+  mimeType: z.string(),
+  sizeBytes: z.number().int().nonnegative(),
+  createdAt: z.string(),
+});
+export type ProjectInquiryAttachment = z.infer<typeof projectInquiryAttachmentSchema>;
+
 export const projectInquirySummarySchema = z.object({
   id: z.string(),
   name: z.string(),

@@ -36,6 +36,7 @@ const fieldClass = 'min-h-11 w-full rounded-md border border-border bg-surface p
           <label class="grid gap-1.5"><span class="text-sm font-semibold text-ink">Estimated budget <span class="font-normal text-muted">(optional)</span></span><input class={fieldClass} name="estimatedBudget" maxlength="100" placeholder="Your approximate range" /></label>
           <label class="grid gap-1.5"><span class="text-sm font-semibold text-ink">Expected timeline <span class="font-normal text-muted">(optional)</span></span><input class={fieldClass} name="expectedTimeline" maxlength="100" placeholder="e.g. 3 months" /></label>
         </div>
+        <label class="grid gap-1.5"><span class="text-sm font-semibold text-ink">Supporting files <span class="font-normal text-muted">(optional)</span></span><input class={fieldClass} name="attachments" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" multiple aria-describedby="attachment-help" /><span id="attachment-help" class="text-sm text-muted">Up to three PDF, JPEG or PNG files, 5 MB each. Files upload after email verification.</span></label>
         <p id="request-status" class="text-sm text-muted" role="status" aria-live="polite"></p>
         <button type="submit" class="min-h-12 rounded-md bg-brand px-6 py-3 text-sm font-bold text-surface hover:bg-brand-600 disabled:opacity-60">Send project request</button>
       </form>
@@ -48,6 +49,15 @@ const fieldClass = 'min-h-11 w-full rounded-md border border-border bg-surface p
         <button type="submit" class="min-h-12 rounded-md bg-brand px-6 py-3 text-sm font-bold text-surface hover:bg-brand-600 disabled:opacity-60">Verify email</button>
         <button id="resend-code" type="button" class="min-h-11 text-sm font-semibold text-brand hover:underline disabled:opacity-60">Send another code</button>
       </form>
+
+      <div id="upload-inquiry-files" class="hidden grid gap-5">
+        <h2 class="text-2xl font-bold text-primary">Add your supporting files</h2>
+        <p class="text-sm leading-6 text-muted">Your email is verified. Attach the files you selected to help us understand your project.</p>
+        <ul id="upload-file-list" class="list-inside list-disc text-sm text-ink"></ul>
+        <p id="upload-status" class="text-sm text-muted" role="status" aria-live="polite"></p>
+        <button id="upload-files-button" type="button" class="min-h-12 rounded-md bg-brand px-6 py-3 text-sm font-bold text-surface hover:bg-brand-600 disabled:opacity-60">Upload files and continue</button>
+        <button id="skip-files-button" type="button" class="min-h-11 text-sm font-semibold text-brand hover:underline">Continue without remaining files</button>
+      </div>
 
       <form id="activate-inquiry-form" class="hidden grid gap-5" novalidate>
         <h2 class="text-2xl font-bold text-primary">Create your password</h2>
@@ -82,25 +92,50 @@ const fieldClass = 'min-h-11 w-full rounded-md border border-border bg-surface p
 </PageLayout>
 
 <script>
-  import { activateProjectInquiry, resendProjectInquiryCode, submitProjectInquiry, verifyProjectInquiry } from '../lib/api';
+  import { activateProjectInquiry, resendProjectInquiryCode, submitProjectInquiry, uploadProjectInquiryAttachment, verifyProjectInquiry } from '../lib/api';
   import { newPasswordSchema, passwordPolicyStatus } from '@somwave/shared';
 
   const requestForm = document.querySelector<HTMLFormElement>('#project-inquiry-form');
   const verifyForm = document.querySelector<HTMLFormElement>('#verify-inquiry-form');
+  const uploadStep = document.querySelector<HTMLElement>('#upload-inquiry-files');
   const activateForm = document.querySelector<HTMLFormElement>('#activate-inquiry-form');
   const complete = document.querySelector<HTMLElement>('#request-complete');
   const status = (id: string) => document.getElementById(id);
   let inquiryId: string | null = null;
   let activationToken: string | null = null;
+  let accountExists = false;
+  let attachments: File[] = [];
+  let uploadedCount = 0;
   const idempotencyKey = crypto.randomUUID();
-  const show = (step: 'verify' | 'activate' | 'complete') => {
+  const show = (step: 'verify' | 'upload' | 'activate' | 'complete') => {
     requestForm?.classList.add('hidden');
     verifyForm?.classList.toggle('hidden', step !== 'verify');
+    uploadStep?.classList.toggle('hidden', step !== 'upload');
     activateForm?.classList.toggle('hidden', step !== 'activate');
     complete?.classList.toggle('hidden', step !== 'complete');
-    (step === 'verify' ? verifyForm : step === 'activate' ? activateForm : complete)?.querySelector<HTMLElement>('input, a')?.focus();
+    (step === 'verify' ? verifyForm : step === 'upload' ? uploadStep : step === 'activate' ? activateForm : complete)?.querySelector<HTMLElement>('input, button, a')?.focus();
   };
   const errorText = (error: unknown) => error instanceof Error ? error.message : 'Please try again.';
+  const proceedAfterUpload = () => {
+    if (accountExists) {
+      status('complete-message')!.textContent = 'Your email is verified. Sign in to the client portal to link and track your request.';
+      const portalLink = complete?.querySelector<HTMLAnchorElement>('a');
+      if (portalLink && inquiryId) portalLink.href = `https://app.somwave.botandev.com/login?next=%2Fportal%2Fprojects&inquiry=${encodeURIComponent(inquiryId)}`;
+      activationToken = null;
+      show('complete');
+    } else show('activate');
+  };
+  const validAttachmentTypes = new Set(['application/pdf', 'image/jpeg', 'image/png']);
+  const attachmentBase64 = (file: File) => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error(`Could not read ${file.name}. Please try again.`));
+    reader.onload = () => {
+      const value = reader.result;
+      if (typeof value !== 'string' || !value.includes(',')) return reject(new Error(`Could not read ${file.name}. Please try again.`));
+      resolve(value.slice(value.indexOf(',') + 1));
+    };
+    reader.readAsDataURL(file);
+  });
 
   requestForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -108,6 +143,9 @@ const fieldClass = 'min-h-11 w-full rounded-md border border-border bg-surface p
     const values = new FormData(requestForm);
     const features = String(values.get('desiredFeatures') ?? '').split('\n').map((value) => value.trim()).filter(Boolean);
     if (features.length > 20 || features.some((feature) => feature.length > 200)) { status('request-status')!.textContent = 'Please list up to 20 features, each under 200 characters.'; return; }
+    const selected = Array.from((requestForm.elements.namedItem('attachments') as HTMLInputElement | null)?.files ?? []);
+    if (selected.length > 3) { status('request-status')!.textContent = 'Choose up to three supporting files.'; return; }
+    if (selected.some((file) => !validAttachmentTypes.has(file.type) || file.size > 5 * 1024 * 1024 || file.size === 0)) { status('request-status')!.textContent = 'Each file must be a non-empty PDF, JPEG or PNG no larger than 5 MB.'; return; }
     const optional = (name: string) => String(values.get(name) ?? '').trim() || undefined;
     const button = requestForm.querySelector<HTMLButtonElement>('button[type="submit"]');
     if (button) button.disabled = true;
@@ -121,6 +159,8 @@ const fieldClass = 'min-h-11 w-full rounded-md border border-border bg-surface p
         estimatedBudget: optional('estimatedBudget'), expectedTimeline: optional('expectedTimeline'),
       }, idempotencyKey);
       inquiryId = result.id;
+      attachments = selected;
+      uploadedCount = 0;
       show('verify');
     } catch (error) { status('request-status')!.textContent = errorText(error); }
     finally { if (button) button.disabled = false; }
@@ -136,20 +176,43 @@ const fieldClass = 'min-h-11 w-full rounded-md border border-border bg-surface p
     status('verify-status')!.textContent = 'Verifying…';
     try {
       const result = await verifyProjectInquiry(inquiryId, code);
-      if (result.accountExists) {
-        status('complete-message')!.textContent = 'Your email is verified. Sign in to the client portal to link and track your request.';
-        const portalLink = complete?.querySelector<HTMLAnchorElement>('a');
-        if (portalLink) portalLink.href = `https://app.somwave.botandev.com/login?next=%2Fportal%2Fprojects&inquiry=${encodeURIComponent(inquiryId)}`;
-        show('complete');
-      } else if (result.activationToken) {
+      accountExists = result.accountExists;
+      if (result.activationToken) {
         activationToken = result.activationToken;
-        show('activate');
+        if (attachments.length) {
+          status('upload-file-list')!.replaceChildren(...attachments.map((file) => {
+            const row = document.createElement('li');
+            row.textContent = file.name;
+            return row;
+          }));
+          show('upload');
+        } else proceedAfterUpload();
       } else {
         status('verify-status')!.textContent = 'Verification could not be completed. Please request a new code.';
       }
     } catch (error) { status('verify-status')!.textContent = errorText(error); }
     finally { if (button) button.disabled = false; }
   });
+
+  document.getElementById('upload-files-button')?.addEventListener('click', async (event) => {
+    if (!inquiryId || !activationToken) return;
+    const button = event.currentTarget as HTMLButtonElement;
+    button.disabled = true;
+    try {
+      while (uploadedCount < attachments.length) {
+        const file = attachments[uploadedCount]!;
+        status('upload-status')!.textContent = `Uploading ${file.name} (${uploadedCount + 1} of ${attachments.length})…`;
+        await uploadProjectInquiryAttachment(inquiryId, activationToken, {
+          fileName: file.name, mimeType: file.type, contentBase64: await attachmentBase64(file),
+        });
+        uploadedCount += 1;
+      }
+      proceedAfterUpload();
+    } catch (error) {
+      status('upload-status')!.textContent = `${errorText(error)} You can retry or continue without the remaining files.`;
+    } finally { button.disabled = false; }
+  });
+  document.getElementById('skip-files-button')?.addEventListener('click', proceedAfterUpload);
 
   document.getElementById('resend-code')?.addEventListener('click', async (event) => {
     if (!inquiryId) return;

@@ -362,6 +362,13 @@ export function ReportsPage(): ReactNode {
               {selected?.description ? (
                 <p className="text-sm text-muted md:col-span-3">{selected.description}</p>
               ) : null}
+              {selected?.key === 'receivables-aging' ? (
+                <p className="text-sm text-muted md:col-span-3">
+                  As of {period.to} in Africa/Mogadishu. The From date does not limit this
+                  outstanding-balance snapshot. Amounts have no recorded currency; use the invoice
+                  link to review each balance.
+                </p>
+              ) : null}
               {supportedFilters.has('search') ? (
                 <Input
                   label="Search"
@@ -491,7 +498,10 @@ export function ReportsPage(): ReactNode {
                   <p>
                     Page {reportQuery.data.meta.page} of{' '}
                     {Math.max(1, Math.ceil(reportQuery.data.meta.total / PAGE_SIZE))} ·{' '}
-                    {period.from} to {period.to} ({reportQuery.data.data.period.timezone}) · Updated{' '}
+                    {selected?.key === 'receivables-aging'
+                      ? `As of ${period.to}`
+                      : `${period.from} to ${period.to}`}{' '}
+                    ({reportQuery.data.data.period.timezone}) · Updated{' '}
                     <time dateTime={reportQuery.data.data.generatedAt}>
                       {new Date(reportQuery.data.data.generatedAt).toLocaleString()}
                     </time>

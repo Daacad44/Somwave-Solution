@@ -66,7 +66,7 @@ establish that external funds have cleared a bank or gateway.
 | 10 Salaries | NOT STARTED | Salary profiles, payroll periods, approval, posting and payslips. |
 | 11 Allowances | NOT STARTED | Bonuses, overtime, reimbursements, deductions and payroll integration. |
 | 12 Cash/bank | PARTIAL | Asset accounts and direct journals exist. Transfers, opening balances and reconciliation remain. |
-| 13 Transaction history | PARTIAL | Recent posted journals and source links exist. Full pagination and advanced filters remain. |
+| 13 Transaction history | PARTIAL | Posted journals and manual finance transactions now have server-side pagination and date, account, currency, type/source and search filters. Legacy invoice/payment events are not reconciled into ledger history. |
 | 14 Approvals | PARTIAL | Independent income/expense approval exists. Configurable thresholds, levels and other entity approvals remain. |
 | 15 Recurring expenses | NOT STARTED | Schedules, draft generation, deduplication and alerts. |
 | 16 Profitability | PARTIAL | Direct posted project revenue/costs, gross/net result and margin exist. Labor, overhead, budget variance and legacy record reconciliation remain. |
