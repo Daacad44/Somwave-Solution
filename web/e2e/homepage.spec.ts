@@ -206,3 +206,49 @@ test('contact form validates before sending and reports a successful submission'
   await form.getByRole('button', { name: 'Send message' }).click();
   await expect(form.getByRole('status')).toContainText('Thank you');
 });
+
+test('project request verifies email and creates a portal account', async ({ page }) => {
+  await page.route('**/api/v1/public/project-inquiries**', (route) => {
+    const url = route.request().url();
+    const data = url.endsWith('/verify')
+      ? { status: 'EMAIL_VERIFIED', accountExists: false, activationToken: 'test-activation-proof' }
+      : url.endsWith('/activate')
+        ? { status: 'ACCOUNT_CREATED', loginUrl: '/login' }
+        : { id: 'inquiry-1', status: 'PENDING_VERIFICATION', verificationRequired: true };
+    return route.fulfill({
+      status: route.request().method() === 'OPTIONS' ? 204 : 201,
+      contentType: 'application/json',
+      headers: {
+        'access-control-allow-origin': 'http://127.0.0.1:4731',
+        'access-control-allow-methods': 'POST, OPTIONS',
+        'access-control-allow-headers': 'content-type, idempotency-key',
+      },
+      body: route.request().method() === 'OPTIONS' ? '' : JSON.stringify({ data }),
+    });
+  });
+  await page.goto('/request-project');
+  const request = page.locator('#project-inquiry-form');
+  await request.locator('[name="name"]').fill('Test Client');
+  await request.locator('[name="email"]').fill('client@example.com');
+  await request.locator('[name="projectType"]').fill('Website');
+  await request.locator('[name="description"]').fill('I need a website for my business.');
+  await request.getByRole('button', { name: 'Send project request' }).click();
+  const verify = page.locator('#verify-inquiry-form');
+  await expect(verify).toBeVisible();
+  await verify.locator('[name="code"]').fill('123456');
+  await verify.getByRole('button', { name: 'Verify email' }).click();
+  const activate = page.locator('#activate-inquiry-form');
+  await expect(activate).toBeVisible();
+  await activate.locator('[name="password"]').fill('A-long-password-123');
+  await expect(activate.locator('#password-strength')).toContainText('Strong');
+  await activate.getByRole('button', { name: 'Show password' }).click();
+  await expect(activate.locator('[name="password"]')).toHaveAttribute('type', 'text');
+  await activate.getByRole('button', { name: 'Hide password' }).click();
+  await activate.locator('[name="confirmPassword"]').fill('A-long-password-123');
+  await activate.getByRole('button', { name: 'Create account' }).click();
+  await expect(page.locator('#request-complete')).toContainText('Your request is verified');
+  await expect(page.locator('#request-complete a')).toHaveAttribute(
+    'href',
+    'https://app.somwave.botandev.com/login?next=%2Fportal%2Fprojects',
+  );
+});

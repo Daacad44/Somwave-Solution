@@ -8,6 +8,7 @@ import { ENGINEERING_NOTIFICATION_V1 } from '../mail/templates';
 export const NOTIFICATION_EVENTS = [
   'engineer.account.activated',
   'project.assignment',
+  'project.inquiry',
   'task.assignment',
   'task.review',
   'task.deadline',

@@ -48,6 +48,7 @@ import { engineeringOperationsRouter } from './routes/engineering-operations.rou
 import { projectDocumentationRouter } from './routes/project-documentation.routes';
 import { githubRouter, githubWebhooksRouter } from './routes/github.routes';
 import { financeRouter } from './routes/finance.routes';
+import { reportsRouter } from './routes/reports.routes';
 
 export function createApp(): Express {
   const app = express();
@@ -116,6 +117,7 @@ export function createApp(): Express {
   app.use('/api/v1/notifications', notificationsRouter);
   app.use('/api/v1/dashboard', dashboardRouter);
   app.use('/api/v1/finance', financeRouter);
+  app.use('/api/v1/reports', reportsRouter);
   app.use('/api/v1/search', searchRouter);
 
   app.use(notFoundHandler);

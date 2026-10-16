@@ -40,6 +40,30 @@ export function parseChargeAmount(amount: string): Prisma.Decimal {
   return value;
 }
 
+export function assertPaymentReplay(
+  existing: {
+    invoiceId: string;
+    amount: Prisma.Decimal;
+    method: string;
+    payerPhone: string | null;
+  },
+  requested: {
+    invoiceId: string;
+    amount: Prisma.Decimal;
+    method: string;
+    payerPhone?: string | null;
+  },
+): void {
+  if (
+    existing.invoiceId !== requested.invoiceId ||
+    !existing.amount.eq(requested.amount) ||
+    existing.method !== requested.method ||
+    (requested.method === 'EVC_PLUS' && existing.payerPhone !== requested.payerPhone)
+  ) {
+    throw new AppError('CONFLICT', 409, 'Idempotency key belongs to a different payment');
+  }
+}
+
 export type InvoiceForPayment = {
   id: string;
   status: string;
@@ -72,8 +96,9 @@ export async function loadPayableInvoice(
 export function assertAmountWithinBalance(
   invoice: InvoiceForPayment,
   amount: Prisma.Decimal,
+  pendingAmount?: Prisma.Decimal | null,
 ): void {
-  const nextPaid = invoice.paidAmount.add(amount);
+  const nextPaid = invoice.paidAmount.add(pendingAmount ?? 0).add(amount);
   if (nextPaid.gt(invoice.total)) {
     throw new AppError('VALIDATION_ERROR', 400, 'Payment exceeds the outstanding balance');
   }

@@ -1,0 +1,219 @@
+---
+// Visitors can request a similar project without creating an engineering project.
+export const prerender = false;
+
+import PageLayout from '../layouts/PageLayout.astro';
+import { fetchPortfolioItem } from '../lib/api';
+
+const slug = Astro.url.searchParams.get('portfolio');
+const reference = slug && /^[a-z0-9-]+$/.test(slug) ? await fetchPortfolioItem(slug) : null;
+const fieldClass = 'min-h-11 w-full rounded-md border border-border bg-surface px-3 py-2 text-base text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand';
+---
+
+<PageLayout title="Request a project — Somwave" description="Tell Somwave about the digital project you want to build.">
+  <section class="mx-auto grid max-w-content gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16 lg:py-24">
+    <div>
+      <p class="text-sm font-bold uppercase tracking-wider text-brand">Start a project</p>
+      <h1 class="mt-3 text-4xl font-extrabold leading-tight text-primary sm:text-5xl">Let's build something valuable together.</h1>
+      <p class="mt-5 text-lg leading-8 text-muted">Share what you need. Our team will review your request and contact you about the next steps.</p>
+      {reference && <div class="mt-8 rounded-xl border border-border bg-surface-alt p-5"><p class="text-xs font-bold uppercase tracking-wider text-brand">Inspired by this project</p><a href={`/shaqooyinka/${reference.slug}`} class="mt-2 block font-bold text-primary hover:underline">{reference.title} ↗</a><p class="mt-2 text-sm text-muted">We will include this example with your request.</p></div>}
+      <p class="mt-8 text-sm leading-6 text-muted">We verify your email before your request reaches our team. You can then create an account to track it.</p>
+    </div>
+
+    <div class="rounded-xl border border-border bg-surface p-5 shadow-sm sm:p-8">
+      <form id="project-inquiry-form" data-portfolio-id={reference?.id ?? ''} class="grid gap-5" novalidate>
+        <h2 class="text-2xl font-bold text-primary">Your project</h2>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <label class="grid gap-1.5"><span class="text-sm font-semibold text-ink">Full name <span aria-hidden="true">*</span></span><input class={fieldClass} name="name" autocomplete="name" required maxlength="120" /></label>
+          <label class="grid gap-1.5"><span class="text-sm font-semibold text-ink">Email address <span aria-hidden="true">*</span></span><input class={fieldClass} name="email" type="email" autocomplete="email" required /></label>
+          <label class="grid gap-1.5"><span class="text-sm font-semibold text-ink">Phone <span class="font-normal text-muted">(optional)</span></span><input class={fieldClass} name="phone" type="tel" autocomplete="tel" /></label>
+          <label class="grid gap-1.5"><span class="text-sm font-semibold text-ink">Company <span class="font-normal text-muted">(optional)</span></span><input class={fieldClass} name="companyName" autocomplete="organization" /></label>
+        </div>
+        <label class="grid gap-1.5"><span class="text-sm font-semibold text-ink">Project type <span aria-hidden="true">*</span></span><input class={fieldClass} name="projectType" required maxlength="120" placeholder="e.g. Website, mobile app, business system" value={reference?.category === 'WEBSITE' ? 'Website' : reference?.category === 'MOBILE_APP' ? 'Mobile app' : reference?.category === 'CUSTOM_SOFTWARE' ? 'Custom software' : ''} /></label>
+        <label class="grid gap-1.5"><span class="text-sm font-semibold text-ink">Project description <span aria-hidden="true">*</span></span><textarea class={`${fieldClass} min-h-36`} name="description" rows="5" required minlength="10" maxlength="5000" placeholder="What problem are you solving, and who will use the solution?"></textarea></label>
+        <label class="grid gap-1.5"><span class="text-sm font-semibold text-ink">Desired features <span class="font-normal text-muted">(optional; one per line)</span></span><textarea class={`${fieldClass} min-h-24`} name="desiredFeatures" rows="3" placeholder="Online bookings&#10;Admin dashboard"></textarea></label>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <label class="grid gap-1.5"><span class="text-sm font-semibold text-ink">Estimated budget <span class="font-normal text-muted">(optional)</span></span><input class={fieldClass} name="estimatedBudget" maxlength="100" placeholder="Your approximate range" /></label>
+          <label class="grid gap-1.5"><span class="text-sm font-semibold text-ink">Expected timeline <span class="font-normal text-muted">(optional)</span></span><input class={fieldClass} name="expectedTimeline" maxlength="100" placeholder="e.g. 3 months" /></label>
+        </div>
+        <p id="request-status" class="text-sm text-muted" role="status" aria-live="polite"></p>
+        <button type="submit" class="min-h-12 rounded-md bg-brand px-6 py-3 text-sm font-bold text-surface hover:bg-brand-600 disabled:opacity-60">Send project request</button>
+      </form>
+
+      <form id="verify-inquiry-form" class="hidden grid gap-5" novalidate>
+        <h2 class="text-2xl font-bold text-primary">Verify your email</h2>
+        <p class="text-sm leading-6 text-muted">We sent a six-digit code to your email. Enter it below to confirm your request.</p>
+        <label class="grid gap-1.5"><span class="text-sm font-semibold text-ink">Verification code</span><input class={fieldClass} name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required /></label>
+        <p id="verify-status" class="text-sm text-muted" role="status" aria-live="polite"></p>
+        <button type="submit" class="min-h-12 rounded-md bg-brand px-6 py-3 text-sm font-bold text-surface hover:bg-brand-600 disabled:opacity-60">Verify email</button>
+        <button id="resend-code" type="button" class="min-h-11 text-sm font-semibold text-brand hover:underline disabled:opacity-60">Send another code</button>
+      </form>
+
+      <form id="activate-inquiry-form" class="hidden grid gap-5" novalidate>
+        <h2 class="text-2xl font-bold text-primary">Create your password</h2>
+        <p class="text-sm leading-6 text-muted">Your email is verified. Create a password to track your request in the client portal.</p>
+        <label class="grid gap-1.5"><span class="text-sm font-semibold text-ink">Password</span><span class="flex gap-2"><input class={fieldClass} name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" aria-describedby="password-requirements" required /><button type="button" data-toggle-password class="min-w-16 rounded-md border border-border px-2 text-sm font-semibold text-brand" aria-label="Show password" aria-pressed="false">Show</button></span></label>
+        <div id="password-requirements" class="rounded-md border border-border bg-surface-alt p-4 text-sm text-ink">
+          <p class="font-semibold">Password requirements</p>
+          <ul class="mt-2 grid gap-1 sm:grid-cols-2">
+            <li data-rule="length">○ Use 12 to 128 characters</li>
+            <li data-rule="uppercase">○ Include an uppercase letter</li>
+            <li data-rule="lowercase">○ Include a lowercase letter</li>
+            <li data-rule="number">○ Include a number</li>
+            <li data-rule="special">○ Include a special character</li>
+            <li data-rule="uncommon">○ Avoid common passwords</li>
+            <li data-rule="private">○ Avoid your name or email</li>
+          </ul>
+          <p id="password-strength" class="mt-3 font-semibold" role="status" aria-live="polite">Password strength: Not set</p>
+        </div>
+        <label class="grid gap-1.5"><span class="text-sm font-semibold text-ink">Confirm password</span><input class={fieldClass} name="confirmPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required /></label>
+        <p id="password-match" class="text-sm text-muted" role="status" aria-live="polite"></p>
+        <p id="activate-status" class="text-sm text-muted" role="status" aria-live="polite"></p>
+        <button type="submit" class="min-h-12 rounded-md bg-brand px-6 py-3 text-sm font-bold text-surface hover:bg-brand-600 disabled:opacity-60">Create account</button>
+      </form>
+
+      <div id="request-complete" class="hidden" role="status" aria-live="polite">
+        <h2 class="text-2xl font-bold text-primary">Your request is verified</h2>
+        <p id="complete-message" class="mt-3 leading-7 text-muted"></p>
+        <a href="https://app.somwave.botandev.com/login?next=%2Fportal%2Fprojects" class="mt-6 inline-flex min-h-11 items-center rounded-md bg-brand px-5 py-3 text-sm font-bold text-surface hover:bg-brand-600">Open client portal</a>
+      </div>
+    </div>
+  </section>
+</PageLayout>
+
+<script>
+  import { activateProjectInquiry, resendProjectInquiryCode, submitProjectInquiry, verifyProjectInquiry } from '../lib/api';
+  import { newPasswordSchema, passwordPolicyStatus } from '@somwave/shared';
+
+  const requestForm = document.querySelector<HTMLFormElement>('#project-inquiry-form');
+  const verifyForm = document.querySelector<HTMLFormElement>('#verify-inquiry-form');
+  const activateForm = document.querySelector<HTMLFormElement>('#activate-inquiry-form');
+  const complete = document.querySelector<HTMLElement>('#request-complete');
+  const status = (id: string) => document.getElementById(id);
+  let inquiryId: string | null = null;
+  let activationToken: string | null = null;
+  const idempotencyKey = crypto.randomUUID();
+  const show = (step: 'verify' | 'activate' | 'complete') => {
+    requestForm?.classList.add('hidden');
+    verifyForm?.classList.toggle('hidden', step !== 'verify');
+    activateForm?.classList.toggle('hidden', step !== 'activate');
+    complete?.classList.toggle('hidden', step !== 'complete');
+    (step === 'verify' ? verifyForm : step === 'activate' ? activateForm : complete)?.querySelector<HTMLElement>('input, a')?.focus();
+  };
+  const errorText = (error: unknown) => error instanceof Error ? error.message : 'Please try again.';
+
+  requestForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!requestForm.reportValidity()) return;
+    const values = new FormData(requestForm);
+    const features = String(values.get('desiredFeatures') ?? '').split('\n').map((value) => value.trim()).filter(Boolean);
+    if (features.length > 20 || features.some((feature) => feature.length > 200)) { status('request-status')!.textContent = 'Please list up to 20 features, each under 200 characters.'; return; }
+    const optional = (name: string) => String(values.get(name) ?? '').trim() || undefined;
+    const button = requestForm.querySelector<HTMLButtonElement>('button[type="submit"]');
+    if (button) button.disabled = true;
+    status('request-status')!.textContent = 'Sending your request…';
+    try {
+      const result = await submitProjectInquiry({
+        name: String(values.get('name') ?? '').trim(), email: String(values.get('email') ?? '').trim(),
+        phone: optional('phone'), companyName: optional('companyName'), projectType: String(values.get('projectType') ?? '').trim(),
+        ...(requestForm.dataset.portfolioId ? { portfolioItemId: requestForm.dataset.portfolioId } : {}),
+        description: String(values.get('description') ?? '').trim(), desiredFeatures: features,
+        estimatedBudget: optional('estimatedBudget'), expectedTimeline: optional('expectedTimeline'),
+      }, idempotencyKey);
+      inquiryId = result.id;
+      show('verify');
+    } catch (error) { status('request-status')!.textContent = errorText(error); }
+    finally { if (button) button.disabled = false; }
+  });
+
+  verifyForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!inquiryId || !verifyForm.reportValidity()) return;
+    const code = String(new FormData(verifyForm).get('code') ?? '').trim();
+    if (!/^\d{6}$/.test(code)) { status('verify-status')!.textContent = 'Enter the six-digit code from your email.'; return; }
+    const button = verifyForm.querySelector<HTMLButtonElement>('button[type="submit"]');
+    if (button) button.disabled = true;
+    status('verify-status')!.textContent = 'Verifying…';
+    try {
+      const result = await verifyProjectInquiry(inquiryId, code);
+      if (result.accountExists) {
+        status('complete-message')!.textContent = 'Your email is verified. Sign in to the client portal to link and track your request.';
+        const portalLink = complete?.querySelector<HTMLAnchorElement>('a');
+        if (portalLink) portalLink.href = `https://app.somwave.botandev.com/login?next=%2Fportal%2Fprojects&inquiry=${encodeURIComponent(inquiryId)}`;
+        show('complete');
+      } else if (result.activationToken) {
+        activationToken = result.activationToken;
+        show('activate');
+      } else {
+        status('verify-status')!.textContent = 'Verification could not be completed. Please request a new code.';
+      }
+    } catch (error) { status('verify-status')!.textContent = errorText(error); }
+    finally { if (button) button.disabled = false; }
+  });
+
+  document.getElementById('resend-code')?.addEventListener('click', async (event) => {
+    if (!inquiryId) return;
+    const button = event.currentTarget as HTMLButtonElement;
+    button.disabled = true;
+    try { await resendProjectInquiryCode(inquiryId); status('verify-status')!.textContent = 'A new code has been sent.'; }
+    catch (error) { status('verify-status')!.textContent = errorText(error); }
+    finally { button.disabled = false; }
+  });
+
+  const passwordInput = activateForm?.elements.namedItem('password') as HTMLInputElement | null;
+  const confirmInput = activateForm?.elements.namedItem('confirmPassword') as HTMLInputElement | null;
+  const passwordRules = [
+    ['length', 'Use 12 to 128 characters'], ['uppercase', 'Include an uppercase letter'],
+    ['lowercase', 'Include a lowercase letter'], ['number', 'Include a number'],
+    ['special', 'Include a special character'], ['uncommon', 'Avoid common passwords'],
+    ['private', 'Avoid your name or email'],
+  ] as const;
+  const updatePasswordGuidance = () => {
+    if (!passwordInput || !confirmInput) return;
+    const name = (requestForm?.elements.namedItem('name') as HTMLInputElement | null)?.value;
+    const email = (requestForm?.elements.namedItem('email') as HTMLInputElement | null)?.value;
+    const checks = passwordPolicyStatus(passwordInput.value, { name, email });
+    passwordRules.forEach(([key, label]) => {
+      const row = activateForm?.querySelector<HTMLElement>(`[data-rule="${key}"]`);
+      if (row) { row.textContent = `${checks[key] ? '✓' : '○'} ${label}`; row.classList.toggle('text-brand', checks[key]); }
+    });
+    const passed = Object.values(checks).filter(Boolean).length;
+    status('password-strength')!.textContent = `Password strength: ${!passwordInput.value ? 'Not set' : passed < 5 ? 'Weak' : passed < 7 ? 'Fair' : 'Strong'}`;
+    status('password-match')!.textContent = confirmInput.value && confirmInput.value !== passwordInput.value ? 'Passwords do not match.' : '';
+  };
+  passwordInput?.addEventListener('input', updatePasswordGuidance);
+  confirmInput?.addEventListener('input', updatePasswordGuidance);
+  activateForm?.querySelector<HTMLButtonElement>('[data-toggle-password]')?.addEventListener('click', (event) => {
+    if (!passwordInput || !confirmInput) return;
+    const button = event.currentTarget as HTMLButtonElement;
+    const visible = passwordInput.type === 'password';
+    passwordInput.type = confirmInput.type = visible ? 'text' : 'password';
+    button.textContent = visible ? 'Hide' : 'Show';
+    button.setAttribute('aria-label', visible ? 'Hide password' : 'Show password');
+    button.setAttribute('aria-pressed', String(visible));
+  });
+
+  activateForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!inquiryId || !activationToken || !activateForm.reportValidity()) return;
+    const values = new FormData(activateForm);
+    const password = String(values.get('password') ?? '');
+    const policy = newPasswordSchema.safeParse(password);
+    if (!policy.success) { status('activate-status')!.textContent = policy.error.issues[0]?.message ?? 'Choose a stronger password.'; passwordInput?.focus(); return; }
+    if (!passwordPolicyStatus(password, {
+      name: (requestForm?.elements.namedItem('name') as HTMLInputElement | null)?.value,
+      email: (requestForm?.elements.namedItem('email') as HTMLInputElement | null)?.value,
+    }).private) { status('activate-status')!.textContent = 'Choose a password that does not contain your name or email.'; passwordInput?.focus(); return; }
+    if (password !== values.get('confirmPassword')) { status('activate-status')!.textContent = 'Passwords do not match.'; return; }
+    const button = activateForm.querySelector<HTMLButtonElement>('button[type="submit"]');
+    if (button) button.disabled = true;
+    status('activate-status')!.textContent = 'Creating your account…';
+    try {
+      await activateProjectInquiry(inquiryId, password, activationToken);
+      activationToken = null;
+      status('complete-message')!.textContent = 'Your account is ready. Sign in to the client portal to follow your request.';
+      show('complete');
+    } catch (error) { status('activate-status')!.textContent = errorText(error); }
+    finally { if (button) button.disabled = false; }
+  });
+</script>

@@ -8,11 +8,12 @@ vi.mock('../lib/prisma', () => ({
     invoice: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
-      count: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       updateMany: vi.fn(),
     },
+    payment: { count: vi.fn() },
+    $transaction: vi.fn(),
   },
 }));
 
@@ -53,6 +54,14 @@ const created = {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(prisma.invoice.updateMany).mockResolvedValue({ count: 0 } as never);
+  vi.mocked(prisma.payment.count).mockResolvedValue(0);
+  vi.mocked(prisma.$transaction).mockImplementation(async (fn) =>
+    fn({
+      invoice: prisma.invoice,
+      payment: prisma.payment,
+      $queryRaw: vi.fn().mockResolvedValue([{ next: 1n }]),
+    } as never),
+  );
 });
 
 describe('listInvoices', () => {
@@ -109,7 +118,6 @@ describe('getInvoice', () => {
 describe('createInvoice', () => {
   it('computes line totals, tax, and discount on the server', async () => {
     vi.mocked(prisma.client.findFirst).mockResolvedValue({ id: 'cl_1' } as never);
-    vi.mocked(prisma.invoice.count).mockResolvedValue(0);
     vi.mocked(prisma.invoice.create).mockResolvedValue({
       ...created,
       tax: new Prisma.Decimal('3.00'),
@@ -132,6 +140,32 @@ describe('createInvoice', () => {
     expect(payload?.data.tax?.toString()).toBe('3');
     expect(payload?.data.discount?.toString()).toBe('1');
     expect(payload?.data.total.toString()).toBe('32');
+  });
+
+  it('allocates the next invoice number under a database lock, regardless of deleted rows', async () => {
+    vi.mocked(prisma.client.findFirst).mockResolvedValue({ id: 'cl_1' } as never);
+    const queryRaw = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ next: 12n }]);
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn) =>
+      fn({ invoice: prisma.invoice, $queryRaw: queryRaw } as never),
+    );
+    vi.mocked(prisma.invoice.create).mockResolvedValue({
+      ...created,
+      number: `INV-${new Date().getUTCFullYear()}-0012`,
+    } as never);
+    const result = await createInvoice({
+      clientId: 'cl_1',
+      issueDate: '2026-09-01',
+      dueDate: '2026-12-15',
+      tax: '0',
+      discount: '0',
+      items: [{ description: 'Web', quantity: '1', unitPrice: '30.00' }],
+    });
+    expect(queryRaw).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(prisma.invoice.create).mock.calls[0]?.[0]?.data.number).toBe(result.number);
+    expect(result.number).toMatch(/-0012$/);
   });
 
   it('rejects an unknown client', async () => {
@@ -224,6 +258,23 @@ describe('voidInvoice', () => {
 
   it('refuses a PAID invoice', async () => {
     vi.mocked(prisma.invoice.findFirst).mockResolvedValue({ ...created, status: 'PAID' } as never);
+    await expect(voidInvoice('inv_1')).rejects.toMatchObject({ code: 'CONFLICT' });
+    expect(prisma.invoice.update).not.toHaveBeenCalled();
+  });
+
+  it('refuses to void a partially paid invoice', async () => {
+    vi.mocked(prisma.invoice.findFirst).mockResolvedValue({
+      ...created,
+      status: 'PARTIAL',
+      paidAmount: new Prisma.Decimal('10.00'),
+    } as never);
+    await expect(voidInvoice('inv_1')).rejects.toMatchObject({ code: 'CONFLICT' });
+    expect(prisma.invoice.update).not.toHaveBeenCalled();
+  });
+
+  it('refuses to void an invoice while an EVC payment is pending', async () => {
+    vi.mocked(prisma.invoice.findFirst).mockResolvedValue({ ...created, status: 'SENT' } as never);
+    vi.mocked(prisma.payment.count).mockResolvedValue(1);
     await expect(voidInvoice('inv_1')).rejects.toMatchObject({ code: 'CONFLICT' });
     expect(prisma.invoice.update).not.toHaveBeenCalled();
   });

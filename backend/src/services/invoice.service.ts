@@ -146,23 +146,28 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<InvoiceD
   }
 
   const year = new Date().getUTCFullYear();
-  const count = await prisma.invoice.count();
-  const number = `INV-${year}-${String(count + 1).padStart(4, '0')}`;
-
-  const row = await prisma.invoice.create({
-    data: {
-      number,
-      clientId: input.clientId,
-      projectId: input.projectId ?? null,
-      issueDate: new Date(input.issueDate),
-      dueDate: new Date(input.dueDate),
-      subtotal,
-      tax,
-      discount,
-      total,
-      items: { create: items },
-    },
-    include: detailInclude,
+  const row = await prisma.$transaction(async (tx) => {
+    // A per-year advisory lock makes number allocation safe across API processes.
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(827317, ${year}::integer)::text`;
+    const [counter] = await tx.$queryRaw<{ next: bigint }[]>`
+      SELECT (COALESCE(MAX(split_part("number", '-', 3)::bigint), 0) + 1) AS "next"
+      FROM "invoices" WHERE "number" ~ ${`^INV-${year}-[0-9]+$`}`;
+    const number = `INV-${year}-${String(counter?.next ?? 1).padStart(4, '0')}`;
+    return tx.invoice.create({
+      data: {
+        number,
+        clientId: input.clientId,
+        projectId: input.projectId ?? null,
+        issueDate: new Date(input.issueDate),
+        dueDate: new Date(input.dueDate),
+        subtotal,
+        tax,
+        discount,
+        total,
+        items: { create: items },
+      },
+      include: detailInclude,
+    });
   });
   return toDetail(row);
 }
@@ -213,20 +218,27 @@ export async function sendInvoice(id: string, clientId?: string | null): Promise
 }
 
 export async function voidInvoice(id: string, clientId?: string | null): Promise<InvoiceDetail> {
-  const existing = await prisma.invoice.findFirst({
-    where: ownerWhere(id, clientId),
-    include: detailInclude,
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "invoices" WHERE "id" = ${id} FOR UPDATE`;
+    const existing = await tx.invoice.findFirst({
+      where: ownerWhere(id, clientId),
+      include: detailInclude,
+    });
+    if (!existing) throw new AppError('NOT_FOUND', 404, 'Invoice not found');
+    if (existing.status === 'VOID') return toDetail(existing);
+    if (existing.paidAmount.gt(0) || !VOIDABLE.has(existing.status)) {
+      throw new AppError('CONFLICT', 409, 'An invoice with payments cannot be voided');
+    }
+    const pending = await tx.payment.count({
+      where: { invoiceId: existing.id, status: 'PENDING', deletedAt: null },
+    });
+    if (pending)
+      throw new AppError('CONFLICT', 409, 'An invoice with a pending payment cannot be voided');
+    const row = await tx.invoice.update({
+      where: { id: existing.id },
+      data: { status: 'VOID' },
+      include: detailInclude,
+    });
+    return toDetail(row);
   });
-  if (!existing) throw new AppError('NOT_FOUND', 404, 'Invoice not found');
-  if (existing.status === 'VOID') return toDetail(existing);
-  if (existing.status === 'PAID' || !VOIDABLE.has(existing.status)) {
-    throw new AppError('CONFLICT', 409, 'This invoice cannot be voided');
-  }
-
-  const row = await prisma.invoice.update({
-    where: { id: existing.id },
-    data: { status: 'VOID' },
-    include: detailInclude,
-  });
-  return toDetail(row);
 }

@@ -7,8 +7,10 @@ import { ResetPasswordPage } from '../features/auth/ResetPasswordPage';
 import { EngineerActivationPage } from '../features/auth/EngineerActivationPage';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { RequirePermission } from '../features/auth/RequirePermission';
+import { useCurrentUser } from '../features/auth/hooks';
 import { AppShell } from './layout/AppShell';
-import { LoadingState } from '../components/states';
+import { ErrorState, LoadingState } from '../components/states';
+import { hasReportAccess } from './layout/nav';
 
 // Feature routes are lazy (SYSTEM_PROMPT §4: React Router v6 lazy routes).
 const UsersPage = lazy(() =>
@@ -126,6 +128,9 @@ const InvoicePrintPage = lazy(() =>
 const FinancePage = lazy(() =>
   import('../features/finance/FinancePage').then((m) => ({ default: m.FinancePage })),
 );
+const ReportsPage = lazy(() =>
+  import('../features/reports/ReportsPage').then((m) => ({ default: m.ReportsPage })),
+);
 const TicketsPage = lazy(() =>
   import('../features/ops/TicketsPage').then((m) => ({ default: m.TicketsPage })),
 );
@@ -183,6 +188,20 @@ function Guarded({
     <RequirePermission permission={permission}>
       <LazyPage>{children}</LazyPage>
     </RequirePermission>
+  );
+}
+
+function ReportsGuard(): ReactNode {
+  const { data: user } = useCurrentUser();
+  if (!hasReportAccess(user)) {
+    return (
+      <ErrorState title="Permission denied" description="You do not have access to reports." />
+    );
+  }
+  return (
+    <LazyPage>
+      <ReportsPage />
+    </LazyPage>
   );
 }
 
@@ -444,6 +463,7 @@ export function App(): ReactNode {
               </Guarded>
             }
           />
+          <Route path="/reports" element={<ReportsGuard />} />
           <Route
             path="/invoices"
             element={

@@ -8,6 +8,7 @@ vi.mock('../lib/prisma', () => ({
       findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
       delete: vi.fn(),
     },
   },
@@ -22,6 +23,7 @@ import {
   createPortfolioItem,
   updatePortfolioItem,
   deletePortfolioItem,
+  recordPortfolioDemoClick,
 } from './portfolio.service';
 
 const item = {
@@ -33,11 +35,23 @@ const item = {
   category: 'WEBSITE',
   coverImage: null,
   order: 1,
+  featured: false,
 };
 
 const adminItem = {
   ...item,
   description: null,
+  technologies: [],
+  galleryImages: [],
+  features: [],
+  completionDate: null,
+  projectStatus: null,
+  liveDemoUrl: null,
+  caseStudyUrl: null,
+  isArchived: false,
+  seoTitle: null,
+  seoDescription: null,
+  demoClicks: 0,
   isPublished: true,
   publishedAt: null,
   createdAt: new Date('2026-01-01T00:00:00Z'),
@@ -61,7 +75,10 @@ describe('listPublishedPortfolio', () => {
     const result = await listPublishedPortfolio();
     expect(result).toEqual([item]);
     expect(prisma.portfolioItem.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { isPublished: true }, orderBy: { order: 'asc' } }),
+      expect.objectContaining({
+        where: { isPublished: true, isArchived: false },
+        orderBy: [{ featured: 'desc' }, { order: 'asc' }],
+      }),
     );
     expect(redis.set).toHaveBeenCalled();
   });
@@ -69,11 +86,14 @@ describe('listPublishedPortfolio', () => {
 
 describe('getPortfolioBySlug', () => {
   it('queries a published item by slug', async () => {
-    vi.mocked(prisma.portfolioItem.findFirst).mockResolvedValue(item as never);
+    vi.mocked(prisma.portfolioItem.findFirst).mockResolvedValue({
+      ...adminItem,
+      completionDate: null,
+    } as never);
     const result = await getPortfolioBySlug('web');
-    expect(result).toEqual(item);
+    expect(result).toEqual(expect.objectContaining({ ...item, completionDate: null }));
     expect(prisma.portfolioItem.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { slug: 'web', isPublished: true } }),
+      expect.objectContaining({ where: { slug: 'web', isPublished: true, isArchived: false } }),
     );
   });
 });
@@ -100,7 +120,7 @@ describe('createPortfolioItem', () => {
     };
     expect(arg.data.publishedAt).toBeInstanceOf(Date);
     expect(arg.data.category).toBe('WEBSITE');
-    expect(redis.del).toHaveBeenCalledWith('public:portfolio:v2');
+    expect(redis.del).toHaveBeenCalledWith('public:portfolio:v3');
   });
 
   it('rejects a duplicate slug with CONFLICT', async () => {
@@ -139,6 +159,22 @@ describe('deletePortfolioItem', () => {
     await deletePortfolioItem('p1');
 
     expect(prisma.portfolioItem.delete).toHaveBeenCalledWith({ where: { id: 'p1' } });
-    expect(redis.del).toHaveBeenCalledWith('public:portfolio:v2');
+    expect(redis.del).toHaveBeenCalledWith('public:portfolio:v3');
+  });
+});
+
+describe('recordPortfolioDemoClick', () => {
+  it('increments an aggregate only for a published item with a live demo', async () => {
+    vi.mocked(prisma.portfolioItem.updateMany).mockResolvedValue({ count: 1 } as never);
+    await expect(recordPortfolioDemoClick('p1')).resolves.toEqual({ recorded: true });
+    expect(prisma.portfolioItem.updateMany).toHaveBeenCalledWith({
+      where: { id: 'p1', isPublished: true, isArchived: false, liveDemoUrl: { not: null } },
+      data: { demoClicks: { increment: 1 } },
+    });
+  });
+
+  it('does not record an unavailable demo', async () => {
+    vi.mocked(prisma.portfolioItem.updateMany).mockResolvedValue({ count: 0 } as never);
+    await expect(recordPortfolioDemoClick('missing')).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 });

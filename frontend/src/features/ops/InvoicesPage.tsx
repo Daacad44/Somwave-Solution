@@ -4,9 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   createInvoiceSchema,
-  INVOICE_STATUS_LABELS,
   PERMISSIONS,
-  ROLES,
   type CreateInvoiceInput,
   type InvoiceStatus,
 } from '@somwave/shared';
@@ -18,10 +16,9 @@ import { Select } from '../../components/ui/Select';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { LoadingState, EmptyState, ErrorState } from '../../components/states';
-import { hasRole, useHasPermission } from '../../lib/rbac';
+import { useHasPermission } from '../../lib/rbac';
 import { formatDate } from '../../lib/date';
 import { ApiError } from '../../lib/apiClient';
-import { useCurrentUser } from '../auth/hooks';
 import { useInvoices, useCreateInvoice, useClients } from './hooks';
 
 const STAFF_STATUS_LABELS: Record<InvoiceStatus, string> = {
@@ -43,9 +40,7 @@ const STATUS_TONE: Record<InvoiceStatus, 'neutral' | 'info' | 'success' | 'warni
 };
 
 export function InvoicesPage(): ReactNode {
-  const { data: user } = useCurrentUser();
-  const isPortalClient = hasRole(user, ROLES.CLIENT);
-  const t = (english: string, somali: string): string => (isPortalClient ? somali : english);
+  const t = (english: string, _somali: string): string => english;
   const query = useInvoices();
   const create = useCreateInvoice();
   const canCreate = useHasPermission(PERMISSIONS.INVOICES_CREATE);
@@ -141,11 +136,7 @@ export function InvoicesPage(): ReactNode {
                   <Td>${row.total}</Td>
                   <Td>{formatDate(row.dueDate)}</Td>
                   <Td>
-                    <Badge tone={STATUS_TONE[row.status]}>
-                      {isPortalClient
-                        ? INVOICE_STATUS_LABELS[row.status]
-                        : STAFF_STATUS_LABELS[row.status]}
-                    </Badge>
+                    <Badge tone={STATUS_TONE[row.status]}>{STAFF_STATUS_LABELS[row.status]}</Badge>
                   </Td>
                 </Tr>
               ))}

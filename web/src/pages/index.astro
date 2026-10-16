@@ -9,6 +9,9 @@ import { fetchHomepage } from '../lib/api';
 import { defaultSiteContent, type PublicHomepage } from '@somwave/shared';
 import Hero from '../components/Hero.astro';
 import TrustedLogos from '../components/home/TrustedLogos.astro';
+import HomeIntroduction from '../components/home/HomeIntroduction.astro';
+import HomeProcess from '../components/home/HomeProcess.astro';
+import HomeContact from '../components/home/HomeContact.astro';
 import HomeServices from '../components/home/HomeServices.astro';
 import HomeSolutions from '../components/home/HomeSolutions.astro';
 import WhySomwave from '../components/home/WhySomwave.astro';
@@ -42,12 +45,15 @@ const defaultDevices = firstImage === '/images/hero-devices-1200.webp';
 >
   <Hero content={siteContent} />
   <TrustedLogos content={siteContent.trusted} />
+  <HomeIntroduction content={siteContent.hero} />
   <HomeSolutions content={siteContent.ecosystem} />
   <HomeServices services={homepage.services} />
   <HomePortfolio projects={homepage.portfolio} />
   <WhySomwave />
+  <HomeProcess />
   <HomeTestimonials testimonials={homepage.testimonials} />
   <HomeArticles posts={homepage.posts} />
   <HomeFaq faqs={homepage.faqs} />
+  <HomeContact contact={siteContent.contact} />
   <FinalCta content={siteContent.cta} />
 </PageLayout>

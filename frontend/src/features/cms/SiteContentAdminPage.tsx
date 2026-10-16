@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   PERMISSIONS,
+  articleImageFileError,
   siteContentSchema,
   type SiteContent,
   type TrustedBusinessId,
@@ -10,7 +11,7 @@ import {
 import { Button } from '../../components/ui/Button';
 import { ErrorState, LoadingState } from '../../components/states';
 import { useHasPermission } from '../../lib/rbac';
-import { getSiteContent, saveSiteContent } from './api';
+import { getSiteContent, saveSiteContent, uploadArticleImage } from './api';
 
 const QUERY_KEY = ['cms', 'site-content'] as const;
 const logos: { id: TrustedBusinessId; name: string }[] = [
@@ -211,6 +212,7 @@ export function SiteContentAdminPage(): ReactNode {
               value={draft.hero.imageUrl}
               onChange={(value) => updateHero('imageUrl', value)}
             />
+            <ImageUploadControl onUploaded={(url) => updateHero('imageUrl', url)} />
             <Field
               label="Image description"
               value={draft.hero.imageAlt}
@@ -271,6 +273,7 @@ export function SiteContentAdminPage(): ReactNode {
                 value={slide.imageUrl}
                 onChange={(value) => updateSlide(slide.id, 'imageUrl', value)}
               />
+              <ImageUploadControl onUploaded={(url) => updateSlide(slide.id, 'imageUrl', url)} />
               <Field
                 label="Image description"
                 value={slide.imageAlt}
@@ -470,6 +473,50 @@ export function SiteContentAdminPage(): ReactNode {
         </p>
       </div>
     </section>
+  );
+}
+
+function ImageUploadControl({ onUploaded }: { onUploaded: (url: string) => void }): ReactNode {
+  const [message, setMessage] = useState('');
+  const [uploading, setUploading] = useState(false);
+  return (
+    <label className="grid gap-1.5 text-sm font-medium text-ink">
+      Or upload an image (PNG, JPG or WEBP; max 5 MB)
+      <input
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        disabled={uploading}
+        className="rounded-md border border-border p-2 text-sm"
+        onChange={async (event) => {
+          const file = event.target.files?.[0];
+          event.target.value = '';
+          if (!file) return;
+          const error = articleImageFileError({
+            name: file.name,
+            type: file.type,
+            size: file.size,
+          });
+          if (error) {
+            setMessage(error);
+            return;
+          }
+          setUploading(true);
+          setMessage('Uploading image…');
+          try {
+            const uploaded = await uploadArticleImage(file);
+            onUploaded(uploaded.url);
+            setMessage('Image uploaded. Save website content to publish it.');
+          } catch (error) {
+            setMessage(error instanceof Error ? error.message : 'Image upload failed.');
+          } finally {
+            setUploading(false);
+          }
+        }}
+      />
+      <span role="status" aria-live="polite" className="text-xs text-muted">
+        {message}
+      </span>
+    </label>
   );
 }
 

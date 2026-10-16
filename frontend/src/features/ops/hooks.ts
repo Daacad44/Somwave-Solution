@@ -62,7 +62,69 @@ import {
   listAuditLogs,
   listNotifications,
   markNotificationRead,
+  listAdminProjectInquiries,
+  reviewProjectInquiry,
+  convertProjectInquiry,
+  listPortalProjectInquiries,
+  approveProjectInquiryProposal,
+  listUnlinkedProjectInquiries,
+  linkProjectInquiry,
 } from './api';
+
+export function useAdminProjectInquiries() {
+  return useQuery({ queryKey: ['admin-project-inquiries'], queryFn: listAdminProjectInquiries });
+}
+export function useReviewProjectInquiry() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      status,
+      proposalSummary,
+    }: {
+      id: string;
+      status: 'UNDER_REVIEW' | 'PROPOSAL_SENT' | 'REJECTED' | 'CANCELLED';
+      proposalSummary?: string;
+    }) => reviewProjectInquiry(id, { status, proposalSummary }),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ['admin-project-inquiries'] }),
+  });
+}
+export function useConvertProjectInquiry() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: convertProjectInquiry,
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['admin-project-inquiries'] });
+      void client.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
+}
+export function usePortalProjectInquiries() {
+  return useQuery({ queryKey: ['portal-project-inquiries'], queryFn: listPortalProjectInquiries });
+}
+export function useUnlinkedProjectInquiries() {
+  return useQuery({
+    queryKey: ['portal-project-inquiries-unlinked'],
+    queryFn: listUnlinkedProjectInquiries,
+  });
+}
+export function useLinkProjectInquiry() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: linkProjectInquiry,
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['portal-project-inquiries'] });
+      void client.invalidateQueries({ queryKey: ['portal-project-inquiries-unlinked'] });
+    },
+  });
+}
+export function useApproveProjectInquiryProposal() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: approveProjectInquiryProposal,
+    onSuccess: () => void client.invalidateQueries({ queryKey: ['portal-project-inquiries'] }),
+  });
+}
 
 export function useLeads() {
   return useQuery({ queryKey: ['leads'], queryFn: listLeads });

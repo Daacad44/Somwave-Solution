@@ -5,6 +5,7 @@ export type NavItem = {
   to: string;
   label: string;
   permission: PermissionKey;
+  anyOf?: readonly PermissionKey[];
 };
 
 export type NavGroup = {
@@ -83,6 +84,31 @@ const ADMIN_ITEMS: NavItem[] = [
   { to: '/audit', label: 'Audit', permission: PERMISSIONS.AUDIT_READ },
 ];
 
+export const REPORT_ACCESS_PERMISSIONS: readonly PermissionKey[] = [
+  PERMISSIONS.PROJECTS_READ,
+  PERMISSIONS.TASKS_READ,
+  PERMISSIONS.ENGINEERING_READ,
+  PERMISSIONS.ENGINEERING_MANAGE,
+  PERMISSIONS.CLIENTS_READ,
+  PERMISSIONS.LEADS_READ,
+  PERMISSIONS.CONTENT_READ,
+  PERMISSIONS.AUDIT_READ,
+  PERMISSIONS.FINANCE_READ,
+];
+
+const REPORT_ITEMS: NavItem[] = [
+  {
+    to: '/reports',
+    label: 'Reports & Analytics',
+    permission: PERMISSIONS.PROJECTS_READ,
+    anyOf: REPORT_ACCESS_PERMISSIONS,
+  },
+];
+
+export function hasReportAccess(user: AuthUser | null | undefined): boolean {
+  return REPORT_ACCESS_PERMISSIONS.some((permission) => hasPermission(user, permission));
+}
+
 const PORTAL_ITEMS: NavItem[] = [
   { to: '/portal/projects', label: 'My Projects', permission: PERMISSIONS.PORTAL_READ },
   { to: '/portal/milestones', label: 'Milestones', permission: PERMISSIONS.PORTAL_READ },
@@ -95,6 +121,7 @@ const INTERNAL_SURFACE_PERMISSIONS: PermissionKey[] = [
   PERMISSIONS.CONTENT_READ,
   PERMISSIONS.PROJECTS_READ,
   PERMISSIONS.ENGINEERING_READ,
+  PERMISSIONS.ENGINEERING_MANAGE,
   PERMISSIONS.GITHUB_READ,
   PERMISSIONS.TASKS_READ,
   PERMISSIONS.MILESTONES_READ,
@@ -117,7 +144,11 @@ export function hasInternalSurface(user: AuthUser | null | undefined): boolean {
 }
 
 function permitted(user: AuthUser | null | undefined, items: readonly NavItem[]): NavItem[] {
-  return items.filter((item) => hasPermission(user, item.permission));
+  return items.filter((item) =>
+    item.anyOf
+      ? item.anyOf.some((permission) => hasPermission(user, permission))
+      : hasPermission(user, item.permission),
+  );
 }
 
 function pushGroup(groups: NavGroup[], heading: string, items: NavItem[]): void {
@@ -137,6 +168,7 @@ export function visibleNavGroups(user: AuthUser | null | undefined): NavGroup[] 
     pushGroup(groups, 'Finance', permitted(user, FINANCE_ITEMS));
     pushGroup(groups, 'Documents', permitted(user, DOCUMENT_ITEMS));
     pushGroup(groups, 'Administration', permitted(user, ADMIN_ITEMS));
+    pushGroup(groups, 'Reports & Analytics', permitted(user, REPORT_ITEMS));
   }
 
   if (hasPermission(user, PERMISSIONS.PORTAL_READ)) {
@@ -161,5 +193,6 @@ export const NAV_GROUPS: NavGroup[] = [
   { heading: 'Finance', items: FINANCE_ITEMS },
   { heading: 'Documents', items: DOCUMENT_ITEMS },
   { heading: 'Administration', items: ADMIN_ITEMS },
+  { heading: 'Reports & Analytics', items: REPORT_ITEMS },
   { heading: 'Portal', items: PORTAL_ITEMS },
 ];

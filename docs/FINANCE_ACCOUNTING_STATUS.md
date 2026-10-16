@@ -6,6 +6,12 @@ request is not complete.** Existing invoices, payments and project expenses
 remain in their original tables and are not silently represented as posted
 accounting revenue or costs.
 
+Invoice and payment integrity fixes completed in the current implementation are
+documented in [FINANCE_BUG_REGISTER.md](FINANCE_BUG_REGISTER.md). They cover
+invoice numbering, payment idempotency and authorization, concurrent settlement,
+pending balance reservations, void rules and unsupported gateway methods. They
+do not reconcile these legacy records into the general ledger.
+
 ## Existing system and new foundation
 
 The repository already had client invoices, payment records and gateway

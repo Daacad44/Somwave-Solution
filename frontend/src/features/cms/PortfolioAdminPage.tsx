@@ -67,6 +67,7 @@ export function PortfolioAdminPage(): ReactNode {
                 <Th>Title</Th>
                 <Th>Client</Th>
                 <Th>Category</Th>
+                <Th>Featured</Th>
                 <Th>Order</Th>
                 <Th>Status</Th>
                 <Th className="text-end">Actions</Th>
@@ -78,14 +79,26 @@ export function PortfolioAdminPage(): ReactNode {
                   <Td className="font-medium">{item.title}</Td>
                   <Td className="text-muted">{item.client ?? '—'}</Td>
                   <Td className="text-muted">{item.category?.replaceAll('_', ' ') ?? '—'}</Td>
+                  <Td>{item.featured ? 'Yes' : '—'}</Td>
                   <Td>{item.order}</Td>
                   <Td>
-                    <Badge tone={item.isPublished ? 'success' : 'neutral'}>
-                      {item.isPublished ? 'Published' : 'Draft'}
+                    <Badge tone={item.isPublished && !item.isArchived ? 'success' : 'neutral'}>
+                      {item.isArchived ? 'Archived' : item.isPublished ? 'Published' : 'Draft'}
                     </Badge>
                   </Td>
                   <Td>
                     <div className="flex justify-end gap-2">
+                      {item.isPublished && !item.isArchived ? (
+                        <a
+                          href={`https://somwave.botandev.com/shaqooyinka/${item.slug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex min-h-9 items-center rounded-md px-2 text-sm font-semibold text-brand hover:underline"
+                          aria-label={`View ${item.title} on website`}
+                        >
+                          View ↗
+                        </a>
+                      ) : null}
                       {canUpdate ? (
                         <Button size="sm" variant="secondary" onClick={() => openEdit(item)}>
                           Edit

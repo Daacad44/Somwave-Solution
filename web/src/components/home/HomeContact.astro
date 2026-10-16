@@ -1,0 +1,22 @@
+---
+import type { SiteContent } from '@somwave/shared';
+
+interface Props { contact: SiteContent['contact'] }
+const { contact } = Astro.props;
+const phoneHref = `tel:${contact.phone.replace(/[^+0-9]/g, '')}`;
+---
+
+<section class="bg-surface-alt" aria-labelledby="home-contact-heading">
+  <div class="section-shell grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
+    <div>
+      <p class="section-kicker">Contact us</p>
+      <h2 id="home-contact-heading" class="section-title mt-4">Tell us about your next project.</h2>
+      <p class="mt-4 max-w-2xl text-base leading-7 text-muted">Reach our team in {contact.location}, or send the details through our project request form.</p>
+      <div class="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm font-semibold text-brand">
+        <a href={`mailto:${contact.email}`} class="hover:underline">{contact.email}</a>
+        <a href={phoneHref} class="hover:underline">{contact.phone}</a>
+      </div>
+    </div>
+    <a href="/request-project" class="inline-flex min-h-12 items-center justify-center rounded-md bg-brand px-6 py-3 text-sm font-bold text-surface hover:bg-brand-600">Request a Project →</a>
+  </div>
+</section>

@@ -20,7 +20,8 @@ import {
   type PublicHomepage,
 } from '@somwave/shared';
 
-const API_URL = import.meta.env.PUBLIC_API_URL;
+// Public API is set at build time in Coolify; same-origin is a safe local fallback.
+const API_URL = import.meta.env.PUBLIC_API_URL || '/api/v1';
 
 interface PageMeta {
   page: number;
@@ -69,6 +70,14 @@ export async function fetchPortfolioItem(slug: string): Promise<PublicPortfolioD
   } catch {
     return null;
   }
+}
+
+/** Durable, PII-free click count. The external navigation must never wait for it. */
+export function recordPortfolioDemoClick(id: string): Promise<Response> {
+  return fetch(`${API_URL}/public/portfolio/${encodeURIComponent(id)}/demo-click`, {
+    method: 'POST',
+    keepalive: true,
+  });
 }
 
 export interface PublicPostPage {
@@ -192,4 +201,71 @@ export async function submitInquiry(
     throw new Error(body?.error?.message ?? 'Your message could not be sent. Please try again.');
   }
   return body.data;
+}
+
+export interface ProjectInquiryInput {
+  name: string;
+  email: string;
+  phone?: string;
+  companyName?: string;
+  projectType: string;
+  portfolioItemId?: string;
+  description: string;
+  desiredFeatures?: string[];
+  estimatedBudget?: string;
+  expectedTimeline?: string;
+}
+
+async function postProjectInquiry<T>(
+  path: string,
+  input: unknown,
+  idempotencyKey?: string,
+): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
+    },
+    body: JSON.stringify(input),
+  });
+  const body = (await res.json().catch(() => null)) as {
+    data?: T;
+    error?: { message?: string };
+  } | null;
+  if (!res.ok || !body?.data)
+    throw new Error(
+      body?.error?.message ?? 'Your request could not be completed. Please try again.',
+    );
+  return body.data;
+}
+
+export function submitProjectInquiry(
+  input: ProjectInquiryInput,
+  idempotencyKey: string,
+): Promise<{ id: string; status: string; verificationRequired: boolean }> {
+  return postProjectInquiry('/public/project-inquiries', input, idempotencyKey);
+}
+
+export function verifyProjectInquiry(
+  id: string,
+  code: string,
+): Promise<{ status: string; accountExists: boolean; activationToken: string | null }> {
+  return postProjectInquiry(`/public/project-inquiries/${encodeURIComponent(id)}/verify`, { code });
+}
+
+export function activateProjectInquiry(
+  id: string,
+  password: string,
+  activationToken: string,
+): Promise<{ status: string; loginUrl: string }> {
+  return postProjectInquiry(`/public/project-inquiries/${encodeURIComponent(id)}/activate`, {
+    password,
+    confirmPassword: password,
+    activationToken,
+  });
+}
+
+export function resendProjectInquiryCode(id: string): Promise<{ sent: boolean }> {
+  return postProjectInquiry(`/public/project-inquiries/${encodeURIComponent(id)}/resend`, {});
 }
