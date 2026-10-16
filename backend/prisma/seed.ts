@@ -56,6 +56,27 @@ async function main(): Promise<void> {
     },
   });
 
+  // Finance privileges are separate from project and client roles. A finance
+  // manager reviews; an accountant posts only after another user approves.
+  for (const [name, keys] of [
+    [
+      ROLES.FINANCE_MANAGER,
+      ['finance.read', 'finance.create', 'finance.approve', 'finance.manage'],
+    ],
+    [ROLES.ACCOUNTANT, ['finance.read', 'finance.create', 'finance.post']],
+  ] as const) {
+    await prisma.role.update({
+      where: { name },
+      data: {
+        permissions: {
+          set: permissions
+            .filter((permission) => keys.some((key) => permission.key === key))
+            .map((permission) => ({ id: permission.id })),
+        },
+      },
+    });
+  }
+
   await prisma.role.update({
     where: { name: ROLES.MANAGER },
     data: {

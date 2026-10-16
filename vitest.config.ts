@@ -15,7 +15,9 @@ export default defineConfig({
     ],
     env: {
       NODE_ENV: 'test',
-      DATABASE_URL: 'postgresql://somwave:somwave@localhost:5432/somwave',
+      DATABASE_URL:
+        process.env.FINANCE_TEST_DATABASE_URL ??
+        'postgresql://somwave:somwave@localhost:5432/somwave',
       REDIS_URL: 'redis://localhost:6379',
       JWT_SECRET: '0123456789012345678901234567890123',
       CORS_ORIGINS: 'http://localhost:5173',

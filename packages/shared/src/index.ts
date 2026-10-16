@@ -25,6 +25,7 @@ export * from './schemas/user';
 export * from './schemas/project';
 export * from './schemas/projectPortfolio';
 export * from './schemas/projectFinance';
+export * from './schemas/finance';
 export * from './schemas/projectActivity';
 export * from './schemas/task';
 export * from './schemas/milestone';

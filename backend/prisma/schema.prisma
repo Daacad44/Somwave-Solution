@@ -136,6 +136,7 @@ model RefreshToken {
   revokedAt           DateTime? @map("revoked_at")
   replacedByTokenHash String?   @map("replaced_by_token_hash")
   createdAt           DateTime  @default(now()) @map("created_at")
+  mfaVerifiedAt       DateTime? @map("mfa_verified_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -429,6 +430,7 @@ model Client {
   documents ClientDocument[]
   inquiries Inquiry[]
   managedSystems ManagedSystem[]
+  financeTransactions FinanceTransaction[]
 
   @@index([status])
   @@map("clients")
@@ -622,6 +624,148 @@ model Payment {
   @@map("payments")
 }
 
+// Finance ledger is additive. Legacy invoices/payments/project expenses are not
+// silently posted here: historical recognition and settlement require review.
+enum FinanceAccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  DIRECT_COST
+  EXPENSE
+}
+
+enum FinancePeriodStatus {
+  OPEN
+  CLOSED
+}
+
+enum FinanceTransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum FinanceTransactionStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  POSTED
+  CANCELLED
+}
+
+model FinanceAccount {
+  id           String             @id @default(cuid())
+  code         String             @unique
+  name         String
+  type         FinanceAccountType
+  currency     String?
+  isActive     Boolean            @default(true) @map("is_active")
+  allowPosting Boolean            @default(true) @map("allow_posting")
+  parentId     String?            @map("parent_id")
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+
+  parent   FinanceAccount?  @relation("FinanceAccountHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children FinanceAccount[] @relation("FinanceAccountHierarchy")
+  lines    FinanceJournalLine[]
+  cashTransactions FinanceTransaction[] @relation("FinanceCashAccount")
+  offsetTransactions FinanceTransaction[] @relation("FinanceOffsetAccount")
+
+  @@index([type, isActive])
+  @@map("finance_accounts")
+}
+
+model FinancePeriod {
+  id          String              @id @default(cuid())
+  year        Int
+  month       Int
+  status      FinancePeriodStatus @default(OPEN)
+  closedById  String?             @map("closed_by_id")
+  closedAt    DateTime?           @map("closed_at")
+  createdAt   DateTime            @default(now()) @map("created_at")
+
+  @@unique([year, month])
+  @@map("finance_periods")
+}
+
+model FinanceJournal {
+  id                String               @id @default(cuid())
+  reference         String               @unique
+  occurredOn        DateTime             @map("occurred_on")
+  currency          String
+  memo              String
+  sourceType        String?              @map("source_type")
+  sourceId          String?              @map("source_id")
+  reversesJournalId String?              @unique @map("reverses_journal_id")
+  createdById       String               @map("created_by_id")
+  postedAt          DateTime             @default(now()) @map("posted_at")
+  isFinalized       Boolean              @default(false) @map("is_finalized")
+
+  lines      FinanceJournalLine[]
+  reverses   FinanceJournal?      @relation("FinanceJournalReversal", fields: [reversesJournalId], references: [id], onDelete: Restrict)
+  reversedBy FinanceJournal?      @relation("FinanceJournalReversal")
+  transaction FinanceTransaction?
+
+  @@unique([sourceType, sourceId])
+  @@index([occurredOn, currency])
+  @@map("finance_journals")
+}
+
+model FinanceJournalLine {
+  id        String  @id @default(cuid())
+  journalId String  @map("journal_id")
+  accountId String  @map("account_id")
+  debit     Decimal @default(0) @db.Decimal(20, 2)
+  credit    Decimal @default(0) @db.Decimal(20, 2)
+  projectId String? @map("project_id")
+  clientId  String? @map("client_id")
+
+  journal FinanceJournal @relation(fields: [journalId], references: [id], onDelete: Restrict)
+  account FinanceAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([accountId])
+  @@index([projectId])
+  @@map("finance_journal_lines")
+}
+
+model FinanceTransaction {
+  id              String                   @id @default(cuid())
+  type            FinanceTransactionType
+  status          FinanceTransactionStatus @default(DRAFT)
+  amount          Decimal                  @db.Decimal(20, 2)
+  currency        String
+  category        String
+  description     String
+  occurredOn      DateTime                 @map("occurred_on")
+  paymentMethod   String?                  @map("payment_method")
+  externalRef     String?                  @map("external_ref")
+  projectId       String?                  @map("project_id")
+  clientId        String?                  @map("client_id")
+  counterparty    String?
+  cashAccountId   String                   @map("cash_account_id")
+  offsetAccountId String                   @map("offset_account_id")
+  createdById     String                   @map("created_by_id")
+  reviewedById    String?                  @map("reviewed_by_id")
+  reviewReason    String?                  @map("review_reason")
+  reviewedAt      DateTime?                @map("reviewed_at")
+  postedJournalId String?                  @unique @map("posted_journal_id")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @updatedAt @map("updated_at")
+
+  cashAccount FinanceAccount @relation("FinanceCashAccount", fields: [cashAccountId], references: [id], onDelete: Restrict)
+  offsetAccount FinanceAccount @relation("FinanceOffsetAccount", fields: [offsetAccountId], references: [id], onDelete: Restrict)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  client Client? @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  postedJournal FinanceJournal? @relation(fields: [postedJournalId], references: [id], onDelete: Restrict)
+
+  @@index([status, occurredOn])
+  @@unique([type, externalRef])
+  @@index([projectId])
+  @@index([clientId])
+  @@map("finance_transactions")
+}
+
 enum TicketStatus {
   OPEN
   IN_PROGRESS
@@ -752,6 +896,7 @@ model Project {
   engineerReports     EngineerProgressReport[]
   expenses            ProjectExpense[]
   budgetRevisions     ProjectBudgetRevision[]
+  financeTransactions FinanceTransaction[]
 
   @@index([clientId])
   @@index([status])

@@ -16,6 +16,7 @@ declare global {
     }
     interface Request {
       authUser?: AuthUserContext;
+      financeMfaVerifiedAt?: number | null;
     }
   }
 }

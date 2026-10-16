@@ -16,6 +16,13 @@ describe('access tokens', () => {
   it('signs a token carrying the user id and verifies it', () => {
     const token = signAccessToken('user_123');
     expect(verifyAccessToken(token).sub).toBe('user_123');
+    expect(verifyAccessToken(token).mfaVerifiedAt).toBeNull();
+  });
+
+  it('carries signed proof of a completed 2FA challenge', () => {
+    const verifiedAt = new Date('2026-10-16T12:00:00.000Z');
+    const token = signAccessToken('user_123', verifiedAt);
+    expect(verifyAccessToken(token).mfaVerifiedAt).toBe(verifiedAt.getTime());
   });
 
   it('rejects a tampered token', () => {

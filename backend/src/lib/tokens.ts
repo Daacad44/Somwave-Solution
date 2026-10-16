@@ -11,6 +11,7 @@ export const ACCESS_TTL_MS = 15 * 60 * 1000;
 
 export interface AccessTokenPayload {
   sub: string;
+  mfaVerifiedAt: number | null;
 }
 
 export interface TwoFactorChallengePayload {
@@ -20,8 +21,11 @@ export interface TwoFactorChallengePayload {
 const TWO_FACTOR_PURPOSE = '2fa-login';
 const TWO_FACTOR_TTL = '5m';
 
-export function signAccessToken(userId: string): string {
-  return jwt.sign({}, env.JWT_SECRET, { subject: userId, expiresIn: ACCESS_TTL });
+export function signAccessToken(userId: string, mfaVerifiedAt: Date | null = null): string {
+  return jwt.sign(mfaVerifiedAt ? { mfaVerifiedAt: mfaVerifiedAt.getTime() } : {}, env.JWT_SECRET, {
+    subject: userId,
+    expiresIn: ACCESS_TTL,
+  });
 }
 
 export function verifyAccessToken(token: string): AccessTokenPayload {
@@ -32,7 +36,13 @@ export function verifyAccessToken(token: string): AccessTokenPayload {
   if ('purpose' in decoded) {
     throw new Error('Malformed access token');
   }
-  return { sub: decoded.sub };
+  return {
+    sub: decoded.sub,
+    mfaVerifiedAt:
+      typeof decoded.mfaVerifiedAt === 'number' && Number.isSafeInteger(decoded.mfaVerifiedAt)
+        ? decoded.mfaVerifiedAt
+        : null,
+  };
 }
 
 export function signTwoFactorChallenge(userId: string): string {
