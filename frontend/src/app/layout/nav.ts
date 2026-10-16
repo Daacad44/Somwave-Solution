@@ -69,6 +69,7 @@ const PEOPLE_ITEMS: NavItem[] = [
 ];
 
 const FINANCE_ITEMS: NavItem[] = [
+  { to: '/finance', label: 'Financial Management', permission: PERMISSIONS.FINANCE_READ },
   { to: '/invoices', label: 'Invoices', permission: PERMISSIONS.INVOICES_READ },
 ];
 
@@ -108,6 +109,7 @@ const INTERNAL_SURFACE_PERMISSIONS: PermissionKey[] = [
   PERMISSIONS.LEAVE_READ,
   PERMISSIONS.MEDIA_READ,
   PERMISSIONS.AUDIT_READ,
+  PERMISSIONS.FINANCE_READ,
 ];
 
 export function hasInternalSurface(user: AuthUser | null | undefined): boolean {

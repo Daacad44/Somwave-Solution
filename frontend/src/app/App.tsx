@@ -123,6 +123,9 @@ const InvoiceDetailPage = lazy(() =>
 const InvoicePrintPage = lazy(() =>
   import('../features/ops/InvoicePrintPage').then((m) => ({ default: m.InvoicePrintPage })),
 );
+const FinancePage = lazy(() =>
+  import('../features/finance/FinancePage').then((m) => ({ default: m.FinancePage })),
+);
 const TicketsPage = lazy(() =>
   import('../features/ops/TicketsPage').then((m) => ({ default: m.TicketsPage })),
 );
@@ -430,6 +433,14 @@ export function App(): ReactNode {
             element={
               <Guarded permission={PERMISSIONS.TIMESHEETS_READ}>
                 <TimesheetsPage />
+              </Guarded>
+            }
+          />
+          <Route
+            path="/finance"
+            element={
+              <Guarded permission={PERMISSIONS.FINANCE_READ}>
+                <FinancePage />
               </Guarded>
             }
           />
