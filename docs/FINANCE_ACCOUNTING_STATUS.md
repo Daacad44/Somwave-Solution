@@ -25,6 +25,9 @@ roles retain their administrator privileges. The follow-up additive migration
 refresh sessions. Every finance API request requires a signed session that
 passed the 2FA challenge, including requests by administrators. Older sessions
 must sign in again through 2FA to access finance.
+The third additive migration, `20261016140000_finance_account_metadata_guard`,
+prevents historical chart-of-accounts reclassification once an account has
+journal lines.
 
 The new workflow is draft/edit/cancel → submit → approval by a different user → posted
 balanced journal. Rejections return to the creator. A reversal creates a new

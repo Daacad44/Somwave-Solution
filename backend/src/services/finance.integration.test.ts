@@ -172,6 +172,12 @@ describe.skipIf(!local)('finance ledger integration', () => {
         data: { memo: 'Tampered' },
       }),
     ).rejects.toThrow();
+    await expect(
+      prisma.financeAccount.update({
+        where: { id: revenue.id },
+        data: { type: 'EXPENSE' },
+      }),
+    ).rejects.toThrow('Historical account classification is immutable');
     await reverseJournal(posted.postedJournalId!, 'test-manager', 'Controlled test reversal');
     // Reversals post in the current open period, preserving the old period's history.
     const after = await financeDashboard(new Date('2020-01-01'), new Date('2099-01-01'));
