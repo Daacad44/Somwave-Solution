@@ -136,6 +136,7 @@ model RefreshToken {
   revokedAt           DateTime? @map("revoked_at")
   replacedByTokenHash String?   @map("replaced_by_token_hash")
   createdAt           DateTime  @default(now()) @map("created_at")
+  mfaVerifiedAt       DateTime? @map("mfa_verified_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

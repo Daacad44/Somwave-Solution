@@ -15,8 +15,11 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
     }
 
     let userId: string;
+    let financeMfaVerifiedAt: number | null;
     try {
-      userId = verifyAccessToken(token).sub;
+      const payload = verifyAccessToken(token);
+      userId = payload.sub;
+      financeMfaVerifiedAt = payload.mfaVerifiedAt;
     } catch {
       throw new AppError('UNAUTHORIZED', 401, 'Invalid or expired token');
     }
@@ -27,6 +30,7 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
     }
 
     req.authUser = context;
+    req.financeMfaVerifiedAt = financeMfaVerifiedAt;
     next();
   } catch (err) {
     next(err);

@@ -1,5 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { prisma } from '../lib/prisma';
+import { refreshSession } from './auth.service';
+import { hashRefreshToken, verifyAccessToken } from '../lib/tokens';
 import {
   closePeriod,
   cancelTransaction,
@@ -27,6 +29,49 @@ afterAll(async () => {
 });
 
 describe.skipIf(!local)('finance ledger integration', () => {
+  it('keeps 2FA proof across refresh and leaves older sessions without it', async () => {
+    const user = await prisma.user.create({
+      data: {
+        email: `finance-session-${Date.now()}@example.test`,
+        name: 'Finance test user',
+        passwordHash: 'test-only-not-a-login',
+        twoFactorEnabled: true,
+        twoFactorSecret: 'test-only',
+      },
+    });
+    const proof = new Date('2026-10-16T12:00:00.000Z');
+    const verifiedToken = `verified-${user.id}`;
+    await prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: hashRefreshToken(verifiedToken),
+        expiresAt: new Date(Date.now() + 60_000),
+        mfaVerifiedAt: proof,
+      },
+    });
+    const verified = await refreshSession(verifiedToken);
+    expect(verifyAccessToken(verified.accessToken).mfaVerifiedAt).toBe(proof.getTime());
+    expect(
+      (
+        await prisma.refreshToken.findUniqueOrThrow({
+          where: { tokenHash: hashRefreshToken(verified.refreshToken) },
+        })
+      ).mfaVerifiedAt?.getTime(),
+    ).toBe(proof.getTime());
+
+    const oldToken = `old-${user.id}`;
+    await prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: hashRefreshToken(oldToken),
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    });
+    expect(
+      verifyAccessToken((await refreshSession(oldToken)).accessToken).mfaVerifiedAt,
+    ).toBeNull();
+  });
+
   it('posts an approved entry, reverses it, and blocks closed-period writes and mutation', async () => {
     const code = `T${Date.now()}`;
     const cash = await createAccount(

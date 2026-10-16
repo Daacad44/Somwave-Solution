@@ -20,7 +20,11 @@ income/expense transactions. It also adds finance permissions and the
 `FINANCE_MANAGER` and `ACCOUNTANT` roles without changing existing financial
 records. Finance managers manage accounts and approve transactions; accountants
 create and post approved transactions. Existing `ADMIN` and `SUPER_ADMIN`
-roles retain their administrator privileges. Finance roles require 2FA.
+roles retain their administrator privileges. The follow-up additive migration
+`20261016130000_finance_mfa_session_proof` records 2FA challenge proof on
+refresh sessions. Every finance API request requires a signed session that
+passed the 2FA challenge, including requests by administrators. Older sessions
+must sign in again through 2FA to access finance.
 
 The new workflow is draft/edit/cancel → submit → approval by a different user → posted
 balanced journal. Rejections return to the creator. A reversal creates a new
@@ -76,8 +80,8 @@ configuration, FX and full statement reconciliation are outstanding.
 The additive migration applied to a fresh local PostgreSQL database. A
 disposable integration test covered maker/reviewer separation, exact decimal
 posting, reversal, rejection of journal mutation and imbalance, and closed
-period posting. The repository suite passed 486 tests (the disposable-database
-test is skipped in ordinary runs); the separate PostgreSQL integration test,
+period posting. The repository suite passed 490 tests (the disposable-database
+tests are skipped in ordinary runs); the separate PostgreSQL integration tests,
 typecheck, lint, formatting check and production build also passed. Browser
 end-to-end testing of the new finance screen remains outstanding.
 

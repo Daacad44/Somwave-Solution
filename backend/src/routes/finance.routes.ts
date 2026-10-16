@@ -18,6 +18,16 @@ import * as finance from '../services/finance.service';
 
 export const financeRouter: Router = Router();
 financeRouter.use(requireAuth);
+export function requireFinanceTwoFactor(req: Request, _res: Response, next: NextFunction): void {
+  if (!req.authUser?.twoFactorEnabled || !req.financeMfaVerifiedAt) {
+    next(
+      new AppError('FORBIDDEN', 403, 'Enable two-factor authentication before accessing finance'),
+    );
+    return;
+  }
+  next();
+}
+financeRouter.use(requireFinanceTwoFactor);
 
 function actor(req: Request): string {
   if (!req.authUser) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');

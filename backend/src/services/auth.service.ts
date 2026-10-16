@@ -65,16 +65,24 @@ function toAuthUser(user: UserWithRoles): AuthUser {
   };
 }
 
-async function issueSession(user: UserWithRoles): Promise<IssuedSession> {
+async function issueSession(
+  user: UserWithRoles,
+  mfaVerifiedAt: Date | null = null,
+): Promise<IssuedSession> {
   const refreshToken = generateRefreshToken();
   await prisma.refreshToken.create({
     data: {
       userId: user.id,
       tokenHash: hashRefreshToken(refreshToken),
       expiresAt: refreshExpiryDate(),
+      mfaVerifiedAt,
     },
   });
-  return { user: toAuthUser(user), accessToken: signAccessToken(user.id), refreshToken };
+  return {
+    user: toAuthUser(user),
+    accessToken: signAccessToken(user.id, mfaVerifiedAt),
+    refreshToken,
+  };
 }
 
 async function loadActiveUser(where: {
@@ -122,10 +130,10 @@ export async function verifyTwoFactorLogin(
     throw new AppError('UNAUTHORIZED', 401, 'Please sign in again');
   }
   const totpOk = await verifyTotp(user.twoFactorSecret, code);
-  if (totpOk) return issueSession(user);
+  if (totpOk) return issueSession(user, new Date());
   const used = await consumeBackupCode(user.id, code);
   if (!used) throw new AppError('UNAUTHORIZED', 401, 'Invalid 2FA code');
-  return issueSession(user);
+  return issueSession(user, new Date());
 }
 
 export async function startTwoFactorEnrolment(
@@ -263,17 +271,22 @@ export async function refreshSession(rawToken: string): Promise<IssuedSession> {
 
   const nextToken = generateRefreshToken();
   const nextHash = hashRefreshToken(nextToken);
+  const mfaVerifiedAt = user.twoFactorEnabled ? existing.mfaVerifiedAt : null;
   await prisma.$transaction([
     prisma.refreshToken.update({
       where: { tokenHash },
       data: { revokedAt: new Date(), replacedByTokenHash: nextHash },
     }),
     prisma.refreshToken.create({
-      data: { userId: user.id, tokenHash: nextHash, expiresAt: refreshExpiryDate() },
+      data: { userId: user.id, tokenHash: nextHash, expiresAt: refreshExpiryDate(), mfaVerifiedAt },
     }),
   ]);
 
-  return { user: toAuthUser(user), accessToken: signAccessToken(user.id), refreshToken: nextToken };
+  return {
+    user: toAuthUser(user),
+    accessToken: signAccessToken(user.id, mfaVerifiedAt),
+    refreshToken: nextToken,
+  };
 }
 
 export async function logout(rawToken: string | undefined): Promise<void> {
