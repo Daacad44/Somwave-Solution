@@ -1,6 +1,7 @@
 import type {
   CreateFinanceAccountInput,
   CreateFinanceTransactionInput,
+  UpdateFinanceTransactionInput,
   FinanceAccountRecord,
   FinanceTransactionRecord,
 } from '@somwave/shared';
@@ -82,7 +83,16 @@ export const financeApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  action: (id: string, action: 'submit' | 'approve' | 'reject' | 'post', reason?: string) =>
+  updateTransaction: (id: string, data: UpdateFinanceTransactionInput) =>
+    apiFetch<FinanceTransactionRecord>(`/finance/transactions/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  action: (
+    id: string,
+    action: 'submit' | 'approve' | 'reject' | 'post' | 'cancel',
+    reason?: string,
+  ) =>
     apiFetch<FinanceTransactionRecord>(
       `/finance/transactions/${encodeURIComponent(id)}/${action}`,
       { method: 'POST', body: JSON.stringify(reason ? { reason } : {}) },

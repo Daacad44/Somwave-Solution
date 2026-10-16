@@ -4,9 +4,11 @@ import {
   createFinanceAccountSchema,
   createFinanceTransactionSchema,
   financeReviewSchema,
+  updateFinanceTransactionSchema,
   closeFinancePeriodSchema,
   type CreateFinanceAccountInput,
   type CreateFinanceTransactionInput,
+  type UpdateFinanceTransactionInput,
 } from '@somwave/shared';
 import { requireAuth } from '../middleware/auth';
 import { rbac } from '../middleware/rbac';
@@ -109,6 +111,28 @@ financeRouter.post(
       await finance.createTransaction(req.body as CreateFinanceTransactionInput, actor(req)),
       201,
     );
+  }),
+);
+financeRouter.patch(
+  '/transactions/:id',
+  rbac(PERMISSIONS.FINANCE_CREATE),
+  validate(updateFinanceTransactionSchema),
+  handle(async (req, res) => {
+    sendData(
+      res,
+      await finance.updateTransaction(
+        id(req),
+        req.body as UpdateFinanceTransactionInput,
+        actor(req),
+      ),
+    );
+  }),
+);
+financeRouter.post(
+  '/transactions/:id/cancel',
+  rbac(PERMISSIONS.FINANCE_CREATE),
+  handle(async (req, res) => {
+    sendData(res, await finance.cancelTransaction(id(req), actor(req)));
   }),
 );
 financeRouter.post(

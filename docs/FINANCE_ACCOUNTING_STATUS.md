@@ -22,7 +22,7 @@ records. Finance managers manage accounts and approve transactions; accountants
 create and post approved transactions. Existing `ADMIN` and `SUPER_ADMIN`
 roles retain their administrator privileges. Finance roles require 2FA.
 
-The new workflow is draft → submit → approval by a different user → posted
+The new workflow is draft/edit/cancel → submit → approval by a different user → posted
 balanced journal. Rejections return to the creator. A reversal creates a new
 journal in the current open period; posted lines cannot be edited or deleted.
 PostgreSQL checks positive single-sided lines and defers the balance check
@@ -42,8 +42,8 @@ establish that external funds have cleared a bank or gateway.
 | Phase | Status | Remaining acceptance |
 | --- | --- | --- |
 | 1 Dashboard | PARTIAL | Posted revenue, expense, net profit and balance proof exist per period/currency. Cash/bank, AR/AP, payroll, budget KPIs and requested charts need authoritative integration. |
-| 2 Income | PARTIAL | Manual income draft, category, client/project links, approval and posting exist. Editing, attachments, history filters and invoice/payment reconciliation remain. |
-| 3 Expenses | PARTIAL | Manual expense draft, category, project/client links and approval exist. Vendors, employees, attachments, recurrence, payment states and complete history remain. |
+| 2 Income | PARTIAL | Manual income draft/edit/cancel, category, client/project links, approval and posting exist. Attachments, history filters and invoice/payment reconciliation remain. |
+| 3 Expenses | PARTIAL | Manual expense draft/edit/cancel, category, project/client links and approval exist. Vendors, employees, attachments, recurrence, payment states and complete history remain. |
 | 4 Project budgets | PARTIAL | Existing budget revisions and planned/actual project expenses remain. Allocations, commitments, approval and thresholds remain. |
 | 5 Project tracking | PARTIAL | Posted project-linked direct income/cost report exists. Labor, purchases, infrastructure, overhead and existing project expense reconciliation remain. |
 | 6 Client invoices | PARTIAL | Existing invoice issue/send/partial/paid/void and items remain. Ledger posting, currency, credit notes, corrections and PDF/email evidence need review. |

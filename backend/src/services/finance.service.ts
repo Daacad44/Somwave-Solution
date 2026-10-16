@@ -1,5 +1,10 @@
 import { Prisma, type FinanceAccount, type FinanceTransaction } from '@prisma/client';
-import type { CreateFinanceAccountInput, CreateFinanceTransactionInput } from '@somwave/shared';
+import {
+  createFinanceTransactionSchema,
+  type CreateFinanceAccountInput,
+  type CreateFinanceTransactionInput,
+  type UpdateFinanceTransactionInput,
+} from '@somwave/shared';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
 
@@ -146,7 +151,7 @@ export async function listTransactions(status?: FinanceTransaction['status']) {
   return rows.map(transactionRecord);
 }
 
-export async function createTransaction(input: CreateFinanceTransactionInput, actorId: string) {
+async function validateTransactionInput(input: CreateFinanceTransactionInput): Promise<Date> {
   if (input.cashAccountId === input.offsetAccountId)
     throw new AppError('VALIDATION_ERROR', 400, 'Select two different accounts');
   const [cash, offset, project, client] = await Promise.all([
@@ -189,6 +194,11 @@ export async function createTransaction(input: CreateFinanceTransactionInput, ac
   });
   if (existingPeriod?.status === 'CLOSED')
     throw new AppError('CONFLICT', 409, 'Accounting period is closed');
+  return occurredOn;
+}
+
+export async function createTransaction(input: CreateFinanceTransactionInput, actorId: string) {
+  const occurredOn = await validateTransactionInput(input);
   return prisma.$transaction(async (tx) => {
     const row = await tx.financeTransaction.create({
       data: {
@@ -218,6 +228,106 @@ export async function createTransaction(input: CreateFinanceTransactionInput, ac
       },
     });
     return transactionRecord(row);
+  });
+}
+
+export async function updateTransaction(
+  id: string,
+  patch: UpdateFinanceTransactionInput,
+  actorId: string,
+) {
+  const current = await prisma.financeTransaction.findUnique({ where: { id } });
+  if (
+    !current ||
+    current.createdById !== actorId ||
+    (current.status !== 'DRAFT' && current.status !== 'REJECTED')
+  )
+    throw new AppError(
+      'CONFLICT',
+      409,
+      'Only the creator can edit a draft or rejected transaction',
+    );
+  const parsed = createFinanceTransactionSchema.safeParse({
+    type: current.type,
+    amount: current.amount.toFixed(2),
+    currency: current.currency,
+    category: current.category,
+    description: current.description,
+    occurredOn: current.occurredOn.toISOString(),
+    cashAccountId: current.cashAccountId,
+    offsetAccountId: current.offsetAccountId,
+    paymentMethod: current.paymentMethod,
+    externalRef: current.externalRef,
+    counterparty: current.counterparty,
+    projectId: current.projectId,
+    clientId: current.clientId,
+    ...patch,
+  });
+  if (!parsed.success) throw new AppError('VALIDATION_ERROR', 400, 'Invalid transaction changes');
+  const input = parsed.data;
+  const occurredOn = await validateTransactionInput(input);
+  return prisma.$transaction(async (tx) => {
+    const claimed = await tx.financeTransaction.updateMany({
+      where: {
+        id,
+        createdById: actorId,
+        status: { in: ['DRAFT', 'REJECTED'] },
+        updatedAt: current.updatedAt,
+      },
+      data: {
+        type: input.type,
+        amount: new Prisma.Decimal(input.amount),
+        currency: input.currency,
+        category: input.category,
+        description: input.description,
+        occurredOn,
+        cashAccountId: input.cashAccountId,
+        offsetAccountId: input.offsetAccountId,
+        paymentMethod: input.paymentMethod ?? null,
+        externalRef: input.externalRef ?? null,
+        counterparty: input.counterparty ?? null,
+        projectId: input.projectId ?? null,
+        clientId: input.clientId ?? null,
+        status: 'DRAFT',
+        reviewedById: null,
+        reviewedAt: null,
+        reviewReason: null,
+      },
+    });
+    if (!claimed.count)
+      throw new AppError('CONFLICT', 409, 'Transaction changed; refresh and try again');
+    const updated = await tx.financeTransaction.findUniqueOrThrow({ where: { id } });
+    await tx.auditLog.create({
+      data: {
+        actorId,
+        action: 'finance.transaction.update',
+        subjectType: 'FinanceTransaction',
+        subjectId: id,
+        before: transactionRecord(current),
+        after: transactionRecord(updated),
+      },
+    });
+    return transactionRecord(updated);
+  });
+}
+
+export async function cancelTransaction(id: string, actorId: string) {
+  return prisma.$transaction(async (tx) => {
+    const claimed = await tx.financeTransaction.updateMany({
+      where: { id, createdById: actorId, status: { in: ['DRAFT', 'SUBMITTED', 'REJECTED'] } },
+      data: { status: 'CANCELLED' },
+    });
+    if (!claimed.count)
+      throw new AppError('CONFLICT', 409, 'Only the creator can cancel an unapproved transaction');
+    await tx.auditLog.create({
+      data: {
+        actorId,
+        action: 'finance.transaction.cancel',
+        subjectType: 'FinanceTransaction',
+        subjectId: id,
+      },
+    });
+    return transactionRecord(await tx.financeTransaction.findUniqueOrThrow({ where: { id } }));
   });
 }
 

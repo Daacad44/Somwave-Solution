@@ -48,6 +48,10 @@ export const createFinanceTransactionSchema = z.object({
   clientId: z.string().min(1).nullable().optional(),
 });
 export type CreateFinanceTransactionInput = z.infer<typeof createFinanceTransactionSchema>;
+export const updateFinanceTransactionSchema = createFinanceTransactionSchema
+  .partial()
+  .refine((data) => Object.keys(data).length > 0, 'At least one change is required');
+export type UpdateFinanceTransactionInput = z.infer<typeof updateFinanceTransactionSchema>;
 
 export const financeReviewSchema = z.object({
   reason: z.string().trim().min(3).max(1000).optional(),

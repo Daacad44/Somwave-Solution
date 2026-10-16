@@ -48,6 +48,7 @@ export function FinancePage(): ReactNode {
   const [from, setFrom] = useState(monthStart);
   const [to, setTo] = useState(nextMonth);
   const [message, setMessage] = useState('');
+  const [editing, setEditing] = useState<FinanceTransactionRecord | null>(null);
   const queryClient = useQueryClient();
   const canCreate = useHasPermission(PERMISSIONS.FINANCE_CREATE);
   const canApprove = useHasPermission(PERMISSIONS.FINANCE_APPROVE);
@@ -98,7 +99,7 @@ export function FinancePage(): ReactNode {
       reason,
     }: {
       id: string;
-      action: 'submit' | 'approve' | 'reject' | 'post';
+      action: 'submit' | 'approve' | 'reject' | 'post' | 'cancel';
       reason?: string;
     }) => financeApi.action(id, action, reason),
     onSuccess: (_row, vars) => {
@@ -206,13 +207,17 @@ export function FinancePage(): ReactNode {
         <div className="space-y-6">
           {canCreate && (
             <TransactionForm
+              key={editing?.id ?? 'new'}
+              initial={editing}
               accounts={accounts.data ?? []}
               projects={linkOptions.data?.projects ?? []}
               clients={linkOptions.data?.clients ?? []}
-              onDone={(text) => {
+              onDone={(text, success) => {
                 setMessage(text);
                 refresh();
+                if (success) setEditing(null);
               }}
+              onCancelEdit={() => setEditing(null)}
             />
           )}
           <TransactionList
@@ -224,6 +229,7 @@ export function FinancePage(): ReactNode {
             canApprove={canApprove}
             canPost={canPost}
             action={action.mutate}
+            onEdit={setEditing}
           />
         </div>
       )}
@@ -239,6 +245,10 @@ export function FinancePage(): ReactNode {
           canApprove={canApprove}
           canPost={canPost}
           action={action.mutate}
+          onEdit={(row) => {
+            setEditing(row);
+            setTab('Transactions');
+          }}
         />
       )}
       {tab === 'Projects' && (
@@ -559,28 +569,35 @@ function AccountForm({ onDone }: { onDone: (message: string) => void }): ReactNo
 }
 
 function TransactionForm({
+  initial,
   accounts,
   projects,
   clients,
   onDone,
+  onCancelEdit,
 }: {
+  initial: FinanceTransactionRecord | null;
   accounts: FinanceAccountRecord[];
   projects: { id: string; name: string; clientId: string | null }[];
   clients: { id: string; companyName: string }[];
-  onDone: (message: string) => void;
+  onDone: (message: string, success: boolean) => void;
+  onCancelEdit: () => void;
 }): ReactNode {
-  const [type, setType] = useState<CreateFinanceTransactionInput['type']>('EXPENSE');
-  const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState('USD');
-  const [category, setCategory] = useState('');
-  const [description, setDescription] = useState('');
-  const [date, setDate] = useState(today);
-  const [cashAccountId, setCashAccountId] = useState('');
-  const [offsetAccountId, setOffsetAccountId] = useState('');
-  const [externalRef, setExternalRef] = useState('');
-  const [counterparty, setCounterparty] = useState('');
-  const [projectId, setProjectId] = useState('');
-  const [clientId, setClientId] = useState('');
+  const [type, setType] = useState<CreateFinanceTransactionInput['type']>(
+    initial?.type ?? 'EXPENSE',
+  );
+  const [amount, setAmount] = useState(initial?.amount ?? '');
+  const [currency, setCurrency] = useState(initial?.currency ?? 'USD');
+  const [category, setCategory] = useState(initial?.category ?? '');
+  const [description, setDescription] = useState(initial?.description ?? '');
+  const [date, setDate] = useState(initial?.occurredOn.slice(0, 10) ?? today());
+  const [cashAccountId, setCashAccountId] = useState(initial?.cashAccountId ?? '');
+  const [offsetAccountId, setOffsetAccountId] = useState(initial?.offsetAccountId ?? '');
+  const [paymentMethod, setPaymentMethod] = useState(initial?.paymentMethod ?? '');
+  const [externalRef, setExternalRef] = useState(initial?.externalRef ?? '');
+  const [counterparty, setCounterparty] = useState(initial?.counterparty ?? '');
+  const [projectId, setProjectId] = useState(initial?.projectId ?? '');
+  const [clientId, setClientId] = useState(initial?.clientId ?? '');
   const cashAccounts = accounts.filter(
     (account) =>
       account.type === 'ASSET' &&
@@ -598,8 +615,8 @@ function TransactionForm({
         : account.type === 'EXPENSE' || account.type === 'DIRECT_COST'),
   );
   const create = useMutation({
-    mutationFn: () =>
-      financeApi.createTransaction({
+    mutationFn: () => {
+      const payload: CreateFinanceTransactionInput = {
         type,
         amount,
         currency,
@@ -608,20 +625,30 @@ function TransactionForm({
         occurredOn: `${date}T00:00:00.000Z`,
         cashAccountId,
         offsetAccountId,
+        paymentMethod: paymentMethod || null,
         externalRef: externalRef || null,
         counterparty: counterparty || null,
         projectId: projectId || null,
         clientId: clientId || null,
-      }),
+      };
+      return initial
+        ? financeApi.updateTransaction(initial.id, payload)
+        : financeApi.createTransaction(payload);
+    },
     onSuccess: () => {
       setAmount('');
       setCategory('');
       setDescription('');
       setExternalRef('');
       setCounterparty('');
-      onDone('Draft transaction created. Submit it for independent approval before posting.');
+      onDone(
+        initial
+          ? 'Draft changes saved.'
+          : 'Draft transaction created. Submit it for independent approval before posting.',
+        true,
+      );
     },
-    onError: (error: Error) => onDone(error.message),
+    onError: (error: Error) => onDone(error.message, false),
   });
   function submit(event: FormEvent): void {
     event.preventDefault();
@@ -629,7 +656,9 @@ function TransactionForm({
   }
   return (
     <form onSubmit={submit} className="rounded-lg border border-border bg-surface p-5">
-      <h2 className="text-lg font-semibold">New income or expense</h2>
+      <h2 className="text-lg font-semibold">
+        {initial ? 'Edit draft transaction' : 'New income or expense'}
+      </h2>
       <p className="mt-1 text-sm text-muted">
         For direct cash activity only. Existing invoice payments are separate until reconciled;
         recording a draft does not verify external funds.
@@ -724,6 +753,11 @@ function TransactionForm({
           onChange={(event) => setExternalRef(event.target.value)}
         />
         <Input
+          label="Payment method (optional)"
+          value={paymentMethod}
+          onChange={(event) => setPaymentMethod(event.target.value)}
+        />
+        <Input
           label="Counterparty (optional)"
           value={counterparty}
           onChange={(event) => setCounterparty(event.target.value)}
@@ -763,9 +797,16 @@ function TransactionForm({
           </select>
         </label>
       </div>
-      <Button type="submit" className="mt-4" isLoading={create.isPending}>
-        Save draft
-      </Button>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button type="submit" isLoading={create.isPending}>
+          {initial ? 'Save changes' : 'Save draft'}
+        </Button>
+        {initial && (
+          <Button type="button" variant="secondary" onClick={onCancelEdit}>
+            Cancel editing
+          </Button>
+        )}
+      </div>
     </form>
   );
 }
@@ -779,6 +820,7 @@ function TransactionList({
   canApprove,
   canPost,
   action,
+  onEdit,
 }: {
   rows: FinanceTransactionRecord[];
   loading: boolean;
@@ -787,9 +829,10 @@ function TransactionList({
   canCreate: boolean;
   canApprove: boolean;
   canPost: boolean;
+  onEdit: (row: FinanceTransactionRecord) => void;
   action: (vars: {
     id: string;
-    action: 'submit' | 'approve' | 'reject' | 'post';
+    action: 'submit' | 'approve' | 'reject' | 'post' | 'cancel';
     reason?: string;
   }) => void;
 }): ReactNode {
@@ -828,12 +871,31 @@ function TransactionList({
                 {canCreate &&
                 userId === row.createdById &&
                 (row.status === 'DRAFT' || row.status === 'REJECTED') ? (
+                  <>
+                    <Button type="button" size="sm" variant="secondary" onClick={() => onEdit(row)}>
+                      Edit
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => action({ id: row.id, action: 'submit' })}
+                    >
+                      Submit
+                    </Button>
+                  </>
+                ) : null}
+                {canCreate &&
+                userId === row.createdById &&
+                (row.status === 'DRAFT' ||
+                  row.status === 'SUBMITTED' ||
+                  row.status === 'REJECTED') ? (
                   <Button
                     type="button"
                     size="sm"
-                    onClick={() => action({ id: row.id, action: 'submit' })}
+                    variant="ghost"
+                    onClick={() => action({ id: row.id, action: 'cancel' })}
                   >
-                    Submit
+                    Cancel
                   </Button>
                 ) : null}
                 {canApprove && userId !== row.createdById && row.status === 'SUBMITTED' && (

@@ -2,6 +2,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { prisma } from '../lib/prisma';
 import {
   closePeriod,
+  cancelTransaction,
   createAccount,
   createTransaction,
   financeDashboard,
@@ -10,6 +11,7 @@ import {
   reverseJournal,
   reviewTransaction,
   submitTransaction,
+  updateTransaction,
 } from './finance.service';
 
 // This test writes to a disposable local PostgreSQL database only. It is skipped
@@ -48,6 +50,41 @@ describe.skipIf(!local)('finance ledger integration', () => {
       'test-manager',
     );
     const project = await prisma.project.create({ data: { name: `Finance test ${code}` } });
+    const editable = await createTransaction(
+      {
+        type: 'EXPENSE',
+        amount: '4.00',
+        currency: 'USD',
+        category: 'Test expense',
+        description: 'Editable draft',
+        occurredOn: '2020-02-01T00:00:00.000Z',
+        cashAccountId: cash.id,
+        offsetAccountId: (
+          await createAccount(
+            {
+              code: `${code}E`,
+              name: 'Test expense',
+              type: 'EXPENSE',
+              currency: 'USD',
+              allowPosting: true,
+            },
+            'test-manager',
+          )
+        ).id,
+      },
+      'test-maker',
+    );
+    const edited = await updateTransaction(
+      editable.id,
+      {
+        amount: '4.25',
+        description: 'Corrected draft expense',
+      },
+      'test-maker',
+    );
+    expect(edited).toMatchObject({ amount: '4.25', description: 'Corrected draft expense' });
+    expect((await cancelTransaction(editable.id, 'test-maker')).status).toBe('CANCELLED');
+    await expect(submitTransaction(editable.id, 'test-maker')).rejects.toThrow();
     const record = await createTransaction(
       {
         type: 'INCOME',
