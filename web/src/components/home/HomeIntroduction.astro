@@ -1,0 +1,19 @@
+---
+import type { SiteContent } from '@somwave/shared';
+
+interface Props { content: SiteContent['hero'] }
+const { content } = Astro.props;
+---
+
+<section class="bg-surface" aria-labelledby="intro-heading">
+  <div class="section-shell grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center lg:gap-16">
+    <div>
+      <p class="section-kicker">About Somwave</p>
+      <h2 id="intro-heading" class="section-title mt-4">Technology shaped around your business.</h2>
+    </div>
+    <div>
+      <p class="max-w-2xl text-lg leading-8 text-muted">{content.description}</p>
+      <a href="/ku-saabsan" class="mt-6 inline-flex min-h-11 items-center text-sm font-bold text-brand hover:underline">Get to know Somwave <span aria-hidden="true" class="ms-2">→</span></a>
+    </div>
+  </div>
+</section>

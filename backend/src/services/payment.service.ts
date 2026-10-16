@@ -26,11 +26,6 @@ export interface EvcChargeInput extends ChargeEvcPaymentInput {
 const manualGateway = new ManualBankTransferGateway();
 const evcGateway = new EvcPlusGateway();
 
-function gatewayForMethod(method: RecordPaymentInput['method']): PaymentGateway {
-  if (method === 'EVC_PLUS') return evcGateway;
-  return manualGateway;
-}
-
 export async function recordPayment(
   input: ChargeInput,
   gateway?: PaymentGateway,
@@ -38,7 +33,14 @@ export async function recordPayment(
   if (input.method === 'EVC_PLUS') {
     throw new AppError('VALIDATION_ERROR', 400, 'Isticmaal /payments/evc-plus EVC Plus');
   }
-  const impl = gateway ?? gatewayForMethod(input.method);
+  if (input.method !== 'BANK_TRANSFER' && input.method !== 'MANUAL') {
+    throw new AppError(
+      'VALIDATION_ERROR',
+      400,
+      'Payment method has no configured settlement gateway',
+    );
+  }
+  const impl = gateway ?? manualGateway;
   return impl.charge(input as ScopedChargeInput);
 }
 
@@ -71,39 +73,39 @@ export async function listPayments(
 }
 
 export async function applyEvcWebhook(payload: EvcWebhookPayload): Promise<PaymentRecord | null> {
-  const payment = await prisma.payment.findFirst({
+  const known = await prisma.payment.findFirst({
     where: { gatewayRef: payload.transactionId, deletedAt: null, method: 'EVC_PLUS' },
+    select: { invoiceId: true },
   });
-  if (!payment) return null;
-  if (payment.status !== 'PENDING') {
-    return toPaymentRecord(payment);
-  }
+  if (!known) return null;
 
-  if (payload.status === 'FAILED') {
-    const failed = await prisma.payment.update({
-      where: { id: payment.id },
-      data: { status: 'FAILED', reference: payload.reference ?? payment.reference },
+  const result = await prisma.$transaction(async (tx) => {
+    // Serialize webhook retries and manual payments against the same invoice.
+    await tx.$queryRaw`SELECT "id" FROM "invoices" WHERE "id" = ${known.invoiceId} FOR UPDATE`;
+    const payment = await tx.payment.findFirst({
+      where: { gatewayRef: payload.transactionId, deletedAt: null, method: 'EVC_PLUS' },
     });
-    return toPaymentRecord(failed);
-  }
-
-  const invoice = await prisma.invoice.findFirst({
-    where: { id: payment.invoiceId, deletedAt: null },
-  });
-  if (!invoice) throw new AppError('NOT_FOUND', 404, 'Invoice not found');
-
-  const nextPaid = invoice.paidAmount.add(payment.amount);
-  if (nextPaid.gt(invoice.total)) {
-    throw new AppError('PAYMENT_FAILED', 409, 'Payment exceeds the outstanding balance');
-  }
-
-  const completed = await prisma.$transaction(async (tx) => {
+    if (!payment) return null;
+    if (payment.status !== 'PENDING') return payment;
+    if (payload.status === 'FAILED') {
+      return tx.payment.update({
+        where: { id: payment.id },
+        data: { status: 'FAILED', reference: payload.reference ?? payment.reference },
+      });
+    }
+    const invoice = await tx.invoice.findFirst({
+      where: { id: payment.invoiceId, deletedAt: null },
+    });
+    if (!invoice) throw new AppError('NOT_FOUND', 404, 'Invoice not found');
+    if (invoice.status === 'VOID')
+      throw new AppError('CONFLICT', 409, 'A void invoice cannot accept a payment');
+    const nextPaid = invoice.paidAmount.add(payment.amount);
+    if (nextPaid.gt(invoice.total)) {
+      throw new AppError('PAYMENT_FAILED', 409, 'Payment exceeds the outstanding balance');
+    }
     const updatedPayment = await tx.payment.update({
       where: { id: payment.id },
-      data: {
-        status: 'COMPLETED',
-        reference: payload.reference ?? payment.reference,
-      },
+      data: { status: 'COMPLETED', reference: payload.reference ?? payment.reference },
     });
     await tx.invoice.update({
       where: { id: invoice.id },
@@ -114,6 +116,5 @@ export async function applyEvcWebhook(payload: EvcWebhookPayload): Promise<Payme
     });
     return updatedPayment;
   });
-
-  return toPaymentRecord(completed);
+  return result ? toPaymentRecord(result) : null;
 }

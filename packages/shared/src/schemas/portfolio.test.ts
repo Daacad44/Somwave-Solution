@@ -15,6 +15,7 @@ describe('publicPortfolioItemSchema', () => {
       client: null,
       coverImage: null,
       order: 1,
+      featured: false,
     });
     expect(parsed.success).toBe(true);
   });
@@ -31,6 +32,16 @@ describe('publicPortfolioDetailSchema', () => {
       client: 'Acme',
       coverImage: null,
       order: 1,
+      featured: false,
+      technologies: [],
+      galleryImages: [],
+      features: [],
+      completionDate: null,
+      projectStatus: null,
+      liveDemoUrl: null,
+      caseStudyUrl: null,
+      seoTitle: null,
+      seoDescription: null,
     });
     expect(parsed.success).toBe(true);
   });

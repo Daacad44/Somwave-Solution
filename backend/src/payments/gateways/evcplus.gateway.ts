@@ -3,6 +3,7 @@ import { AppError } from '../../lib/http';
 import { prisma } from '../../lib/prisma';
 import { initiateEvcCharge } from '../evcplus.client';
 import {
+  assertPaymentReplay,
   assertAmountWithinBalance,
   loadPayableInvoice,
   parseChargeAmount,
@@ -14,17 +15,12 @@ export type ScopedChargeInput = PaymentGatewayChargeInput & { clientId?: string 
 export class EvcPlusGateway implements PaymentGateway {
   async charge(input: ScopedChargeInput) {
     const scoped = input as ScopedChargeInput;
-    const existingKey = await prisma.payment.findUnique({
-      where: { idempotencyKey: input.idempotencyKey },
-    });
-    if (existingKey && existingKey.deletedAt === null) {
-      return toPaymentRecord(existingKey);
-    }
-
+    const amount = parseChargeAmount(input.amount);
     if (!input.payerPhone) {
       throw new AppError('VALIDATION_ERROR', 400, 'EVC number is required');
     }
 
+    // Check the invoice owner before returning a replayed payment to a portal user.
     const invoice = await loadPayableInvoice(
       (where) =>
         prisma.invoice.findFirst({
@@ -40,20 +36,42 @@ export class EvcPlusGateway implements PaymentGateway {
       input.invoiceId,
       scoped.clientId,
     );
-
-    const amount = parseChargeAmount(input.amount);
+    const existingKey = await prisma.payment.findUnique({
+      where: { idempotencyKey: input.idempotencyKey },
+    });
+    if (existingKey && existingKey.deletedAt === null) {
+      assertPaymentReplay(existingKey, { ...input, amount });
+      return toPaymentRecord(existingKey);
+    }
     assertAmountWithinBalance(invoice, amount);
 
-    const pending = await prisma.payment.create({
-      data: {
-        invoiceId: invoice.id,
-        amount,
-        method: 'EVC_PLUS',
-        status: 'PENDING',
-        payerPhone: input.payerPhone,
-        recordedById: input.actorId,
-        idempotencyKey: input.idempotencyKey,
-      },
+    const pending = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "invoices" WHERE "id" = ${input.invoiceId} FOR UPDATE`;
+      const current = await loadPayableInvoice(
+        (where) =>
+          tx.invoice.findFirst({
+            where,
+            select: { id: true, status: true, total: true, paidAmount: true, clientId: true },
+          }),
+        input.invoiceId,
+        scoped.clientId,
+      );
+      const reserved = await tx.payment.aggregate({
+        where: { invoiceId: current.id, status: 'PENDING', deletedAt: null },
+        _sum: { amount: true },
+      });
+      assertAmountWithinBalance(current, amount, reserved._sum.amount);
+      return tx.payment.create({
+        data: {
+          invoiceId: current.id,
+          amount,
+          method: 'EVC_PLUS',
+          status: 'PENDING',
+          payerPhone: input.payerPhone,
+          recordedById: input.actorId,
+          idempotencyKey: input.idempotencyKey,
+        },
+      });
     });
 
     const { transactionId } = await initiateEvcCharge({

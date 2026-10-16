@@ -48,6 +48,7 @@ import { engineeringOperationsRouter } from './routes/engineering-operations.rou
 import { projectDocumentationRouter } from './routes/project-documentation.routes';
 import { githubRouter, githubWebhooksRouter } from './routes/github.routes';
 import { financeRouter } from './routes/finance.routes';
+import { reportsRouter } from './routes/reports.routes';
 
 export function createApp(): Express {
   const app = express();
@@ -76,6 +77,9 @@ export function createApp(): Express {
   app.use('/api/v1/documents', express.json({ limit: '35mb' }));
   app.use('/api/v1/projects/:projectId/documentation', express.json({ limit: '35mb' }));
   app.use('/api/v1/engineering/tasks/:taskId/attachments', express.json({ limit: '35mb' }));
+  // A 5 MiB file becomes about 6.7 MiB when encoded in the inquiry upload JSON.
+  app.use('/api/v1/public/project-inquiries/:id/attachments', express.json({ limit: '8mb' }));
+  app.use('/api/v1/portal/project-inquiries/:id/attachments', express.json({ limit: '8mb' }));
   app.use(express.json({ limit: '1mb' }));
   app.use(pinoHttp({ logger }));
   app.use(withRequestContext);
@@ -116,6 +120,7 @@ export function createApp(): Express {
   app.use('/api/v1/notifications', notificationsRouter);
   app.use('/api/v1/dashboard', dashboardRouter);
   app.use('/api/v1/finance', financeRouter);
+  app.use('/api/v1/reports', reportsRouter);
   app.use('/api/v1/search', searchRouter);
 
   app.use(notFoundHandler);

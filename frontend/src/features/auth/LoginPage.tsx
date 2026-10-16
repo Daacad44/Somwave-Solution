@@ -18,7 +18,9 @@ import { AuthLayout } from './AuthLayout';
 export function LoginPage(): ReactNode {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const nextPath = searchParams.get('next') === '/engineering' ? '/engineering' : '/';
+  const requestedPath = searchParams.get('next');
+  const nextPath =
+    requestedPath === '/engineering' || requestedPath === '/portal/projects' ? requestedPath : '/';
   const loginMutation = useLogin();
   const verifyMutation = useVerifyTwoFactor();
   const [challengeToken, setChallengeToken] = useState<string | null>(null);
@@ -38,7 +40,9 @@ export function LoginPage(): ReactNode {
         codeForm.setValue('challengeToken', result.challengeToken);
         return;
       }
-      navigate(nextPath, { replace: true });
+      navigate(nextPath === '/portal/projects' && !result.user.clientId ? '/' : nextPath, {
+        replace: true,
+      });
     } catch {
       // Mutation error is rendered below; do not let RHF treat it as unhandled.
     }
@@ -46,8 +50,10 @@ export function LoginPage(): ReactNode {
 
   const onVerify = codeForm.handleSubmit(async (values) => {
     try {
-      await verifyMutation.mutateAsync(values);
-      navigate(nextPath, { replace: true });
+      const result = await verifyMutation.mutateAsync(values);
+      navigate(nextPath === '/portal/projects' && !result.user.clientId ? '/' : nextPath, {
+        replace: true,
+      });
     } catch {
       // Mutation error is rendered below.
     }

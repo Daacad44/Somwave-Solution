@@ -24,6 +24,8 @@ import type {
   CreateTicketReplyInput,
   AdminProject,
   AdminMilestone,
+  ProjectInquirySummary,
+  ProjectInquiryStatus,
 } from '@somwave/shared';
 import { apiDownload, apiFetch, apiFetchPaged, type PaginationMeta } from '../../lib/apiClient';
 
@@ -39,6 +41,63 @@ export function convertLead(id: string): Promise<ConvertLeadResult> {
     body: JSON.stringify({}),
   });
 }
+
+export function listAdminProjectInquiries(): Promise<ProjectInquirySummary[]> {
+  return apiFetch<ProjectInquirySummary[]>('/leads/project-inquiries');
+}
+export function reviewProjectInquiry(
+  id: string,
+  input: {
+    status: 'UNDER_REVIEW' | 'PROPOSAL_SENT' | 'REJECTED' | 'CANCELLED';
+    proposalSummary?: string;
+  },
+): Promise<ProjectInquirySummary> {
+  return apiFetch<ProjectInquirySummary>(`/leads/project-inquiries/${id}/review`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+export function convertProjectInquiry(
+  id: string,
+  managerId?: string,
+): Promise<{ projectId: string; created: boolean }> {
+  return apiFetch<{ projectId: string; created: boolean }>(
+    `/leads/project-inquiries/${id}/convert`,
+    {
+      method: 'POST',
+      body: JSON.stringify(managerId ? { managerId } : {}),
+    },
+  );
+}
+export function listPortalProjectInquiries(): Promise<ProjectInquirySummary[]> {
+  return apiFetch<ProjectInquirySummary[]>('/portal/project-inquiries');
+}
+export function listUnlinkedProjectInquiries(): Promise<ProjectInquirySummary[]> {
+  return apiFetch<ProjectInquirySummary[]>('/portal/project-inquiries/unlinked');
+}
+export function linkProjectInquiry(id: string): Promise<{ status: 'ACCOUNT_CREATED' }> {
+  return apiFetch<{ status: 'ACCOUNT_CREATED' }>(`/portal/project-inquiries/${id}/link`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+export function approveProjectInquiryProposal(id: string): Promise<ProjectInquirySummary> {
+  return apiFetch<ProjectInquirySummary>(`/portal/project-inquiries/${id}/approve-proposal`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+export const PROJECT_INQUIRY_STATUS_LABELS: Record<ProjectInquiryStatus, string> = {
+  PENDING_VERIFICATION: 'Email verification pending',
+  EMAIL_VERIFIED: 'Email verified',
+  ACCOUNT_CREATED: 'Account created',
+  UNDER_REVIEW: 'Under review',
+  PROPOSAL_SENT: 'Proposal sent',
+  APPROVED: 'Approved',
+  REJECTED: 'Rejected',
+  CANCELLED: 'Cancelled',
+  CONVERTED: 'Project created',
+};
 
 export function listApplications(): Promise<AdminJobApplication[]> {
   return apiFetch<AdminJobApplication[]>('/job-applications');

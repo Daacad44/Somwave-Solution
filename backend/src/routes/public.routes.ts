@@ -5,10 +5,16 @@ import {
   createInquirySchema,
   createJobApplicationSchema,
   createSubscriberSchema,
+  createProjectInquirySchema,
+  verifyProjectInquirySchema,
+  activateProjectInquirySchema,
+  uploadPublicProjectInquiryAttachmentSchema,
 } from '@somwave/shared';
 import { publicRateLimiter, submissionRateLimiter } from '../middleware/rateLimit';
 import { validate } from '../middleware/validate';
 import * as publicController from '../controllers/public.controller';
+import * as projectInquiryController from '../controllers/project-inquiry.controller';
+import { loginIpRateLimiter } from '../middleware/rateLimit';
 
 export const publicRouter: Router = Router();
 
@@ -23,6 +29,7 @@ publicRouter.get('/services/:slug', publicController.getService);
 
 publicRouter.get('/portfolio', publicController.getPortfolio);
 publicRouter.get('/portfolio/:slug', publicController.getPortfolioItem);
+publicRouter.post('/portfolio/:id/demo-click', publicController.recordDemoClick);
 
 publicRouter.get('/posts', publicController.getPosts);
 publicRouter.get('/posts/:slug', publicController.getPost);
@@ -46,6 +53,36 @@ publicRouter.post(
   submissionRateLimiter,
   validate(createInquirySchema),
   publicController.createInquiry,
+);
+
+publicRouter.post(
+  '/project-inquiries',
+  submissionRateLimiter,
+  validate(createProjectInquirySchema),
+  projectInquiryController.create,
+);
+publicRouter.post(
+  '/project-inquiries/:id/resend',
+  submissionRateLimiter,
+  projectInquiryController.resend,
+);
+publicRouter.post(
+  '/project-inquiries/:id/verify',
+  loginIpRateLimiter,
+  validate(verifyProjectInquirySchema),
+  projectInquiryController.verify,
+);
+publicRouter.post(
+  '/project-inquiries/:id/activate',
+  loginIpRateLimiter,
+  validate(activateProjectInquirySchema),
+  projectInquiryController.activate,
+);
+publicRouter.post(
+  '/project-inquiries/:id/attachments',
+  loginIpRateLimiter,
+  validate(uploadPublicProjectInquiryAttachmentSchema),
+  projectInquiryController.uploadPublicAttachment,
 );
 
 publicRouter.post(

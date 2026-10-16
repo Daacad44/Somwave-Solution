@@ -4,7 +4,11 @@ import { AppError, sendData } from '../lib/http';
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, defaultSiteContent } from '@somwave/shared';
 import { listPublishedServices, getPublishedServiceBySlug } from '../services/service.service';
 import { createInquiry as createInquiryService } from '../services/inquiry.service';
-import { listPublishedPortfolio, getPortfolioBySlug } from '../services/portfolio.service';
+import {
+  listPublishedPortfolio,
+  getPortfolioBySlug,
+  recordPortfolioDemoClick,
+} from '../services/portfolio.service';
 import { listPublishedPosts, getPostBySlug } from '../services/post.service';
 import { readPublicArticleImage } from '../services/articleImage.service';
 import { listPublishedOpenings, getOpeningBySlug, applyToOpening } from '../services/job.service';
@@ -96,6 +100,20 @@ export async function getPortfolioItem(
     const item = slug ? await getPortfolioBySlug(slug) : null;
     if (!item) throw new AppError('NOT_FOUND', 404, 'Portfolio item not found');
     sendData(res, item);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function recordDemoClick(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { id } = req.params;
+    if (!id) throw new AppError('NOT_FOUND', 404, 'Live demo unavailable');
+    sendData(res, await recordPortfolioDemoClick(id));
   } catch (err) {
     next(err);
   }

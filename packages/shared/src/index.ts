@@ -15,6 +15,7 @@ export * from './schemas/password';
 export * from './schemas/dashboard';
 export * from './schemas/service';
 export * from './schemas/inquiry';
+export * from './schemas/projectInquiry';
 export * from './schemas/portfolio';
 export * from './schemas/siteContent';
 export * from './schemas/homepage';

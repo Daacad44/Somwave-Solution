@@ -1,12 +1,10 @@
 import { type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { INVOICE_STATUS_LABELS, ROLES, type InvoiceStatus } from '@somwave/shared';
+import { type InvoiceStatus } from '@somwave/shared';
 import { Table, THead, TBody, Tr, Th, Td } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
 import { LoadingState, ErrorState } from '../../components/states';
 import { formatDate } from '../../lib/date';
-import { hasRole } from '../../lib/rbac';
-import { useCurrentUser } from '../auth/hooks';
 import { useInvoice } from './hooks';
 
 const STAFF_STATUS_LABELS: Record<InvoiceStatus, string> = {
@@ -19,9 +17,7 @@ const STAFF_STATUS_LABELS: Record<InvoiceStatus, string> = {
 };
 
 export function InvoicePrintPage(): ReactNode {
-  const { data: user } = useCurrentUser();
-  const isPortalClient = hasRole(user, ROLES.CLIENT);
-  const t = (english: string, somali: string): string => (isPortalClient ? somali : english);
+  const t = (english: string, _somali: string): string => english;
   const { id } = useParams<{ id: string }>();
   const query = useInvoice(id);
   const invoice = query.data;
@@ -56,11 +52,7 @@ export function InvoicePrintPage(): ReactNode {
         <h1 className="mt-2 text-3xl font-semibold text-ink">
           {t('Invoice', 'Biil')} {invoice.number}
         </h1>
-        <p className="mt-1 text-base text-muted">
-          {isPortalClient
-            ? INVOICE_STATUS_LABELS[invoice.status]
-            : STAFF_STATUS_LABELS[invoice.status]}
-        </p>
+        <p className="mt-1 text-base text-muted">{STAFF_STATUS_LABELS[invoice.status]}</p>
       </header>
       <dl className="mt-6 grid gap-4 sm:grid-cols-2">
         <div>

@@ -3,6 +3,15 @@ import { z } from 'zod';
 export const portfolioCategorySchema = z.enum(['WEBSITE', 'MOBILE_APP', 'CUSTOM_SOFTWARE']);
 export type PortfolioCategory = z.infer<typeof portfolioCategorySchema>;
 
+const portfolioUrlSchema = z
+  .string()
+  .url()
+  .refine((value) => {
+    const protocol = new URL(value).protocol;
+    return protocol === 'https:' || protocol === 'http:';
+  }, 'Enter an HTTP or HTTPS URL');
+const shortListSchema = z.array(z.string().trim().min(1).max(200)).max(30);
+
 // Summary shape for GET /api/v1/public/portfolio (list). §10.
 export const publicPortfolioItemSchema = z.object({
   id: z.string(),
@@ -13,6 +22,7 @@ export const publicPortfolioItemSchema = z.object({
   category: portfolioCategorySchema.nullable().optional(),
   coverImage: z.string().nullable(),
   order: z.number().int(),
+  featured: z.boolean(),
 });
 
 export type PublicPortfolioItem = z.infer<typeof publicPortfolioItemSchema>;
@@ -20,6 +30,15 @@ export type PublicPortfolioItem = z.infer<typeof publicPortfolioItemSchema>;
 // Detail shape for GET /api/v1/public/portfolio/:slug — adds the body.
 export const publicPortfolioDetailSchema = publicPortfolioItemSchema.extend({
   description: z.string().nullable(),
+  technologies: shortListSchema,
+  galleryImages: z.array(portfolioUrlSchema).max(20),
+  features: shortListSchema,
+  completionDate: z.string().nullable(),
+  projectStatus: z.string().nullable(),
+  liveDemoUrl: portfolioUrlSchema.nullable(),
+  caseStudyUrl: portfolioUrlSchema.nullable(),
+  seoTitle: z.string().nullable(),
+  seoDescription: z.string().nullable(),
 });
 
 export type PublicPortfolioDetail = z.infer<typeof publicPortfolioDetailSchema>;
@@ -35,6 +54,18 @@ export const adminPortfolioItemSchema = z.object({
   category: portfolioCategorySchema.nullable(),
   coverImage: z.string().nullable(),
   order: z.number().int(),
+  technologies: shortListSchema,
+  galleryImages: z.array(portfolioUrlSchema).max(20),
+  features: shortListSchema,
+  completionDate: z.string().nullable(),
+  projectStatus: z.string().nullable(),
+  liveDemoUrl: portfolioUrlSchema.nullable(),
+  caseStudyUrl: portfolioUrlSchema.nullable(),
+  featured: z.boolean(),
+  isArchived: z.boolean(),
+  demoClicks: z.number().int().nonnegative(),
+  seoTitle: z.string().nullable(),
+  seoDescription: z.string().nullable(),
   isPublished: z.boolean(),
   publishedAt: z.string().nullable(), // ISO 8601
   createdAt: z.string(),
@@ -55,8 +86,19 @@ export const createPortfolioItemSchema = z.object({
   client: z.string().trim().max(200).optional(),
   category: portfolioCategorySchema.optional(),
   coverImage: z.string().url('Enter a valid URL').optional(),
+  technologies: shortListSchema.optional(),
+  galleryImages: z.array(portfolioUrlSchema).max(20).optional(),
+  features: shortListSchema.optional(),
+  completionDate: z.string().date().nullable().optional(),
+  projectStatus: z.string().trim().max(100).nullable().optional(),
+  liveDemoUrl: portfolioUrlSchema.nullable().optional(),
+  caseStudyUrl: portfolioUrlSchema.nullable().optional(),
+  featured: z.boolean().optional(),
+  isArchived: z.boolean().optional(),
+  seoTitle: z.string().trim().max(200).nullable().optional(),
+  seoDescription: z.string().trim().max(500).nullable().optional(),
   order: z.number().int().nonnegative().default(0),
-  isPublished: z.boolean().default(true),
+  isPublished: z.boolean().default(false),
 });
 
 export type CreatePortfolioItemInput = z.infer<typeof createPortfolioItemSchema>;
@@ -76,6 +118,17 @@ export const updatePortfolioItemSchema = z
     client: z.string().trim().max(200).nullable().optional(),
     category: portfolioCategorySchema.nullable().optional(),
     coverImage: z.string().url('Enter a valid URL').nullable().optional(),
+    technologies: shortListSchema.optional(),
+    galleryImages: z.array(portfolioUrlSchema).max(20).optional(),
+    features: shortListSchema.optional(),
+    completionDate: z.string().date().nullable().optional(),
+    projectStatus: z.string().trim().max(100).nullable().optional(),
+    liveDemoUrl: portfolioUrlSchema.nullable().optional(),
+    caseStudyUrl: portfolioUrlSchema.nullable().optional(),
+    featured: z.boolean().optional(),
+    isArchived: z.boolean().optional(),
+    seoTitle: z.string().trim().max(200).nullable().optional(),
+    seoDescription: z.string().trim().max(500).nullable().optional(),
     order: z.number().int().nonnegative().optional(),
     isPublished: z.boolean().optional(),
   })

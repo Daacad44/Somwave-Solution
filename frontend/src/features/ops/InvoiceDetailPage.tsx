@@ -1,7 +1,6 @@
 import { type ReactNode, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  INVOICE_STATUS_LABELS,
   PERMISSIONS,
   ROLES,
   chargeEvcPaymentSchema,
@@ -57,7 +56,7 @@ export function InvoiceDetailPage(): ReactNode {
   const evcPay = useChargeEvcPayment();
   const { data: currentUser } = useCurrentUser();
   const isPortalClient = hasRole(currentUser, ROLES.CLIENT);
-  const t = (english: string, somali: string): string => (isPortalClient ? somali : english);
+  const t = (english: string, _somali: string): string => english;
   const canUpdate = useHasPermission(PERMISSIONS.INVOICES_UPDATE);
   const canPay = useHasPermission(PERMISSIONS.PAYMENTS_CREATE);
   const [confirmVoid, setConfirmVoid] = useState(false);
@@ -167,11 +166,7 @@ export function InvoiceDetailPage(): ReactNode {
         <div>
           <dt className="text-sm text-muted">{t('Status', 'Xaalad')}</dt>
           <dd className="mt-1">
-            <Badge tone={STATUS_TONE[invoice.status]}>
-              {isPortalClient
-                ? INVOICE_STATUS_LABELS[invoice.status]
-                : STAFF_STATUS_LABELS[invoice.status]}
-            </Badge>
+            <Badge tone={STATUS_TONE[invoice.status]}>{STAFF_STATUS_LABELS[invoice.status]}</Badge>
           </dd>
         </div>
         <div>

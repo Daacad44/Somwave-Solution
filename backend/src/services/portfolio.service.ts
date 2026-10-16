@@ -13,7 +13,7 @@ import { prisma } from '../lib/prisma';
 import { redis } from '../lib/redis';
 import { AppError } from '../lib/http';
 
-const LIST_CACHE_KEY = 'public:portfolio:v2';
+const LIST_CACHE_KEY = 'public:portfolio:v3';
 const CACHE_TTL_SECONDS = 300;
 
 export async function listPublishedPortfolio(): Promise<PublicPortfolioItem[]> {
@@ -21,8 +21,8 @@ export async function listPublishedPortfolio(): Promise<PublicPortfolioItem[]> {
   if (cached) return JSON.parse(cached) as PublicPortfolioItem[];
 
   const items = await prisma.portfolioItem.findMany({
-    where: { isPublished: true },
-    orderBy: { order: 'asc' },
+    where: { isPublished: true, isArchived: false },
+    orderBy: [{ featured: 'desc' }, { order: 'asc' }],
     select: {
       id: true,
       slug: true,
@@ -32,6 +32,7 @@ export async function listPublishedPortfolio(): Promise<PublicPortfolioItem[]> {
       category: true,
       coverImage: true,
       order: true,
+      featured: true,
     },
   });
 
@@ -39,9 +40,9 @@ export async function listPublishedPortfolio(): Promise<PublicPortfolioItem[]> {
   return items;
 }
 
-export function getPortfolioBySlug(slug: string): Promise<PublicPortfolioDetail | null> {
-  return prisma.portfolioItem.findFirst({
-    where: { slug, isPublished: true },
+export async function getPortfolioBySlug(slug: string): Promise<PublicPortfolioDetail | null> {
+  const item = await prisma.portfolioItem.findFirst({
+    where: { slug, isPublished: true, isArchived: false },
     select: {
       id: true,
       slug: true,
@@ -52,8 +53,21 @@ export function getPortfolioBySlug(slug: string): Promise<PublicPortfolioDetail 
       category: true,
       coverImage: true,
       order: true,
+      featured: true,
+      technologies: true,
+      galleryImages: true,
+      features: true,
+      completionDate: true,
+      projectStatus: true,
+      liveDemoUrl: true,
+      caseStudyUrl: true,
+      seoTitle: true,
+      seoDescription: true,
     },
   });
+  return item
+    ? { ...item, completionDate: item.completionDate?.toISOString().slice(0, 10) ?? null }
+    : null;
 }
 
 async function safeGet(key: string): Promise<string | null> {
@@ -84,6 +98,18 @@ const adminSelect = {
   category: true,
   coverImage: true,
   order: true,
+  technologies: true,
+  galleryImages: true,
+  features: true,
+  completionDate: true,
+  projectStatus: true,
+  liveDemoUrl: true,
+  caseStudyUrl: true,
+  featured: true,
+  demoClicks: true,
+  isArchived: true,
+  seoTitle: true,
+  seoDescription: true,
   isPublished: true,
   publishedAt: true,
   createdAt: true,
@@ -99,6 +125,18 @@ type PortfolioRow = {
   category: PortfolioCategory | null;
   coverImage: string | null;
   order: number;
+  technologies: string[];
+  galleryImages: string[];
+  features: string[];
+  completionDate: Date | null;
+  projectStatus: string | null;
+  liveDemoUrl: string | null;
+  caseStudyUrl: string | null;
+  featured: boolean;
+  demoClicks: number;
+  isArchived: boolean;
+  seoTitle: string | null;
+  seoDescription: string | null;
   isPublished: boolean;
   publishedAt: Date | null;
   createdAt: Date;
@@ -115,6 +153,18 @@ function toAdmin(row: PortfolioRow): AdminPortfolioItem {
     category: row.category,
     coverImage: row.coverImage,
     order: row.order,
+    technologies: row.technologies,
+    galleryImages: row.galleryImages,
+    features: row.features,
+    completionDate: row.completionDate?.toISOString().slice(0, 10) ?? null,
+    projectStatus: row.projectStatus,
+    liveDemoUrl: row.liveDemoUrl,
+    caseStudyUrl: row.caseStudyUrl,
+    featured: row.featured,
+    demoClicks: row.demoClicks,
+    isArchived: row.isArchived,
+    seoTitle: row.seoTitle,
+    seoDescription: row.seoDescription,
     isPublished: row.isPublished,
     publishedAt: row.publishedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
@@ -144,6 +194,17 @@ export async function createPortfolioItem(
       client: input.client ?? null,
       category: input.category ?? null,
       coverImage: input.coverImage ?? null,
+      technologies: input.technologies ?? [],
+      galleryImages: input.galleryImages ?? [],
+      features: input.features ?? [],
+      completionDate: input.completionDate ? new Date(input.completionDate) : null,
+      projectStatus: input.projectStatus ?? null,
+      liveDemoUrl: input.liveDemoUrl ?? null,
+      caseStudyUrl: input.caseStudyUrl ?? null,
+      featured: input.featured ?? false,
+      isArchived: input.isArchived ?? false,
+      seoTitle: input.seoTitle ?? null,
+      seoDescription: input.seoDescription ?? null,
       order: input.order,
       isPublished: input.isPublished,
       publishedAt: input.isPublished ? new Date() : null,
@@ -178,6 +239,19 @@ export async function updatePortfolioItem(
       ...(input.client !== undefined ? { client: input.client } : {}),
       ...(input.category !== undefined ? { category: input.category } : {}),
       ...(input.coverImage !== undefined ? { coverImage: input.coverImage } : {}),
+      ...(input.technologies !== undefined ? { technologies: input.technologies } : {}),
+      ...(input.galleryImages !== undefined ? { galleryImages: input.galleryImages } : {}),
+      ...(input.features !== undefined ? { features: input.features } : {}),
+      ...(input.completionDate !== undefined
+        ? { completionDate: input.completionDate ? new Date(input.completionDate) : null }
+        : {}),
+      ...(input.projectStatus !== undefined ? { projectStatus: input.projectStatus } : {}),
+      ...(input.liveDemoUrl !== undefined ? { liveDemoUrl: input.liveDemoUrl } : {}),
+      ...(input.caseStudyUrl !== undefined ? { caseStudyUrl: input.caseStudyUrl } : {}),
+      ...(input.featured !== undefined ? { featured: input.featured } : {}),
+      ...(input.isArchived !== undefined ? { isArchived: input.isArchived } : {}),
+      ...(input.seoTitle !== undefined ? { seoTitle: input.seoTitle } : {}),
+      ...(input.seoDescription !== undefined ? { seoDescription: input.seoDescription } : {}),
       ...(input.order !== undefined ? { order: input.order } : {}),
       ...(input.isPublished !== undefined ? { isPublished: input.isPublished } : {}),
       ...(publishing && !item.publishedAt ? { publishedAt: new Date() } : {}),
@@ -193,6 +267,16 @@ export async function deletePortfolioItem(id: string): Promise<void> {
   if (!item) throw new AppError('NOT_FOUND', 404, 'Portfolio item not found');
   await prisma.portfolioItem.delete({ where: { id } });
   await invalidateCache();
+}
+
+/** Aggregate only; neither endpoint nor table stores a visitor identifier. */
+export async function recordPortfolioDemoClick(id: string): Promise<{ recorded: true }> {
+  const updated = await prisma.portfolioItem.updateMany({
+    where: { id, isPublished: true, isArchived: false, liveDemoUrl: { not: null } },
+    data: { demoClicks: { increment: 1 } },
+  });
+  if (updated.count !== 1) throw new AppError('NOT_FOUND', 404, 'Live demo unavailable');
+  return { recorded: true };
 }
 
 async function invalidateCache(): Promise<void> {

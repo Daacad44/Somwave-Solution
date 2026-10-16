@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { MILESTONE_STATUS_LABELS, type MilestoneStatus } from '@somwave/shared';
+import { type MilestoneStatus } from '@somwave/shared';
 import { Table, THead, TBody, Tr, Th, Td } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
 import { LoadingState, EmptyState, ErrorState } from '../../components/states';
@@ -11,6 +11,11 @@ const STATUS_TONE: Record<MilestoneStatus, 'neutral' | 'info' | 'success'> = {
   IN_PROGRESS: 'info',
   COMPLETED: 'success',
 };
+const STATUS_LABELS: Record<MilestoneStatus, string> = {
+  PENDING: 'Pending',
+  IN_PROGRESS: 'In progress',
+  COMPLETED: 'Completed',
+};
 
 export function PortalMilestonesPage(): ReactNode {
   const query = usePortalMilestones();
@@ -18,26 +23,26 @@ export function PortalMilestonesPage(): ReactNode {
 
   return (
     <section>
-      <h1 className="text-2xl font-semibold text-ink">Marxaladahayga</h1>
-      <p className="mt-1 text-base text-muted">Marxaladaha mashruucyada ku xiran akoonkaaga.</p>
+      <h1 className="text-2xl font-semibold text-ink">My Milestones</h1>
+      <p className="mt-1 text-base text-muted">Milestones for projects linked to your account.</p>
       <div className="mt-6 rounded-lg border border-border bg-surface">
         {query.isLoading ? (
-          <LoadingState rows={6} label="Waa la soo rarayaa" />
+          <LoadingState rows={6} label="Loading milestones" />
         ) : query.isError ? (
           <ErrorState
-            description="Marxaladaha lama soo rari karin."
+            description="Milestones could not be loaded."
             onRetry={() => query.refetch()}
           />
         ) : rows.length === 0 ? (
-          <EmptyState title="Marxalad kuma xirna" />
+          <EmptyState title="No milestones yet" />
         ) : (
           <Table>
             <THead>
               <Tr>
-                <Th>Cinwaan</Th>
-                <Th>Mashruuc</Th>
-                <Th>Xaalad</Th>
-                <Th>Dhicitaanka</Th>
+                <Th>Title</Th>
+                <Th>Project</Th>
+                <Th>Status</Th>
+                <Th>Due date</Th>
               </Tr>
             </THead>
             <TBody>
@@ -46,9 +51,7 @@ export function PortalMilestonesPage(): ReactNode {
                   <Td className="font-medium">{row.title}</Td>
                   <Td className="text-muted">{row.project.name}</Td>
                   <Td>
-                    <Badge tone={STATUS_TONE[row.status]}>
-                      {MILESTONE_STATUS_LABELS[row.status]}
-                    </Badge>
+                    <Badge tone={STATUS_TONE[row.status]}>{STATUS_LABELS[row.status]}</Badge>
                   </Td>
                   <Td>{formatDate(row.dueDate)}</Td>
                 </Tr>

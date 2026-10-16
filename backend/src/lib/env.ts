@@ -20,6 +20,7 @@ const envSchema = z
     EMAIL_FROM: z.string().min(1).optional(),
     EMAIL_NOTIFY_TO: z.string().email().optional(),
     EMAIL_SUPPORT: z.string().email().optional(),
+    PROJECT_INQUIRY_CODE_TTL_MINUTES: z.coerce.number().int().min(2).max(30).default(10),
     PAYMENT_EVC_API_URL: z.string().url().optional(),
     PAYMENT_EVC_API_KEY: z.string().min(8).optional(),
     PAYMENT_EVC_MERCHANT_ID: z.string().min(1).optional(),

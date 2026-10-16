@@ -3,13 +3,15 @@ export const ENQUIRY_NOTIFY_V1 = 'enquiry-notify.v1' as const;
 export const PASSWORD_RESET_V1 = 'password-reset.v1' as const;
 export const ENGINEERING_NOTIFICATION_V1 = 'engineering-notification.v1' as const;
 export const ENGINEER_ACCOUNT_INVITE_V1 = 'engineer-account-invite.v1' as const;
+export const PROJECT_INQUIRY_VERIFY_V1 = 'project-inquiry-verify.v1' as const;
 
 export type MailTemplateId =
   | typeof INVOICE_SENT_V1
   | typeof ENQUIRY_NOTIFY_V1
   | typeof PASSWORD_RESET_V1
   | typeof ENGINEERING_NOTIFICATION_V1
-  | typeof ENGINEER_ACCOUNT_INVITE_V1;
+  | typeof ENGINEER_ACCOUNT_INVITE_V1
+  | typeof PROJECT_INQUIRY_VERIFY_V1;
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => {
@@ -28,6 +30,21 @@ export function renderMail(
   template: MailTemplateId,
   vars: Record<string, string>,
 ): { subject: string; text: string; html?: string } {
+  if (template === PROJECT_INQUIRY_VERIFY_V1) {
+    return {
+      subject: 'Verify your project request — Somwave Solution',
+      text: [
+        `Hello ${vars.name ?? 'there'},`,
+        '',
+        `Your Somwave Solution verification code is ${vars.code ?? ''}.`,
+        `It expires in ${vars.minutes ?? '10'} minutes. Do not share it.`,
+        '',
+        'If you did not request a project, ignore this email.',
+        '',
+        'Somwave Solution',
+      ].join('\n'),
+    };
+  }
   if (template === ENGINEERING_NOTIFICATION_V1) {
     return {
       subject: vars.subject ?? 'Somwave engineering notification',

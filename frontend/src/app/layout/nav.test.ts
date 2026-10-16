@@ -58,15 +58,16 @@ describe('visibleNavGroups', () => {
     expect(paths('Portal', visibleNavGroups(client))).toEqual(['/tickets', '/invoices']);
   });
 
-  it('shows Website only for content permissions', () => {
+  it('shows website reports to content editors without granting other operations', () => {
     const editor = user({
       roles: [ROLES.EDITOR],
       permissions: [PERMISSIONS.CONTENT_READ, PERMISSIONS.CONTENT_UPDATE],
     });
     const groups = visibleNavGroups(editor);
-    expect(groups.map((group) => group.heading)).toEqual(['Website']);
+    expect(groups.map((group) => group.heading)).toEqual(['Website', 'Reports & Analytics']);
     expect(paths('Website', groups)).toContain('/cms/services');
     expect(paths('Operations', groups)).toEqual([]);
+    expect(paths('Reports & Analytics', groups)).toEqual(['/reports']);
   });
 
   it('shows Operations modules a staff member can actually open', () => {
@@ -81,7 +82,11 @@ describe('visibleNavGroups', () => {
       ],
     });
     const groups = visibleNavGroups(staff);
-    expect(groups.map((group) => group.heading)).toEqual(['Operations', 'Project management']);
+    expect(groups.map((group) => group.heading)).toEqual([
+      'Operations',
+      'Project management',
+      'Reports & Analytics',
+    ]);
     expect(paths('Operations', groups)).toEqual(['/projects', '/tasks', '/tickets']);
     expect(paths('Project management', groups)).toEqual(['/milestones', '/timesheets']);
   });
@@ -116,6 +121,7 @@ describe('visibleNavGroups', () => {
       'Finance',
       'Documents',
       'Administration',
+      'Reports & Analytics',
     ]);
     expect(paths('Operations', groups)).toEqual([
       '/projects',
@@ -132,6 +138,7 @@ describe('visibleNavGroups', () => {
       '/tickets',
     ]);
     expect(paths('Administration', groups)).toEqual(['/users', '/roles', '/audit']);
+    expect(paths('Reports & Analytics', groups)).toEqual(['/reports']);
   });
 
   it('never exposes a standalone Security item', () => {

@@ -13,16 +13,16 @@ export function PortalProjectPage(): ReactNode {
   const documents = usePortalDocuments(id);
 
   if (!id) {
-    return <ErrorState title="Mashruucan lama helin" />;
+    return <ErrorState title="Project not found" />;
   }
   if (query.isLoading) {
-    return <LoadingState rows={8} label="Waa la soo rarayaa mashruuca" />;
+    return <LoadingState rows={8} label="Loading project" />;
   }
   if (query.isError || !query.data) {
     return (
       <ErrorState
-        title="Mashruuca lama soo rari karin"
-        description="Mashruucan kuma xirna akoonkaaga, ama lama helin."
+        title="Project could not be loaded"
+        description="This project is not linked to your account, or it no longer exists."
         onRetry={() => query.refetch()}
       />
     );
@@ -32,22 +32,19 @@ export function PortalProjectPage(): ReactNode {
       <ProjectWorkspaceView
         data={query.data}
         backTo="/portal/projects"
-        backLabel="Mashruucyadayda"
-        language="so"
+        backLabel="My Projects"
+        language="en"
         clientView
       />
       <section
         className="rounded-lg border border-border bg-surface p-4"
         aria-label="Shared documents"
       >
-        <h2 className="text-lg font-semibold text-ink">Dokumentiyada lagula wadaagay</h2>
+        <h2 className="text-lg font-semibold text-ink">Shared documents</h2>
         {documents.isLoading ? (
           <LoadingState rows={2} />
         ) : documents.isError ? (
-          <ErrorState
-            title="Dokumentiyada lama soo rari karin"
-            onRetry={() => documents.refetch()}
-          />
+          <ErrorState title="Documents could not be loaded" onRetry={() => documents.refetch()} />
         ) : documents.data?.length ? (
           <div className="mt-3 space-y-3">
             {documents.data.map((document) => (
@@ -62,7 +59,7 @@ export function PortalProjectPage(): ReactNode {
                     className="mt-2 text-accent underline"
                     onClick={() => void downloadPortalDocument(id, document)}
                   >
-                    Soo dejiso {document.fileName ?? 'file'}
+                    Download {document.fileName ?? 'file'}
                   </button>
                 ) : document.content ? (
                   <div
@@ -80,7 +77,7 @@ export function PortalProjectPage(): ReactNode {
             ))}
           </div>
         ) : (
-          <p className="mt-2 text-sm text-muted">Weli dokumenti laguma wadaagin.</p>
+          <p className="mt-2 text-sm text-muted">No documents have been shared yet.</p>
         )}
       </section>
     </div>

@@ -5,7 +5,7 @@ import type { PortfolioCategory, PublicPortfolioItem } from '@somwave/shared';
 interface Props { projects: PublicPortfolioItem[] | null }
 const { projects: source } = Astro.props;
 const failed = source === null;
-const projects = (source ?? []).slice(0, 4);
+const projects = (source ?? []).filter((item) => item.featured).slice(0, 4);
 const labels: Record<PortfolioCategory, string> = { WEBSITE: 'Websites', MOBILE_APP: 'Mobile Apps', CUSTOM_SOFTWARE: 'Custom Software' };
 const categories = [...new Set(projects.map((item) => item.category).filter((value): value is PortfolioCategory => Boolean(value)))];
 ---

@@ -15,6 +15,7 @@ import { useHasPermission } from '../../lib/rbac';
 import { ApiError } from '../../lib/apiClient';
 import { formatDate } from '../../lib/date';
 import { useConvertLead, useLeads, useUpdateLead } from './hooks';
+import { ProjectInquiriesPanel } from './ProjectInquiriesPanel';
 
 const TONE: Record<InquiryStatus, 'info' | 'success' | 'neutral'> = {
   NEW: 'info',
@@ -119,6 +120,7 @@ export function LeadsPage(): ReactNode {
         )}
       </div>
       {convertError ? <p className="mt-3 text-sm text-error">{convertError}</p> : null}
+      <ProjectInquiriesPanel />
     </section>
   );
 }

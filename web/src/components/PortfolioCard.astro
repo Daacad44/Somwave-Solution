@@ -13,10 +13,7 @@ const { slug, title, summary, client, category, coverImage } = Astro.props;
 const categoryLabel = category ? { WEBSITE: 'Websites', MOBILE_APP: 'Mobile Apps', CUSTOM_SOFTWARE: 'Custom Software' }[category] : null;
 ---
 
-<a
-  href={`/shaqooyinka/${slug}`}
-  class="group flex flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-sm transition-shadow hover:shadow-md"
->
+<article class="group flex flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-sm transition-shadow hover:shadow-md">
   <div class="aspect-[16/10] w-full overflow-hidden bg-surface-alt">
     {
       coverImage ? (
@@ -36,7 +33,11 @@ const categoryLabel = category ? { WEBSITE: 'Websites', MOBILE_APP: 'Mobile Apps
   <div class="flex flex-1 flex-col p-5">
     {categoryLabel ? <span class="text-xs font-semibold uppercase tracking-[0.12em] text-brand">{categoryLabel}</span> : null}
     {client ? <span class="text-xs font-semibold uppercase tracking-[0.12em] text-accent-600">{client}</span> : null}
-    <h3 class="mt-1 text-lg font-semibold text-ink">{title}</h3>
+    <h3 class="mt-1 text-lg font-semibold text-ink"><a href={`/shaqooyinka/${slug}`} class="hover:text-brand hover:underline">{title}</a></h3>
     <p class="mt-2 text-[15px] leading-relaxed text-muted">{summary}</p>
+    <div class="mt-auto flex flex-wrap gap-x-4 gap-y-2 pt-5 text-sm font-bold">
+      <a href={`/shaqooyinka/${slug}`} class="text-brand hover:underline">View project →</a>
+      <a href={`/request-project?portfolio=${encodeURIComponent(slug)}`} class="text-brand hover:underline">Request similar</a>
+    </div>
   </div>
-</a>
+</article>

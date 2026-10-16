@@ -5,6 +5,7 @@ import { ImagePlus } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 
 export interface ArticleImageFieldProps {
+  label?: string;
   existingUrl?: string | null;
   file: File | null;
   removed: boolean;
@@ -21,6 +22,7 @@ function formatSize(bytes: number): string {
 }
 
 export function ArticleImageField({
+  label = 'Post image',
   existingUrl,
   file,
   removed,
@@ -56,7 +58,7 @@ export function ArticleImageField({
   return (
     <div className="flex flex-col gap-2">
       <span className="text-sm font-medium text-ink" id={`${inputId}-label`}>
-        Post image
+        {label}
       </span>
       <div
         className={`rounded-lg border border-dashed bg-surface-alt p-4 ${

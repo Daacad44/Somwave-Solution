@@ -11,6 +11,25 @@ import { AppError } from '../lib/http';
 const ZERO = new Prisma.Decimal(0);
 type Tx = Prisma.TransactionClient;
 
+export interface FinanceHistoryQuery {
+  page: number;
+  pageSize: number;
+  from?: Date;
+  to?: Date;
+  accountId?: string;
+  currency?: string;
+  search?: string;
+}
+
+export interface TransactionHistoryQuery extends FinanceHistoryQuery {
+  statuses?: FinanceTransaction['status'][];
+  type?: FinanceTransaction['type'];
+}
+
+export interface JournalHistoryQuery extends FinanceHistoryQuery {
+  sourceType?: 'FINANCE_TRANSACTION' | 'REVERSAL';
+}
+
 export function assertBalanced(lines: { debit: Prisma.Decimal; credit: Prisma.Decimal }[]): void {
   if (lines.length < 2)
     throw new AppError('VALIDATION_ERROR', 400, 'A journal needs at least two lines');
@@ -142,13 +161,50 @@ function transactionRecord(row: FinanceTransaction) {
   };
 }
 
-export async function listTransactions(status?: FinanceTransaction['status']) {
-  const rows = await prisma.financeTransaction.findMany({
-    where: status ? { status } : {},
-    orderBy: { createdAt: 'desc' },
-    take: 100,
-  });
-  return rows.map(transactionRecord);
+export async function listTransactions(query: TransactionHistoryQuery) {
+  const where: Prisma.FinanceTransactionWhereInput = {
+    ...(query.statuses?.length ? { status: { in: query.statuses } } : {}),
+    ...(query.type ? { type: query.type } : {}),
+    ...(query.from || query.to
+      ? {
+          occurredOn: {
+            ...(query.from ? { gte: query.from } : {}),
+            ...(query.to ? { lt: query.to } : {}),
+          },
+        }
+      : {}),
+    ...(query.accountId
+      ? { OR: [{ cashAccountId: query.accountId }, { offsetAccountId: query.accountId }] }
+      : {}),
+    ...(query.currency ? { currency: query.currency } : {}),
+    ...(query.search
+      ? {
+          AND: [
+            {
+              OR: [
+                { category: { contains: query.search, mode: 'insensitive' } },
+                { description: { contains: query.search, mode: 'insensitive' } },
+                { counterparty: { contains: query.search, mode: 'insensitive' } },
+                { externalRef: { contains: query.search, mode: 'insensitive' } },
+              ],
+            },
+          ],
+        }
+      : {}),
+  };
+  const [total, rows] = await prisma.$transaction([
+    prisma.financeTransaction.count({ where }),
+    prisma.financeTransaction.findMany({
+      where,
+      orderBy: [{ occurredOn: 'desc' }, { id: 'desc' }],
+      skip: (query.page - 1) * query.pageSize,
+      take: query.pageSize,
+    }),
+  ]);
+  return {
+    data: rows.map(transactionRecord),
+    meta: { page: query.page, pageSize: query.pageSize, total },
+  };
 }
 
 async function validateTransactionInput(input: CreateFinanceTransactionInput): Promise<Date> {
@@ -716,17 +772,44 @@ export async function projectProfitability(from: Date, to: Date) {
   });
 }
 
-export async function listJournals() {
-  const rows = await prisma.financeJournal.findMany({
-    where: { isFinalized: true },
-    take: 100,
-    orderBy: { postedAt: 'desc' },
-    include: {
-      lines: { include: { account: { select: { code: true, name: true } } } },
-      reversedBy: { select: { id: true } },
-    },
-  });
-  return rows.map((row) => ({
+export async function listJournals(query: JournalHistoryQuery) {
+  const where: Prisma.FinanceJournalWhereInput = {
+    isFinalized: true,
+    ...(query.from || query.to
+      ? {
+          occurredOn: {
+            ...(query.from ? { gte: query.from } : {}),
+            ...(query.to ? { lt: query.to } : {}),
+          },
+        }
+      : {}),
+    ...(query.accountId ? { lines: { some: { accountId: query.accountId } } } : {}),
+    ...(query.currency ? { currency: query.currency } : {}),
+    ...(query.sourceType ? { sourceType: query.sourceType } : {}),
+    ...(query.search
+      ? {
+          OR: [
+            { reference: { contains: query.search, mode: 'insensitive' } },
+            { memo: { contains: query.search, mode: 'insensitive' } },
+            { sourceId: { contains: query.search, mode: 'insensitive' } },
+          ],
+        }
+      : {}),
+  };
+  const [total, rows] = await prisma.$transaction([
+    prisma.financeJournal.count({ where }),
+    prisma.financeJournal.findMany({
+      where,
+      orderBy: [{ occurredOn: 'desc' }, { id: 'desc' }],
+      skip: (query.page - 1) * query.pageSize,
+      take: query.pageSize,
+      include: {
+        lines: { include: { account: { select: { code: true, name: true } } } },
+        reversedBy: { select: { id: true } },
+      },
+    }),
+  ]);
+  const data = rows.map((row) => ({
     id: row.id,
     reference: row.reference,
     occurredOn: row.occurredOn.toISOString(),
@@ -746,4 +829,5 @@ export async function listJournals() {
       projectId: line.projectId,
     })),
   }));
+  return { data, meta: { page: query.page, pageSize: query.pageSize, total } };
 }
