@@ -223,8 +223,8 @@ export const defaultSiteContent: SiteContent = {
     headline: 'Everything Your Business Needs. Connected.',
     description:
       'Bring websites, applications, customer tools, payments, and insights into one connected digital experience with Somwave Solution.',
-    imageUrl: '/images/hero-architecture-1200.webp',
-    imageAlt: 'Modern Somwave Solution office building with floating performance highlights',
+    imageUrl: '/images/hero-skyline.svg',
+    imageAlt: 'Stylised modern technology skyline representing Somwave Solution',
     primaryLabel: 'Explore Our Solutions',
     primaryHref: '/#solutions',
     secondaryLabel: 'Contact Us',
