@@ -1,5 +1,7 @@
-// Article cover picker. The file stays on the device until the form submits;
-// the parent uploads it through the authenticated CMS API.
+// Website image picker (articles, portfolio, team, testimonials). The file stays
+// on the device until the form submits; the parent uploads it through the
+// authenticated CMS API, which stores it in ImageKit. The preview below is a
+// local blob and is never treated as a completed upload.
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { ImagePlus } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
@@ -83,7 +85,7 @@ export function ArticleImageField({
           ref={inputRef}
           id={inputId}
           type="file"
-          accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+          accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
           className="sr-only"
           aria-labelledby={`${inputId}-label`}
           disabled={uploading}
@@ -135,7 +137,7 @@ export function ArticleImageField({
             <ImagePlus className="h-8 w-8 text-muted" aria-hidden="true" />
             <p className="text-base font-medium text-ink">Drag an image here</p>
             <p className="text-sm text-muted">or click to choose</p>
-            <p className="text-sm text-muted">PNG, JPG, JPEG, WEBP — max 5MB</p>
+            <p className="text-sm text-muted">PNG, JPG, JPEG, WEBP, GIF — max 5MB</p>
             <Button
               type="button"
               variant="secondary"

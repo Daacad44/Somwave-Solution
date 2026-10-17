@@ -2149,7 +2149,7 @@ export async function addTaskAttachment(
     throw new AppError('FORBIDDEN', 403, 'Task assignment required to upload attachments');
   }
   const bytes = decodeProjectFile(input.contentBase64, input.mimeType);
-  const storageKey = await putObject(bytes, input.mimeType);
+  const storageKey = await putObject(bytes, input.mimeType, 'project-attachments');
   const attachment = await prisma.taskAttachment.create({
     data: {
       taskId,

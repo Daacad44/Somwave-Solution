@@ -21,3 +21,21 @@ export const createMediaAssetSchema = z.object({
 });
 
 export type CreateMediaAssetInput = z.infer<typeof createMediaAssetSchema>;
+
+/** GET /media/storage-status — configuration state only, never credentials. */
+export const mediaStorageStatusSchema = z.object({
+  images: z.object({
+    provider: z.literal('imagekit'),
+    configured: z.boolean(),
+    reachable: z.boolean().nullable(),
+    urlEndpointHost: z.string().nullable(),
+    error: z.string().optional(),
+  }),
+  documents: z.object({
+    provider: z.string(),
+    configured: z.boolean(),
+    durable: z.boolean(),
+  }),
+});
+
+export type MediaStorageStatus = z.infer<typeof mediaStorageStatusSchema>;

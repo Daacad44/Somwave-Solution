@@ -177,19 +177,33 @@ model TwoFactorBackupCode {
 }
 
 model MediaAsset {
-  id          String   @id @default(cuid())
-  storageKey  String   @unique @map("storage_key")
-  fileName    String   @map("file_name")
-  mimeType    String   @map("mime_type")
-  sizeBytes   Int      @map("size_bytes")
-  alt         String?
-  collection  String?
-  createdById String?  @map("created_by_id")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id               String   @id @default(cuid())
+  storageKey       String   @unique @map("storage_key")
+  fileName         String   @map("file_name")
+  mimeType         String   @map("mime_type")
+  sizeBytes        Int      @map("size_bytes")
+  alt              String?
+  collection       String?
+  /// imagekit | s3 | filesystem | memory. Null on rows created before ImageKit.
+  provider         String?
+  /// ImageKit fileId, required to replace or delete the remote file.
+  providerFileId   String?  @unique @map("provider_file_id")
+  /// Public CDN URL. Null for private files, which are served through authorised routes.
+  url              String?
+  width            Int?
+  height           Int?
+  /// Server-chosen ImageKit folder, e.g. somwave/website/articles.
+  folder           String?
+  /// Key the row used before an ImageKit migration, kept so it can be rolled back.
+  legacyStorageKey String?  @map("legacy_storage_key")
+  createdById      String?  @map("created_by_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at")
 
   createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([collection])
+  @@index([provider])
   @@map("media_assets")
 }
 

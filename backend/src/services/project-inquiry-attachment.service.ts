@@ -106,7 +106,7 @@ export async function uploadProjectInquiryAttachment(
   let storageKey: string | null = null;
   let committed = false;
   try {
-    storageKey = await putObject(bytes, input.mimeType);
+    storageKey = await putObject(bytes, input.mimeType, 'inquiries');
     const row = await prisma.projectInquiryAttachment.create({
       data: {
         inquiryId: id,

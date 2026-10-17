@@ -632,7 +632,7 @@ function ImageUploadControl({ onUploaded }: { onUploaded: (url: string) => void 
       Or upload an image (PNG, JPG or WEBP; max 5 MB)
       <input
         type="file"
-        accept="image/jpeg,image/png,image/webp"
+        accept="image/jpeg,image/png,image/webp,image/gif"
         disabled={uploading}
         className="rounded-md border border-border p-2 text-sm"
         onChange={async (event) => {
@@ -651,7 +651,7 @@ function ImageUploadControl({ onUploaded }: { onUploaded: (url: string) => void 
           setUploading(true);
           setMessage('Uploading image…');
           try {
-            const uploaded = await uploadArticleImage(file);
+            const uploaded = await uploadArticleImage(file, undefined, undefined, 'hero');
             onUploaded(uploaded.url);
             setMessage('Image uploaded. Save website content to publish it.');
           } catch (error) {

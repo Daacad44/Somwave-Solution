@@ -85,7 +85,9 @@ export function TeamMemberFormModal({
     }
     try {
       if (imageFile) {
-        payload.photoUrl = (await uploadArticleImage(imageFile, setUploadProgress)).url;
+        payload.photoUrl = (
+          await uploadArticleImage(imageFile, setUploadProgress, undefined, 'team')
+        ).url;
       } else if (imageRemoved) payload.photoUrl = undefined;
       if (isEdit && member) {
         await updateMutation.mutateAsync({

@@ -12,6 +12,7 @@ vi.mock('../lib/prisma', () => ({
   },
 }));
 vi.mock('../lib/redis', () => ({ redis: { get: vi.fn(), set: vi.fn(), del: vi.fn() } }));
+vi.mock('./articleImage.service', () => ({ releaseRemovedImages: vi.fn() }));
 
 import { prisma } from '../lib/prisma';
 import { redis } from '../lib/redis';

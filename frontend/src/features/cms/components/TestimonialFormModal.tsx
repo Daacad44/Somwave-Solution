@@ -88,7 +88,9 @@ export function TestimonialFormModal({
     }
     try {
       if (imageFile) {
-        payload.avatarUrl = (await uploadArticleImage(imageFile, setUploadProgress)).url;
+        payload.avatarUrl = (
+          await uploadArticleImage(imageFile, setUploadProgress, undefined, 'testimonials')
+        ).url;
       } else if (imageRemoved) payload.avatarUrl = undefined;
       if (isEdit && testimonial) {
         await updateMutation.mutateAsync({

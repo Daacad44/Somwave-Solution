@@ -1,5 +1,6 @@
 // CMS feature API (W4, §6: features/<feature>/api.ts → apiClient).
 import type {
+  PublicImageModule,
   UploadedArticleImage,
   AdminService,
   CreateServiceInput,
@@ -107,10 +108,12 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
+/** Uploads a public website image; the server stores it in the module's ImageKit folder. */
 export function uploadArticleImage(
   file: File,
   onProgress?: (percent: number) => void,
   signal?: AbortSignal,
+  module: PublicImageModule = 'articles',
 ): Promise<UploadedArticleImage> {
   return fileToBase64(file).then((contentBase64) =>
     apiUpload<UploadedArticleImage>(
@@ -119,6 +122,7 @@ export function uploadArticleImage(
         fileName: file.name,
         mimeType: file.type === 'image/jpg' ? 'image/jpeg' : file.type,
         contentBase64,
+        module,
       },
       onProgress,
       signal,

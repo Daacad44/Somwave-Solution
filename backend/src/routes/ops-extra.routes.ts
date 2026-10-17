@@ -80,6 +80,8 @@ documentsRouter.delete('/:id', rbac(PERMISSIONS.DOCUMENTS_DELETE), ctrl.deleteDo
 export const mediaRouter = Router();
 mediaRouter.use(requireAuth);
 mediaRouter.get('/', rbac(PERMISSIONS.MEDIA_READ), ctrl.listMedia);
+// Before /:id routes. ?verify=true makes one read-only ImageKit API call.
+mediaRouter.get('/storage-status', rbac(PERMISSIONS.MEDIA_CREATE), ctrl.mediaStorageStatus);
 mediaRouter.post(
   '/',
   rbac(PERMISSIONS.MEDIA_CREATE),

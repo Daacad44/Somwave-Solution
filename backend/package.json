@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.758.0",
+    "@imagekit/nodejs": "^7.12.1",
     "@prisma/client": "^6.2.1",
     "@somwave/shared": "*",
     "@zxcvbn-ts/language-common": "^4.1.3",

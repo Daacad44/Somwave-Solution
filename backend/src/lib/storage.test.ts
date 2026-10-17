@@ -19,12 +19,13 @@ describe('decodeArticleImage', () => {
     expect(decoded.bytes.subarray(0, 3)).toEqual(Buffer.from([0xff, 0xd8, 0xff]));
   });
 
-  it('rejects a gif and a png claimed as jpeg', () => {
+  it('accepts a signed gif and rejects a gif or png claimed as jpeg', () => {
+    expect(decodeArticleImage(GIF.toString('base64'), 'image/gif').extension).toBe('gif');
     expect(() => decodeArticleImage(GIF.toString('base64'), 'image/jpeg')).toThrow(
-      /JPG, PNG, or WebP/,
+      /JPG, PNG, WebP, or GIF/,
     );
     expect(() => decodeArticleImage(PNG.toString('base64'), 'image/jpeg')).toThrow(
-      /JPG, PNG, or WebP/,
+      /JPG, PNG, WebP, or GIF/,
     );
   });
 });

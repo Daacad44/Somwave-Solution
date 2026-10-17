@@ -10,6 +10,7 @@ import type {
 import { prisma } from '../lib/prisma';
 import { redis } from '../lib/redis';
 import { AppError } from '../lib/http';
+import { releaseRemovedImages } from './articleImage.service';
 
 const CACHE_KEY = 'public:testimonials';
 const CACHE_TTL_SECONDS = 300;
@@ -116,6 +117,7 @@ export async function updateTestimonial(
     select: adminSelect,
   });
   await invalidateCache();
+  await releaseRemovedImages([testimonial.avatarUrl], [row.avatarUrl]);
   return toAdmin(row);
 }
 
@@ -124,6 +126,7 @@ export async function deleteTestimonial(id: string): Promise<void> {
   if (!testimonial) throw new AppError('NOT_FOUND', 404, 'Testimonial not found');
   await prisma.testimonial.delete({ where: { id } });
   await invalidateCache();
+  await releaseRemovedImages([testimonial.avatarUrl], []);
 }
 
 async function invalidateCache(): Promise<void> {
