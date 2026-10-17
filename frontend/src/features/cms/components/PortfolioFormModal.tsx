@@ -84,9 +84,13 @@ export function PortfolioFormModal({ open, onClose, item }: PortfolioFormModalPr
     try {
       if (uploadError) throw new Error(uploadError);
       setUploading(true);
-      const uploadedCover = coverFile ? (await uploadArticleImage(coverFile)).url : null;
+      const uploadedCover = coverFile
+        ? (await uploadArticleImage(coverFile, undefined, undefined, 'portfolio')).url
+        : null;
       const uploadedGallery = await Promise.all(
-        galleryFiles.map(async (file) => (await uploadArticleImage(file)).url),
+        galleryFiles.map(
+          async (file) => (await uploadArticleImage(file, undefined, undefined, 'portfolio')).url,
+        ),
       );
       const coverImage = uploadedCover ?? (coverRemoved ? null : orUndefined(values.coverImage));
       const galleryImages = [...(values.galleryImages ?? []), ...uploadedGallery];
@@ -270,7 +274,7 @@ export function PortfolioFormModal({ open, onClose, item }: PortfolioFormModalPr
           Add gallery images (PNG, JPG or WEBP; max 5 MB each)
           <input
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/jpeg,image/png,image/webp,image/gif"
             multiple
             className="rounded-md border border-border p-2 text-sm"
             onChange={(event) => {

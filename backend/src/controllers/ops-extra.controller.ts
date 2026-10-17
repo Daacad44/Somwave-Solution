@@ -261,9 +261,21 @@ export async function downloadMedia(
   }
 }
 
+export async function mediaStorageStatus(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    sendData(res, await media.mediaStorageStatus(req.query.verify === 'true'));
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function deleteMedia(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    await media.deleteMedia(paramId(req));
+    await media.deleteMedia(paramId(req), actorId(req));
     sendData(res, { ok: true });
   } catch (err) {
     next(err);

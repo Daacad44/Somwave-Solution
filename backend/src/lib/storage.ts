@@ -7,6 +7,14 @@ import { correlationId } from './requestContext';
 import { ARTICLE_IMAGE_MAX_BYTES, UPLOAD_MAX_BYTES } from '@somwave/shared';
 import { AppError } from './http';
 import { env } from './env';
+import {
+  deleteFromImageKit,
+  imageKitConfigured,
+  readFromImageKit,
+  uploadToImageKit,
+  type ImageModule,
+} from './imagekit';
+import type { PublicImageModule } from '@somwave/shared';
 
 const memory = new Map<string, Buffer>();
 
@@ -26,7 +34,7 @@ export function decodeUpload(contentBase64: string, claimedMime: string): Buffer
     throw new AppError(
       'VALIDATION_ERROR',
       400,
-      'File content does not match an allowed PDF, JPG, PNG or WebP type',
+      'File content does not match an allowed PDF, JPG, PNG, WebP or GIF type',
     );
   }
   return bytes;
@@ -104,10 +112,48 @@ async function storageOperation<T>(
   }
 }
 
-const SAFE_KEY = /^(obj\/[0-9a-f-]{36}|article-images\/[0-9a-f-]{36}\.(jpg|png|webp))$/;
+const SAFE_KEY = /^(obj\/[0-9a-f-]{36}|article-images\/[0-9a-f-]{36}\.(jpg|png|webp|gif))$/;
+
+/** `ik/<fileId>/<filePath>` — ImageKit objects carry their id (delete) and path (delivery). */
+const IMAGEKIT_KEY =
+  /^ik\/([A-Za-z0-9_-]{8,64})\/(somwave\/(?:[a-z-]+\/){1,3}[a-z0-9]{8,64}\.(?:jpg|png|webp|gif))$/;
 
 function isSafeStorageKey(key: string): boolean {
   return !key.includes('..') && !key.includes('\\') && SAFE_KEY.test(key);
+}
+
+export function parseImageKitKey(key: string): { fileId: string; filePath: string } | null {
+  if (key.includes('..') || key.includes('\\')) return null;
+  const match = key.match(IMAGEKIT_KEY);
+  return match ? { fileId: match[1]!, filePath: match[2]! } : null;
+}
+
+export function isImageMime(mimeType: string): boolean {
+  return ARTICLE_IMAGE_TYPES.some((rule) => rule.mime === mimeType);
+}
+
+function imageExtension(mimeType: string): 'jpg' | 'png' | 'webp' | 'gif' {
+  return ARTICLE_IMAGE_TYPES.find((rule) => rule.mime === mimeType)?.extension ?? 'jpg';
+}
+
+/** Production images must reach ImageKit; there is no silent local fallback. */
+function requireImageKitInProduction(): void {
+  if (env.NODE_ENV === 'production' && !imageKitConfigured()) {
+    logger.error(
+      { provider: 'imagekit', requestId: correlationId(), errorCode: 'IMAGEKIT_NOT_CONFIGURED' },
+      '[ImageKit] upload FAILED',
+    );
+    throw new AppError(
+      'SERVICE_UNAVAILABLE',
+      503,
+      'Image storage is not configured. Ask an administrator to set the ImageKit keys on the API service.',
+      { reason: 'IMAGEKIT_NOT_CONFIGURED' },
+    );
+  }
+}
+
+export function newImageName(mimeType: string): string {
+  return `${randomUUID().replace(/-/g, '')}.${imageExtension(mimeType)}`;
 }
 
 function s3Configured(): boolean {
@@ -148,15 +194,78 @@ async function storeBytes(key: string, bytes: Buffer, mimeType: string): Promise
   });
 }
 
-export async function putObject(bytes: Buffer, mimeType: string): Promise<string> {
+/**
+ * Private objects. Images go to ImageKit (private files, signed delivery);
+ * documents such as PDFs stay on the S3/filesystem provider.
+ */
+export async function putObject(
+  bytes: Buffer,
+  mimeType: string,
+  module: ImageModule = 'media',
+): Promise<string> {
+  if (isImageMime(mimeType)) {
+    requireImageKitInProduction();
+    if (imageKitConfigured()) {
+      const stored = await uploadToImageKit({
+        bytes,
+        mimeType,
+        module,
+        name: newImageName(mimeType),
+      });
+      return `ik/${stored.fileId}/${stored.filePath}`;
+    }
+  }
   const key = `obj/${randomUUID()}`;
   await storeBytes(key, bytes, mimeType);
   return key;
 }
 
+export interface PublicImageUpload {
+  storageKey: string;
+  provider: 'imagekit' | 'legacy';
+  fileId: string | null;
+  /** CDN URL when stored in ImageKit; null means serve through the API image route. */
+  url: string | null;
+  folder: string | null;
+  width: number | null;
+  height: number | null;
+}
+
+/** Public website images. `name` embeds the media id so URLs map back to their record. */
+export async function putPublicImage(
+  bytes: Buffer,
+  mimeType: string,
+  module: PublicImageModule,
+  name: string,
+): Promise<PublicImageUpload> {
+  requireImageKitInProduction();
+  if (imageKitConfigured()) {
+    const stored = await uploadToImageKit({ bytes, mimeType, module, name });
+    return {
+      storageKey: `ik/${stored.fileId}/${stored.filePath}`,
+      provider: 'imagekit',
+      fileId: stored.fileId,
+      url: stored.url,
+      folder: stored.filePath.slice(0, stored.filePath.lastIndexOf('/')),
+      width: stored.width,
+      height: stored.height,
+    };
+  }
+  const storageKey = await putArticleImage(bytes, mimeType, imageExtension(mimeType));
+  return {
+    storageKey,
+    provider: 'legacy',
+    fileId: null,
+    url: null,
+    folder: null,
+    width: null,
+    height: null,
+  };
+}
+
 const ARTICLE_IMAGE_TYPES: ReadonlyArray<{
-  mime: 'image/jpeg' | 'image/png' | 'image/webp';
-  extension: 'jpg' | 'png' | 'webp';
+  mime: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif';
+  extension: 'jpg' | 'png' | 'webp' | 'gif';
   matches: (bytes: Buffer) => boolean;
 }> = [
   {
@@ -187,6 +296,12 @@ const ARTICLE_IMAGE_TYPES: ReadonlyArray<{
       bytes.toString('ascii', 0, 4) === 'RIFF' &&
       bytes.toString('ascii', 8, 12) === 'WEBP',
   },
+  {
+    mime: 'image/gif',
+    extension: 'gif',
+    matches: (bytes) =>
+      bytes.length >= 6 && ['GIF87a', 'GIF89a'].includes(bytes.toString('ascii', 0, 6)),
+  },
 ];
 
 /** Magic-byte check for article covers. The claimed type must match the file. */
@@ -195,8 +310,8 @@ export function decodeArticleImage(
   claimedMime: string,
 ): {
   bytes: Buffer;
-  mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
-  extension: 'jpg' | 'png' | 'webp';
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif';
+  extension: 'jpg' | 'png' | 'webp' | 'gif';
 } {
   const normalized = claimedMime === 'image/jpg' ? 'image/jpeg' : claimedMime;
   const bytes = Buffer.from(contentBase64, 'base64');
@@ -208,15 +323,16 @@ export function decodeArticleImage(
   }
   const detected = ARTICLE_IMAGE_TYPES.find((rule) => rule.matches(bytes));
   if (!detected || detected.mime !== normalized) {
-    throw new AppError('VALIDATION_ERROR', 400, 'Please upload a JPG, PNG, or WebP image.');
+    throw new AppError('VALIDATION_ERROR', 400, 'Please upload a JPG, PNG, WebP, or GIF image.');
   }
   return { bytes, mimeType: detected.mime, extension: detected.extension };
 }
 
+/** Legacy (non-ImageKit) public image key; used in development and tests only. */
 export async function putArticleImage(
   bytes: Buffer,
   mimeType: string,
-  extension: 'jpg' | 'png' | 'webp',
+  extension: 'jpg' | 'png' | 'webp' | 'gif',
 ): Promise<string> {
   const key = `article-images/${randomUUID()}.${extension}`;
   await storeBytes(key, bytes, mimeType);
@@ -224,6 +340,8 @@ export async function putArticleImage(
 }
 
 export async function readObject(key: string): Promise<Buffer | null> {
+  const imageKitObject = parseImageKitKey(key);
+  if (imageKitObject) return readFromImageKit(imageKitObject.filePath, folderModule(key));
   if (!isSafeStorageKey(key)) return null;
   return storageOperation('retrieve', key, async (provider) => {
     try {
@@ -254,6 +372,8 @@ export async function readObject(key: string): Promise<Buffer | null> {
 }
 
 export async function deleteObject(key: string): Promise<void> {
+  const imageKitObject = parseImageKitKey(key);
+  if (imageKitObject) return deleteFromImageKit(imageKitObject.fileId, folderModule(key));
   if (!isSafeStorageKey(key)) return;
   await storageOperation('delete', key, async (provider) => {
     if (provider === 's3') {
@@ -269,6 +389,10 @@ export async function deleteObject(key: string): Promise<void> {
       }
     } else memory.delete(key);
   });
+}
+
+function folderModule(key: string): string {
+  return parseImageKitKey(key)?.filePath.split('/').slice(1, -1).join('/') ?? 'unknown';
 }
 
 export function getObject(key: string): Buffer | null {

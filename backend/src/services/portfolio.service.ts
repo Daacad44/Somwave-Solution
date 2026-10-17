@@ -12,6 +12,7 @@ import type {
 import { prisma } from '../lib/prisma';
 import { redis } from '../lib/redis';
 import { AppError } from '../lib/http';
+import { releaseRemovedImages } from './articleImage.service';
 
 const LIST_CACHE_KEY = 'public:portfolio:v3';
 const CACHE_TTL_SECONDS = 300;
@@ -259,6 +260,10 @@ export async function updatePortfolioItem(
     select: adminSelect,
   });
   await invalidateCache();
+  await releaseRemovedImages(
+    [item.coverImage, ...item.galleryImages],
+    [row.coverImage, ...row.galleryImages],
+  );
   return toAdmin(row);
 }
 
@@ -267,6 +272,7 @@ export async function deletePortfolioItem(id: string): Promise<void> {
   if (!item) throw new AppError('NOT_FOUND', 404, 'Portfolio item not found');
   await prisma.portfolioItem.delete({ where: { id } });
   await invalidateCache();
+  await releaseRemovedImages([item.coverImage, ...item.galleryImages], []);
 }
 
 /** Aggregate only; neither endpoint nor table stores a visitor identifier. */

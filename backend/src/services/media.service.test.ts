@@ -9,7 +9,10 @@ vi.mock('../lib/storage', () => ({
   deleteObject: vi.fn(),
   putObject: vi.fn(),
   decodeUpload: vi.fn(),
+  parseImageKitKey: vi.fn(() => null),
+  storageStatus: vi.fn(() => ({ provider: 'memory', configured: true, durable: false })),
 }));
+vi.mock('../lib/audit', () => ({ writeAudit: vi.fn(async () => undefined) }));
 
 import { prisma } from '../lib/prisma';
 import { mediaIsReferenced } from './media-references';

@@ -14,9 +14,11 @@ vi.mock('../lib/prisma', () => ({
   },
 }));
 vi.mock('../lib/redis', () => ({ redis: { get: vi.fn(), set: vi.fn(), del: vi.fn() } }));
+vi.mock('./articleImage.service', () => ({ releaseRemovedImages: vi.fn() }));
 
 import { prisma } from '../lib/prisma';
 import { redis } from '../lib/redis';
+import { releaseRemovedImages } from './articleImage.service';
 import {
   listPublishedPortfolio,
   getPortfolioBySlug,
@@ -152,14 +154,22 @@ describe('updatePortfolioItem', () => {
 });
 
 describe('deletePortfolioItem', () => {
-  it('deletes an existing item and invalidates the cache', async () => {
-    vi.mocked(prisma.portfolioItem.findUnique).mockResolvedValue({ id: 'p1' } as never);
+  it('deletes an existing item, invalidates the cache and releases its images', async () => {
+    vi.mocked(prisma.portfolioItem.findUnique).mockResolvedValue({
+      id: 'p1',
+      coverImage: 'https://cdn/cover.jpg',
+      galleryImages: ['https://cdn/g1.jpg'],
+    } as never);
     vi.mocked(prisma.portfolioItem.delete).mockResolvedValue({} as never);
 
     await deletePortfolioItem('p1');
 
     expect(prisma.portfolioItem.delete).toHaveBeenCalledWith({ where: { id: 'p1' } });
     expect(redis.del).toHaveBeenCalledWith('public:portfolio:v3');
+    expect(releaseRemovedImages).toHaveBeenCalledWith(
+      ['https://cdn/cover.jpg', 'https://cdn/g1.jpg'],
+      [],
+    );
   });
 });
 

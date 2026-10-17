@@ -154,6 +154,12 @@ export async function getArticleImage(
     const { id } = req.params;
     if (!id) throw new AppError('NOT_FOUND', 404, 'Image not found');
     const file = await readPublicArticleImage(id);
+    if ('redirect' in file) {
+      // Stored in ImageKit: the CDN serves it; the API URL stays valid for old content.
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      res.redirect(302, file.redirect);
+      return;
+    }
     res.setHeader('Content-Type', file.mimeType);
     res.setHeader('Cache-Control', 'public, max-age=86400');
     res.setHeader('X-Content-Type-Options', 'nosniff');

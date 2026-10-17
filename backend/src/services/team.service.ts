@@ -9,6 +9,7 @@ import type {
 import { prisma } from '../lib/prisma';
 import { redis } from '../lib/redis';
 import { AppError } from '../lib/http';
+import { releaseRemovedImages } from './articleImage.service';
 
 const CACHE_KEY = 'public:team';
 const CACHE_TTL_SECONDS = 300;
@@ -103,6 +104,7 @@ export async function updateTeamMember(
     select: adminSelect,
   });
   await invalidateCache();
+  await releaseRemovedImages([member.photoUrl], [row.photoUrl]);
   return toAdmin(row);
 }
 
@@ -111,6 +113,7 @@ export async function deleteTeamMember(id: string): Promise<void> {
   if (!member) throw new AppError('NOT_FOUND', 404, 'Team member not found');
   await prisma.teamMember.delete({ where: { id } });
   await invalidateCache();
+  await releaseRemovedImages([member.photoUrl], []);
 }
 
 async function invalidateCache(): Promise<void> {

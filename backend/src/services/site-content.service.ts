@@ -1,7 +1,13 @@
 import { Prisma } from '@prisma/client';
-import { defaultSiteContent, siteContentSchema, type SiteContent } from '@somwave/shared';
+import {
+  articleImageIdFromUrl,
+  defaultSiteContent,
+  siteContentSchema,
+  type SiteContent,
+} from '@somwave/shared';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
+import { releaseRemovedImages } from './articleImage.service';
 
 const identity = { group: 'website', key: 'content' } as const;
 const draftIdentity = { group: 'website', key: 'content-draft' } as const;
@@ -46,6 +52,14 @@ export async function readSiteContentDraft(): Promise<SiteContentDraft | null> {
   return row ? parseDraft(row.value) : null;
 }
 
+/** Uploaded website images anywhere in a content tree (hero slides, CTA background, ...). */
+export function uploadedImageUrls(value: unknown): string[] {
+  if (typeof value === 'string') return articleImageIdFromUrl(value) ? [value] : [];
+  if (Array.isArray(value)) return value.flatMap(uploadedImageUrls);
+  if (value && typeof value === 'object') return Object.values(value).flatMap(uploadedImageUrls);
+  return [];
+}
+
 /** Editors save privately. Public readers continue to receive the last published version. */
 export async function updateSiteContent(
   input: SiteContent,
@@ -53,11 +67,18 @@ export async function updateSiteContent(
 ): Promise<SiteContentDraft> {
   const content = siteContentSchema.parse(input);
   const draft: SiteContentDraft = { content, status: 'DRAFT', authorId: actorId, reviewerId: null };
+  const previous = await prisma.setting.findUnique({ where: { group_key: draftIdentity } });
   await prisma.setting.upsert({
     where: { group_key: draftIdentity },
     create: { ...draftIdentity, value: draft as unknown as Prisma.InputJsonValue, isPublic: false },
     update: { value: draft as unknown as Prisma.InputJsonValue, isPublic: false },
   });
+  // Images still used by the published version stay: release checks every reference.
+  await releaseRemovedImages(
+    uploadedImageUrls(previous?.value),
+    uploadedImageUrls(content),
+    actorId,
+  );
   return draft;
 }
 
@@ -93,7 +114,8 @@ export function approveSiteContentDraft(actorId: string): Promise<SiteContentDra
 }
 
 export async function publishSiteContentDraft(actorId: string): Promise<SiteContent> {
-  return prisma.$transaction(async (tx) => {
+  const live = await prisma.setting.findUnique({ where: { group_key: identity } });
+  const content = await prisma.$transaction(async (tx) => {
     const row = await tx.setting.findUnique({ where: { group_key: draftIdentity } });
     if (!row) throw new AppError('NOT_FOUND', 404, 'Website draft not found');
     const draft = parseDraft(row.value);
@@ -126,4 +148,6 @@ export async function publishSiteContentDraft(actorId: string): Promise<SiteCont
     });
     return draft.content;
   });
+  await releaseRemovedImages(uploadedImageUrls(live?.value), uploadedImageUrls(content), actorId);
+  return content;
 }

@@ -58,7 +58,7 @@ export async function createDocument(
     throw new AppError('NOT_FOUND', 404, 'Document not found');
   }
   const bytes = decodeUpload(input.contentBase64, input.mimeType);
-  const storageKey = await putObject(bytes, input.mimeType);
+  const storageKey = await putObject(bytes, input.mimeType, 'documents');
   const row = await prisma.clientDocument.create({
     data: {
       title: input.title,

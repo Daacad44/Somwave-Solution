@@ -281,7 +281,9 @@ export async function createProjectDocumentation(
   const bytes = input.contentBase64
     ? decodeProjectFile(input.contentBase64, input.mimeType!)
     : null;
-  const storageKey = bytes ? await putObject(bytes, input.mimeType!) : null;
+  const storageKey = bytes
+    ? await putObject(bytes, input.mimeType!, 'project-documentation')
+    : null;
   const row = await prisma.projectDocumentation.create({
     data: {
       projectId,
@@ -351,7 +353,9 @@ export async function updateProjectDocumentation(
   const bytes = input.contentBase64
     ? decodeProjectFile(input.contentBase64, input.mimeType!)
     : null;
-  const storageKey = bytes ? await putObject(bytes, input.mimeType!) : old.storageKey;
+  const storageKey = bytes
+    ? await putObject(bytes, input.mimeType!, 'project-documentation')
+    : old.storageKey;
   const nextStatus = old.status === 'APPROVED' ? 'DRAFT' : old.status;
   const row = await prisma.$transaction(async (tx) => {
     const changed = await tx.projectDocumentation.updateMany({

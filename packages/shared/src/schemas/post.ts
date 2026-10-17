@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { isStoredArticleImageUrl } from './articleImage';
 
-const COVER_IMAGE_MESSAGE = 'Upload a JPG, PNG, or WebP image.';
+const COVER_IMAGE_MESSAGE = 'Upload a JPG, PNG, WebP, or GIF image.';
 
 const coverImageInput = z
   .string()

@@ -17,15 +17,13 @@ describe('articleImageFileError', () => {
     ).toBeNull();
   });
 
-  it('rejects documents, svg, gif, and oversized files', () => {
+  it('accepts gif and rejects documents, svg, and oversized files', () => {
+    expect(articleImageFileError({ name: 'anim.gif', type: 'image/gif', size: 100 })).toBeNull();
     expect(
       articleImageFileError({ name: 'notes.pdf', type: 'application/pdf', size: 100 }),
-    ).toMatch(/JPG, PNG, or WebP/);
+    ).toMatch(/JPG, PNG, WebP, or GIF/);
     expect(articleImageFileError({ name: 'icon.svg', type: 'image/svg+xml', size: 100 })).toMatch(
-      /JPG, PNG, or WebP/,
-    );
-    expect(articleImageFileError({ name: 'anim.gif', type: 'image/gif', size: 100 })).toMatch(
-      /JPG, PNG, or WebP/,
+      /JPG, PNG, WebP, or GIF/,
     );
     expect(
       articleImageFileError({ name: 'huge.jpg', type: 'image/jpeg', size: 5 * 1024 * 1024 + 1 }),
@@ -43,6 +41,28 @@ describe('isStoredArticleImageUrl', () => {
       isStoredArticleImageUrl('https://api.example.com/api/v1/public/article-images/../a'),
     ).toBe(false);
   });
+
+  it('recognises ImageKit delivery URLs for uploaded website images only', () => {
+    const id = 'f'.repeat(32);
+    expect(
+      isStoredArticleImageUrl(`https://ik.imagekit.io/acme/somwave/website/articles/${id}.webp`),
+    ).toBe(true);
+    // Custom CDN domain without the ImageKit id segment.
+    expect(
+      isStoredArticleImageUrl(`https://img.example.com/somwave/branding/logos/${id}.png`),
+    ).toBe(true);
+    // Private folders, transformations, plain http and other paths are not public uploads.
+    expect(
+      isStoredArticleImageUrl(`https://ik.imagekit.io/acme/somwave/private/media/${id}.png`),
+    ).toBe(false);
+    expect(
+      isStoredArticleImageUrl(`https://ik.imagekit.io/acme/somwave/website/team/${id}.png?tr=w-1`),
+    ).toBe(false);
+    expect(
+      isStoredArticleImageUrl(`http://ik.imagekit.io/acme/somwave/website/team/${id}.png`),
+    ).toBe(false);
+    expect(isStoredArticleImageUrl(`https://ik.imagekit.io/acme/${id}.png`)).toBe(false);
+  });
 });
 
 describe('uploadArticleImageSchema', () => {
@@ -57,7 +77,7 @@ describe('uploadArticleImageSchema', () => {
     expect(
       uploadArticleImageSchema.safeParse({
         fileName: 'cover.jpg',
-        mimeType: 'image/gif',
+        mimeType: 'image/svg+xml',
         contentBase64: 'abc',
       }).success,
     ).toBe(false);

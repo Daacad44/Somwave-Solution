@@ -62,6 +62,8 @@ function uploadErrorMessage(err: unknown): string {
   if (err.code === 'FORBIDDEN') return 'You do not have permission to upload images.';
   if (err.code === 'VALIDATION_ERROR') return err.message || 'Please upload a valid image.';
   if (err.message === 'Network error') return 'The network connection was lost. Please try again.';
+  // Storage failures carry an actionable server message (not configured, rejected keys, timeout).
+  if (err.code === 'SERVICE_UNAVAILABLE' && err.message) return err.message;
   if (err.message?.includes('File storage')) return 'Image storage is unavailable.';
   return 'The image could not be uploaded. Please try again.';
 }
@@ -140,6 +142,7 @@ export function PostFormModal({ open, onClose, categories, post }: PostFormModal
           imageFile,
           (percent) => setUploadProgress(percent),
           controller.signal,
+          'articles',
         );
         coverImage = uploaded.url;
         phase = 'save';

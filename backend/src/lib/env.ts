@@ -33,6 +33,15 @@ const envSchema = z
     S3_ENDPOINT: z.string().url().optional(),
     S3_ACCESS_KEY: z.string().min(1).optional(),
     S3_SECRET_KEY: z.string().min(1).optional(),
+    // ImageKit stores every uploaded image. The private key is server-only; the
+    // public key is accepted for completeness but the server SDK does not need it.
+    IMAGEKIT_PRIVATE_KEY: z.string().min(1).optional(),
+    IMAGEKIT_PUBLIC_KEY: z.string().min(1).optional(),
+    IMAGEKIT_URL_ENDPOINT: z
+      .string()
+      .url()
+      .refine((value) => value.startsWith('https://'), 'must be an https:// URL')
+      .optional(),
     APP_PUBLIC_URL: z.string().url().optional(),
     HEALTH_PROBE_HOSTS: z.string().optional(),
     BACKGROUND_WORKERS_ENABLED: z.enum(['true', 'false']).default('true'),
@@ -45,6 +54,24 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ['EMAIL_FROM'],
         message: 'must be an email address or a display name followed by <email address>',
+      });
+    }
+    if (Boolean(value.IMAGEKIT_PRIVATE_KEY) !== Boolean(value.IMAGEKIT_URL_ENDPOINT)) {
+      for (const key of ['IMAGEKIT_PRIVATE_KEY', 'IMAGEKIT_URL_ENDPOINT'] as const) {
+        if (!value[key]) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [key],
+            message: 'required when the other IMAGEKIT_* variable is set',
+          });
+        }
+      }
+    }
+    if (value.IMAGEKIT_PUBLIC_KEY?.startsWith('private_')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['IMAGEKIT_PUBLIC_KEY'],
+        message: 'looks like a private key; put the private key in IMAGEKIT_PRIVATE_KEY only',
       });
     }
     const evcKeys = [
