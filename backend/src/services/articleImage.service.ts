@@ -4,6 +4,7 @@ import {
   articleImageIdFromUrl,
   isStoredArticleImageUrl,
 } from '@somwave/shared';
+import { mediaIsReferenced } from './media-references';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
 import { logger } from '../lib/logger';
@@ -70,7 +71,9 @@ export async function readPublicArticleImage(
   const row = await prisma.mediaAsset.findFirst({
     where: { id, collection: ARTICLE_COVER_COLLECTION },
   });
-  if (!row) throw new AppError('NOT_FOUND', 404, 'Image not found');
+  if (!row || !['image/jpeg', 'image/png', 'image/webp'].includes(row.mimeType)) {
+    throw new AppError('NOT_FOUND', 404, 'Image not found');
+  }
   const bytes = await readObject(row.storageKey);
   if (!bytes) throw new AppError('NOT_FOUND', 404, 'Image not found');
   return { bytes, mimeType: row.mimeType };
@@ -103,8 +106,7 @@ export async function releaseArticleImageUrl(url: string | null | undefined): Pr
   if (!url) return;
   const id = articleImageIdFromUrl(url);
   if (!id) return;
-  const stillUsed = await prisma.post.count({ where: { coverImage: { contains: id } } });
-  if (stillUsed > 0) return;
+  if (await mediaIsReferenced(id)) return;
   const row = await prisma.mediaAsset.findFirst({
     where: { id, collection: ARTICLE_COVER_COLLECTION },
   });

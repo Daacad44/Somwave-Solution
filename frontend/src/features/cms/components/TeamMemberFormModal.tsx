@@ -8,6 +8,9 @@ import {
   type AdminTeamMember,
   type CreateTeamMemberInput,
 } from '@somwave/shared';
+import { articleImageFileError } from '@somwave/shared';
+import { uploadArticleImage } from '../api';
+import { ArticleImageField } from './ArticleImageField';
 import { Modal } from '../../../components/ui/Modal';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
@@ -33,6 +36,11 @@ export function TeamMemberFormModal({
   const updateMutation = useUpdateTeamMember();
   const [serverError, setServerError] = useState<string | null>(null);
 
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageRemoved, setImageRemoved] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+
   const {
     register,
     handleSubmit,
@@ -54,6 +62,9 @@ export function TeamMemberFormModal({
   const close = (): void => {
     reset();
     setServerError(null);
+    setImageFile(null);
+    setImageRemoved(false);
+    setImageError(null);
     onClose();
   };
 
@@ -68,7 +79,14 @@ export function TeamMemberFormModal({
       order: values.order,
       isPublished: values.isPublished,
     };
+    if (imageError) {
+      setServerError(imageError);
+      return;
+    }
     try {
+      if (imageFile) {
+        payload.photoUrl = (await uploadArticleImage(imageFile, setUploadProgress)).url;
+      } else if (imageRemoved) payload.photoUrl = undefined;
       if (isEdit && member) {
         await updateMutation.mutateAsync({
           id: member.id,
@@ -107,18 +125,44 @@ export function TeamMemberFormModal({
           />
         </label>
 
+        <ArticleImageField
+          label="Image"
+          existingUrl={member?.photoUrl}
+          file={imageFile}
+          removed={imageRemoved}
+          error={imageError}
+          uploading={isSubmitting}
+          progress={uploadProgress}
+          onSelect={(file) => {
+            const error = articleImageFileError({
+              name: file.name,
+              type: file.type,
+              size: file.size,
+            });
+            setImageError(error);
+            if (!error) {
+              setImageFile(file);
+              setImageRemoved(false);
+            }
+          }}
+          onRemove={() => {
+            setImageFile(null);
+            setImageRemoved(true);
+            setImageError(null);
+          }}
+        />
         <Input
           label="Image URL (optional)"
           placeholder="https://"
           error={errors.photoUrl?.message}
-          {...register('photoUrl')}
+          {...register('photoUrl', { setValueAs: orUndefined })}
         />
         <div className="grid grid-cols-2 gap-3">
           <Input
             label="LinkedIn (optional)"
             placeholder="https://"
             error={errors.linkedinUrl?.message}
-            {...register('linkedinUrl')}
+            {...register('linkedinUrl', { setValueAs: orUndefined })}
           />
           <Input
             label="Display order"

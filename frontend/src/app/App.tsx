@@ -4,6 +4,7 @@ import { PERMISSIONS, type PermissionKey } from '@somwave/shared';
 import { LoginPage } from '../features/auth/LoginPage';
 import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '../features/auth/ResetPasswordPage';
+import { AccountActivationPage } from '../features/auth/AccountActivationPage';
 import { EngineerActivationPage } from '../features/auth/EngineerActivationPage';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { RequirePermission } from '../features/auth/RequirePermission';
@@ -211,6 +212,7 @@ export function App(): ReactNode {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/activate-account" element={<AccountActivationPage />} />
       <Route path="/activate-engineer" element={<EngineerActivationPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>

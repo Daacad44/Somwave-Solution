@@ -1,3 +1,7 @@
+export const USER_INVITATION_V1 = 'user-invitation.v1' as const;
+export const PASSWORD_RESET_CODE_V1 = 'password-reset-code.v1' as const;
+export const PASSWORD_CHANGED_V1 = 'password-changed.v1' as const;
+export const ACCOUNT_ACTIVATED_V1 = 'account-activated.v1' as const;
 export const INVOICE_SENT_V1 = 'invoice-sent.v1' as const;
 export const ENQUIRY_NOTIFY_V1 = 'enquiry-notify.v1' as const;
 export const PASSWORD_RESET_V1 = 'password-reset.v1' as const;
@@ -6,6 +10,10 @@ export const ENGINEER_ACCOUNT_INVITE_V1 = 'engineer-account-invite.v1' as const;
 export const PROJECT_INQUIRY_VERIFY_V1 = 'project-inquiry-verify.v1' as const;
 
 export type MailTemplateId =
+  | typeof USER_INVITATION_V1
+  | typeof PASSWORD_RESET_CODE_V1
+  | typeof PASSWORD_CHANGED_V1
+  | typeof ACCOUNT_ACTIVATED_V1
   | typeof INVOICE_SENT_V1
   | typeof ENQUIRY_NOTIFY_V1
   | typeof PASSWORD_RESET_V1
@@ -30,6 +38,24 @@ export function renderMail(
   template: MailTemplateId,
   vars: Record<string, string>,
 ): { subject: string; text: string; html?: string } {
+  if (template === USER_INVITATION_V1)
+    return {
+      subject: "You're invited — Somwave Solution",
+      text: `Hello ${vars.name},\n\nSomwave Solution has invited you. Verify your email and create your own password using this single-use link, valid for 48 hours:\n${vars.setupUrl}\n\nDo not share this link. If unexpected, ignore it. Support: info@somwave.so`,
+    };
+  if (template === PASSWORD_RESET_CODE_V1)
+    return {
+      subject: 'Password reset code — Somwave Solution',
+      text: `Your verification code is ${vars.code}. It expires in 10 minutes and allows at most five attempts. Do not share it.\n\nIf you did not request this, ignore this email. Support: info@somwave.so`,
+    };
+  if (template === PASSWORD_CHANGED_V1 || template === ACCOUNT_ACTIVATED_V1)
+    return {
+      subject:
+        template === PASSWORD_CHANGED_V1
+          ? 'Password changed — Somwave Solution'
+          : 'Account activated — Somwave Solution',
+      text: `Hello ${vars.name},\n\n${template === PASSWORD_CHANGED_V1 ? 'Your password has been changed and existing sessions revoked.' : 'Your account is now active. You can sign in using your email and password.'} If this was unexpected, contact info@somwave.so.`,
+    };
   if (template === PROJECT_INQUIRY_VERIFY_V1) {
     return {
       subject: 'Verify your project request — Somwave Solution',

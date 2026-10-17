@@ -1,7 +1,8 @@
 import type { AdminMediaAsset, CreateMediaAssetInput } from '@somwave/shared';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
-import { decodeUpload, readObject, putObject } from '../lib/storage';
+import { mediaIsReferenced } from './media-references';
+import { decodeUpload, readObject, putObject, deleteObject } from '../lib/storage';
 
 function toAdmin(row: {
   id: string;
@@ -24,20 +25,36 @@ export async function createMedia(
   input: CreateMediaAssetInput,
   actorId: string,
 ): Promise<AdminMediaAsset> {
+  if (input.collection === 'article-covers') {
+    throw new AppError(
+      'VALIDATION_ERROR',
+      400,
+      'Use the validated CMS image upload for public images',
+    );
+  }
   const bytes = decodeUpload(input.contentBase64, input.mimeType);
   const storageKey = await putObject(bytes, input.mimeType);
-  const row = await prisma.mediaAsset.create({
-    data: {
-      storageKey,
-      fileName: input.fileName,
-      mimeType: input.mimeType,
-      sizeBytes: bytes.length,
-      alt: input.alt ?? null,
-      collection: input.collection ?? null,
-      createdById: actorId,
-    },
-  });
-  return toAdmin(row);
+  try {
+    const row = await prisma.mediaAsset.create({
+      data: {
+        storageKey,
+        fileName: input.fileName.replace(/[^a-zA-Z0-9._-]/g, '_'),
+        mimeType: input.mimeType,
+        sizeBytes: bytes.length,
+        alt: input.alt ?? null,
+        collection: input.collection ?? null,
+        createdById: actorId,
+      },
+    });
+    return toAdmin(row);
+  } catch (error) {
+    try {
+      await deleteObject(storageKey);
+    } catch {
+      /* Preserve original DB failure. */
+    }
+    throw error;
+  }
 }
 
 export async function getMediaFile(
@@ -53,5 +70,12 @@ export async function getMediaFile(
 export async function deleteMedia(id: string): Promise<void> {
   const row = await prisma.mediaAsset.findUnique({ where: { id } });
   if (!row) throw new AppError('NOT_FOUND', 404, 'Image not found');
+  if (await mediaIsReferenced(id))
+    throw new AppError(
+      'CONFLICT',
+      409,
+      'This image is still used by website content. Remove its references before deleting it.',
+    );
+  await deleteObject(row.storageKey);
   await prisma.mediaAsset.delete({ where: { id } });
 }

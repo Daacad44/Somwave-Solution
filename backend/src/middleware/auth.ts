@@ -15,16 +15,18 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
     }
 
     let userId: string;
+    let issuedAt: number | undefined;
     let financeMfaVerifiedAt: number | null;
     try {
       const payload = verifyAccessToken(token);
       userId = payload.sub;
+      issuedAt = payload.issuedAt;
       financeMfaVerifiedAt = payload.mfaVerifiedAt;
     } catch {
       throw new AppError('UNAUTHORIZED', 401, 'Invalid or expired token');
     }
 
-    const context = await getUserAuthContext(userId);
+    const context = await getUserAuthContext(userId, issuedAt);
     if (!context) {
       throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
     }

@@ -1,6 +1,9 @@
+import { randomUUID } from 'node:crypto';
 import { Router, type NextFunction, type Request, type Response } from 'express';
 import {
   DEFAULT_PAGE_SIZE,
+  financeBusinessDate,
+  parseFinanceBusinessDate,
   MAX_PAGE_SIZE,
   PERMISSIONS,
   createFinanceAccountSchema,
@@ -16,14 +19,47 @@ import { requireAuth } from '../middleware/auth';
 import { rbac } from '../middleware/rbac';
 import { validate } from '../middleware/validate';
 import { AppError, sendData } from '../lib/http';
+import { logger } from '../lib/logger';
 import * as finance from '../services/finance.service';
 
 export const financeRouter: Router = Router();
+financeRouter.use((req, res, next) => {
+  const started = performance.now();
+  const endpoint = `${req.baseUrl}${req.path}`;
+  const requestId = req.id ?? randomUUID();
+  res.on('finish', () => {
+    logger.info(
+      {
+        requestId,
+        endpoint,
+        roles: req.authUser?.roles ?? [],
+        status: res.statusCode,
+        durationMs: Math.round(performance.now() - started),
+        category:
+          res.statusCode >= 500
+            ? 'server_error'
+            : res.statusCode === 403
+              ? 'access_denied'
+              : res.statusCode >= 400
+                ? 'request_error'
+                : 'success',
+      },
+      'Finance request completed',
+    );
+  });
+  next();
+});
 financeRouter.use(requireAuth);
 export function requireFinanceTwoFactor(req: Request, _res: Response, next: NextFunction): void {
   if (!req.authUser?.twoFactorEnabled || !req.financeMfaVerifiedAt) {
     next(
-      new AppError('FORBIDDEN', 403, 'Enable two-factor authentication before accessing finance'),
+      new AppError(
+        'FORBIDDEN',
+        403,
+        req.authUser?.twoFactorEnabled
+          ? 'Sign out and sign in with your two-factor code before accessing finance'
+          : 'Enable two-factor authentication in Security settings before accessing finance',
+      ),
     );
     return;
   }
@@ -44,31 +80,16 @@ function handle(fn: (req: Request, res: Response) => Promise<void>) {
     void fn(req, res).catch(next);
   };
 }
-function reportDates(req: Request): { from: Date; to: Date } {
-  const now = new Date();
-  const start =
-    req.query.from ??
-    `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-01`;
-  const end =
-    req.query.to ??
-    new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString().slice(0, 10);
-  if (
-    typeof start !== 'string' ||
-    typeof end !== 'string' ||
-    !/^\d{4}-\d{2}-\d{2}$/.test(start) ||
-    !/^\d{4}-\d{2}-\d{2}$/.test(end)
-  )
+export function reportDates(req: Request): { from: Date; to: Date } {
+  const today = financeBusinessDate();
+  const [year, month] = today.split('-').map(Number) as [number, number, number];
+  const start = req.query.from ?? `${today.slice(0, 7)}-01`;
+  const end = req.query.to ?? new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 10);
+  if (typeof start !== 'string' || typeof end !== 'string')
     throw new AppError('VALIDATION_ERROR', 400, 'Use YYYY-MM-DD dates');
-  const from = new Date(`${start}T00:00:00.000Z`);
-  const to = new Date(`${end}T00:00:00.000Z`);
-  if (
-    Number.isNaN(from.getTime()) ||
-    Number.isNaN(to.getTime()) ||
-    from.toISOString().slice(0, 10) !== start ||
-    to.toISOString().slice(0, 10) !== end ||
-    from >= to
-  )
-    throw new AppError('VALIDATION_ERROR', 400, 'Select a valid accounting date range');
+  const from = historyDate(start);
+  const to = historyDate(end);
+  if (from >= to) throw new AppError('VALIDATION_ERROR', 400, 'End date must follow start date');
   return { from, to };
 }
 function csvCell(value: string): string {
@@ -85,11 +106,8 @@ function historyValue(req: Request, name: string): string | undefined {
   return raw.trim();
 }
 function historyDate(raw: string): Date {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw))
-    throw new AppError('VALIDATION_ERROR', 400, 'Use YYYY-MM-DD dates');
-  const date = new Date(`${raw}T00:00:00.000Z`);
-  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== raw)
-    throw new AppError('VALIDATION_ERROR', 400, 'Invalid accounting date');
+  const date = parseFinanceBusinessDate(raw);
+  if (!date) throw new AppError('VALIDATION_ERROR', 400, 'Use a valid YYYY-MM-DD accounting date');
   return date;
 }
 function historyInteger(raw: string | undefined, fallback: number, maximum: number): number {

@@ -2,6 +2,7 @@
 // Access = JWT (15m); refresh = opaque token stored hashed, rotated on use,
 // with reuse detection that kills every session for the user (§13).
 // 2FA secrets are stored and verified here and are never logged.
+import type { Prisma } from '@prisma/client';
 import type { AuthUser } from '@somwave/shared';
 import { isTwoFactorRequired, permissionKeysFor } from '@somwave/shared';
 import { prisma } from '../lib/prisma';
@@ -19,9 +20,9 @@ import {
 import { createTotpSecret, totpUri, verifyTotp } from '../lib/totp';
 import { logger } from '../lib/logger';
 import { sendMail } from '../lib/mailer';
-import { PASSWORD_RESET_V1 } from '../mail/templates';
-import { env, corsOrigins } from '../lib/env';
-import { randomBytes } from 'node:crypto';
+import { PASSWORD_RESET_CODE_V1, PASSWORD_CHANGED_V1 } from '../mail/templates';
+import { env } from '../lib/env';
+import { randomBytes, randomInt, createHmac, timingSafeEqual } from 'node:crypto';
 
 export interface IssuedSession {
   user: AuthUser;
@@ -37,6 +38,7 @@ type UserWithRoles = {
   email: string;
   name: string;
   passwordHash: string;
+  sessionsRevokedAt: Date | null;
   clientId: string | null;
   twoFactorEnabled: boolean;
   twoFactorSecret: string | null;
@@ -68,9 +70,10 @@ function toAuthUser(user: UserWithRoles): AuthUser {
 async function issueSession(
   user: UserWithRoles,
   mfaVerifiedAt: Date | null = null,
+  db: Prisma.TransactionClient = prisma,
 ): Promise<IssuedSession> {
   const refreshToken = generateRefreshToken();
-  await prisma.refreshToken.create({
+  await db.refreshToken.create({
     data: {
       userId: user.id,
       tokenHash: hashRefreshToken(refreshToken),
@@ -80,23 +83,54 @@ async function issueSession(
   });
   return {
     user: toAuthUser(user),
-    accessToken: signAccessToken(user.id, mfaVerifiedAt),
+    accessToken: signAccessToken(
+      user.id,
+      mfaVerifiedAt,
+      Math.max(Date.now(), (user.sessionsRevokedAt?.getTime() ?? 0) + 1),
+    ),
     refreshToken,
   };
 }
 
-async function loadActiveUser(where: {
-  id?: string;
-  email?: string;
-}): Promise<UserWithRoles | null> {
-  return prisma.user.findFirst({
+async function loadActiveUser(
+  where: {
+    id?: string;
+    email?: string;
+  },
+  db: Prisma.TransactionClient = prisma,
+): Promise<UserWithRoles | null> {
+  return db.user.findFirst({
     where: {
       ...where,
+      ...(where.email
+        ? { email: { equals: where.email.trim(), mode: 'insensitive' as const } }
+        : {}),
       isActive: true,
       deletedAt: null,
       NOT: { engineerProfile: { is: { status: 'SUSPENDED' } } },
     },
     include: userWithRolesInclude,
+  });
+}
+
+// All credential-based issuance shares password recovery's user-row lock.
+// A reset that wins the lock invalidates credentials checked before it.
+async function withCurrentCredentials<T>(
+  snapshot: UserWithRoles,
+  work: (current: UserWithRoles, tx: Prisma.TransactionClient) => Promise<T>,
+): Promise<T> {
+  return prisma.$transaction(async (tx) => {
+    await tx.user.update({ where: { id: snapshot.id }, data: { updatedAt: new Date() } });
+    const current = await loadActiveUser({ id: snapshot.id }, tx);
+    if (
+      !current ||
+      current.passwordHash !== snapshot.passwordHash ||
+      current.sessionsRevokedAt?.getTime() !== snapshot.sessionsRevokedAt?.getTime() ||
+      current.twoFactorEnabled !== snapshot.twoFactorEnabled ||
+      current.twoFactorSecret !== snapshot.twoFactorSecret
+    )
+      throw new AppError('UNAUTHORIZED', 401, 'Credentials changed; please sign in again');
+    return work(current, tx);
   });
 }
 
@@ -109,10 +143,17 @@ export async function login(email: string, password: string): Promise<LoginResul
   if (!user || !ok) {
     throw new AppError('UNAUTHORIZED', 401, 'Incorrect email or password');
   }
-  if (user.twoFactorEnabled) {
-    return { kind: 'twoFactor', challengeToken: signTwoFactorChallenge(user.id) };
-  }
-  return { kind: 'session', session: await issueSession(user) };
+  return withCurrentCredentials(user, async (current, tx) => {
+    if (current.twoFactorEnabled)
+      return {
+        kind: 'twoFactor' as const,
+        challengeToken: signTwoFactorChallenge(
+          current.id,
+          Math.max(Date.now(), (current.sessionsRevokedAt?.getTime() ?? 0) + 1),
+        ),
+      };
+    return { kind: 'session' as const, session: await issueSession(current, null, tx) };
+  });
 }
 
 export async function verifyTwoFactorLogin(
@@ -120,20 +161,30 @@ export async function verifyTwoFactorLogin(
   code: string,
 ): Promise<IssuedSession> {
   let userId: string;
+  let issuedAt: number | undefined;
   try {
-    userId = verifyTwoFactorChallenge(challengeToken).sub;
+    const challenge = verifyTwoFactorChallenge(challengeToken);
+    userId = challenge.sub;
+    issuedAt = challenge.issuedAt;
   } catch {
     throw new AppError('UNAUTHORIZED', 401, 'Please sign in again');
   }
   const user = await loadActiveUser({ id: userId });
-  if (!user?.twoFactorEnabled || !user.twoFactorSecret) {
+  if (
+    !user?.twoFactorEnabled ||
+    !user.twoFactorSecret ||
+    (user.sessionsRevokedAt && (!issuedAt || issuedAt <= user.sessionsRevokedAt.getTime()))
+  ) {
     throw new AppError('UNAUTHORIZED', 401, 'Please sign in again');
   }
   const totpOk = await verifyTotp(user.twoFactorSecret, code);
-  if (totpOk) return issueSession(user, new Date());
-  const used = await consumeBackupCode(user.id, code);
-  if (!used) throw new AppError('UNAUTHORIZED', 401, 'Invalid 2FA code');
-  return issueSession(user, new Date());
+  if (totpOk)
+    return withCurrentCredentials(user, (current, tx) => issueSession(current, new Date(), tx));
+  return withCurrentCredentials(user, async (current, tx) => {
+    const used = await consumeBackupCode(current.id, code, tx);
+    if (!used) throw new AppError('UNAUTHORIZED', 401, 'Invalid 2FA code');
+    return issueSession(current, new Date(), tx);
+  });
 }
 
 export async function startTwoFactorEnrolment(
@@ -246,47 +297,52 @@ export async function updateOwnProfile(userId: string, name: string): Promise<Au
 
 export async function refreshSession(rawToken: string): Promise<IssuedSession> {
   const tokenHash = hashRefreshToken(rawToken);
-  const existing = await prisma.refreshToken.findUnique({ where: { tokenHash } });
-  if (!existing) {
-    throw new AppError('UNAUTHORIZED', 401, 'Invalid session');
-  }
-
-  if (existing.revokedAt) {
-    await prisma.refreshToken.updateMany({
-      where: { userId: existing.userId, revokedAt: null },
-      data: { revokedAt: new Date() },
+  const observed = await prisma.refreshToken.findUnique({
+    where: { tokenHash },
+    select: { userId: true },
+  });
+  if (!observed) throw new AppError('UNAUTHORIZED', 401, 'Invalid session');
+  const result = await prisma.$transaction(async (tx) => {
+    await tx.user.update({ where: { id: observed.userId }, data: { updatedAt: new Date() } });
+    const existing = await tx.refreshToken.findUnique({ where: { tokenHash } });
+    const user = await loadActiveUser({ id: observed.userId }, tx);
+    if (!existing || !user) throw new AppError('UNAUTHORIZED', 401, 'Invalid session');
+    if (existing.revokedAt) {
+      await tx.user.update({ where: { id: user.id }, data: { sessionsRevokedAt: new Date() } });
+      await tx.refreshToken.updateMany({
+        where: { userId: user.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      return null;
+    }
+    if (existing.expiresAt.getTime() <= Date.now())
+      throw new AppError('UNAUTHORIZED', 401, 'Session expired');
+    const nextToken = generateRefreshToken();
+    const nextHash = hashRefreshToken(nextToken);
+    const consumed = await tx.refreshToken.updateMany({
+      where: { id: existing.id, revokedAt: null, expiresAt: { gt: new Date() } },
+      data: { revokedAt: new Date(), replacedByTokenHash: nextHash },
     });
-    logger.warn({ userId: existing.userId }, 'Refresh token reuse detected — all sessions revoked');
+    if (consumed.count !== 1) throw new AppError('UNAUTHORIZED', 401, 'Session revoked');
+    const mfaVerifiedAt = user.twoFactorEnabled ? existing.mfaVerifiedAt : null;
+    await tx.refreshToken.create({
+      data: { userId: user.id, tokenHash: nextHash, expiresAt: refreshExpiryDate(), mfaVerifiedAt },
+    });
+    return {
+      user: toAuthUser(user),
+      accessToken: signAccessToken(
+        user.id,
+        mfaVerifiedAt,
+        Math.max(Date.now(), (user.sessionsRevokedAt?.getTime() ?? 0) + 1),
+      ),
+      refreshToken: nextToken,
+    };
+  });
+  if (!result) {
+    logger.warn({ userId: observed.userId }, 'Refresh token reuse detected — all sessions revoked');
     throw new AppError('UNAUTHORIZED', 401, 'Session revoked');
   }
-
-  if (existing.expiresAt.getTime() <= Date.now()) {
-    throw new AppError('UNAUTHORIZED', 401, 'Session expired');
-  }
-
-  const user = await loadActiveUser({ id: existing.userId });
-  if (!user) {
-    throw new AppError('UNAUTHORIZED', 401, 'Invalid session');
-  }
-
-  const nextToken = generateRefreshToken();
-  const nextHash = hashRefreshToken(nextToken);
-  const mfaVerifiedAt = user.twoFactorEnabled ? existing.mfaVerifiedAt : null;
-  await prisma.$transaction([
-    prisma.refreshToken.update({
-      where: { tokenHash },
-      data: { revokedAt: new Date(), replacedByTokenHash: nextHash },
-    }),
-    prisma.refreshToken.create({
-      data: { userId: user.id, tokenHash: nextHash, expiresAt: refreshExpiryDate(), mfaVerifiedAt },
-    }),
-  ]);
-
-  return {
-    user: toAuthUser(user),
-    accessToken: signAccessToken(user.id, mfaVerifiedAt),
-    refreshToken: nextToken,
-  };
+  return result;
 }
 
 export async function logout(rawToken: string | undefined): Promise<void> {
@@ -297,71 +353,167 @@ export async function logout(rawToken: string | undefined): Promise<void> {
   });
 }
 
-export async function getUserAuthContext(userId: string): Promise<AuthUser | null> {
+export async function getUserAuthContext(
+  userId: string,
+  issuedAt?: number,
+): Promise<AuthUser | null> {
   const user = await loadActiveUser({ id: userId });
+  if (user?.sessionsRevokedAt && (!issuedAt || issuedAt <= user.sessionsRevokedAt.getTime()))
+    return null;
   return user ? toAuthUser(user) : null;
 }
 
-export async function requestPasswordReset(email: string): Promise<void> {
-  const user = await loadActiveUser({ email });
-  if (!user) return;
-  const token = generateRefreshToken();
-  const reset = await prisma.passwordResetToken.create({
-    data: {
-      userId: user.id,
-      tokenHash: hashRefreshToken(token),
-      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
-    },
-  });
-  const base = env.APP_PUBLIC_URL ?? corsOrigins[0] ?? 'http://localhost:5173';
-  await sendMail({
-    to: user.email,
-    template: PASSWORD_RESET_V1,
-    idempotencyKey: `password-reset:${reset.id}`,
-    vars: { resetUrl: `${base.replace(/\/$/, '')}/reset-password?token=${token}` },
-  });
+function resetCodeHash(userId: string, code: string) {
+  return createHmac('sha256', env.JWT_SECRET)
+    .update(`password-reset:${userId}:${code}`)
+    .digest('hex');
 }
-
+export async function requestPasswordReset(email: string): Promise<void> {
+  const user = await loadActiveUser({ email: email.trim().toLowerCase() });
+  if (!user) return;
+  const recent = await prisma.passwordResetToken.findFirst({
+    where: { userId: user.id, createdAt: { gt: new Date(Date.now() - 60000) } },
+  });
+  if (recent) return;
+  const code = String(randomInt(0, 1000000)).padStart(6, '0');
+  const reset = await prisma.$transaction(async (tx) => {
+    // Serialize requests per account, including simultaneous resends.
+    await tx.user.update({ where: { id: user.id }, data: { updatedAt: new Date() } });
+    const last = await tx.passwordResetToken.findFirst({
+      where: { userId: user.id, createdAt: { gt: new Date(Date.now() - 60000) } },
+    });
+    if (last) return null;
+    await tx.passwordResetToken.updateMany({
+      where: { userId: user.id, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+    return tx.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: hashRefreshToken(generateRefreshToken()),
+        codeHash: resetCodeHash(user.id, code),
+        expiresAt: new Date(Date.now() + 10 * 60000),
+      },
+    });
+  });
+  if (!reset) return;
+  const result = await sendMail({
+    to: user.email,
+    template: PASSWORD_RESET_CODE_V1,
+    idempotencyKey: `password-reset-code:${reset.id}`,
+    vars: { code },
+  });
+  if (!result.sent)
+    await prisma.passwordResetToken.updateMany({
+      where: { id: reset.id },
+      data: { usedAt: new Date() },
+    });
+}
+export async function verifyPasswordResetCode(
+  email: string,
+  code: string,
+): Promise<{ token: string }> {
+  const token = generateRefreshToken();
+  const result = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.findFirst({
+      where: {
+        email: { equals: email.trim(), mode: 'insensitive' },
+        isActive: true,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+    if (!user) return false;
+    await tx.user.update({ where: { id: user.id }, data: { updatedAt: new Date() } });
+    const row = await tx.passwordResetToken.findFirst({
+      where: { userId: user.id, usedAt: null, verifiedAt: null },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!row || !row.codeHash || row.attempts >= 5 || row.expiresAt.getTime() <= Date.now())
+      return false;
+    const valid = timingSafeEqual(
+      Buffer.from(row.codeHash, 'hex'),
+      Buffer.from(resetCodeHash(user.id, code), 'hex'),
+    );
+    await tx.passwordResetToken.update({
+      where: { id: row.id },
+      data: {
+        attempts: { increment: 1 },
+        ...(valid
+          ? {
+              verifiedAt: new Date(),
+              codeHash: null,
+              tokenHash: hashRefreshToken(token),
+              expiresAt: new Date(Date.now() + 10 * 60000),
+            }
+          : {}),
+      },
+    });
+    return valid;
+  });
+  if (!result) throw new AppError('VALIDATION_ERROR', 400, 'Invalid or expired verification code');
+  return { token };
+}
 export async function resetPassword(token: string, password: string): Promise<void> {
   const row = await prisma.passwordResetToken.findUnique({
     where: { tokenHash: hashRefreshToken(token) },
   });
-  if (!row || row.usedAt || row.expiresAt.getTime() <= Date.now()) {
-    throw new AppError('NOT_FOUND', 404, 'Password reset link has expired');
-  }
-  const user = await prisma.user.findUnique({
-    where: { id: row.userId },
+  if (!row || row.usedAt || !row.verifiedAt || row.expiresAt.getTime() <= Date.now())
+    throw new AppError('VALIDATION_ERROR', 400, 'Password reset verification has expired');
+  const user = await prisma.user.findFirst({
+    where: { id: row.userId, isActive: true, deletedAt: null },
     select: { name: true, email: true },
   });
-  if (!user) throw new AppError('NOT_FOUND', 404, 'Account not found');
+  if (!user) throw new AppError('VALIDATION_ERROR', 400, 'Password reset verification has expired');
   await assertNewPasswordAllowed(password, user);
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: row.userId },
-      data: { passwordHash: await hashPassword(password) },
-    }),
-    prisma.passwordResetToken.update({
-      where: { id: row.id },
+  const passwordHash = await hashPassword(password);
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({ where: { id: row.userId }, data: { updatedAt: new Date() } });
+    const claimed = await tx.passwordResetToken.updateMany({
+      where: { id: row.id, usedAt: null, verifiedAt: { not: null }, expiresAt: { gt: new Date() } },
       data: { usedAt: new Date() },
-    }),
-    prisma.refreshToken.updateMany({
+    });
+    if (claimed.count !== 1)
+      throw new AppError('VALIDATION_ERROR', 400, 'Password reset verification has expired');
+    await tx.user.update({
+      where: { id: row.userId },
+      data: { passwordHash, sessionsRevokedAt: new Date() },
+    });
+    await tx.passwordResetToken.updateMany({
+      where: { userId: row.userId, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+    await tx.refreshToken.updateMany({
       where: { userId: row.userId, revokedAt: null },
       data: { revokedAt: new Date() },
-    }),
-  ]);
+    });
+    await tx.auditLog.create({
+      data: {
+        actorId: row.userId,
+        action: 'auth.password.reset',
+        subjectType: 'User',
+        subjectId: row.userId,
+      },
+    });
+  });
+  await sendMail({ to: user.email, template: PASSWORD_CHANGED_V1, vars: { name: user.name } });
 }
 
-async function consumeBackupCode(userId: string, code: string): Promise<boolean> {
-  const rows = await prisma.twoFactorBackupCode.findMany({
+async function consumeBackupCode(
+  userId: string,
+  code: string,
+  db: Prisma.TransactionClient = prisma,
+): Promise<boolean> {
+  const rows = await db.twoFactorBackupCode.findMany({
     where: { userId, usedAt: null },
   });
   const match = rows.find((row) => row.codeHash === hashRefreshToken(code.trim().toLowerCase()));
   if (!match) return false;
-  await prisma.twoFactorBackupCode.update({
-    where: { id: match.id },
+  const claimed = await db.twoFactorBackupCode.updateMany({
+    where: { id: match.id, userId, usedAt: null },
     data: { usedAt: new Date() },
   });
-  return true;
+  return claimed.count === 1;
 }
 
 export { hashPassword };

@@ -1,18 +1,11 @@
 // User & role management service (I1). The only layer that touches Prisma (§5).
 // Every user shape returned here is the safe AdminUser projection — never the
 // password hash or 2FA secret (§13).
-import type {
-  AdminUser,
-  AdminRole,
-  AuthUser,
-  CreateUserInput,
-  UpdateUserInput,
-} from '@somwave/shared';
+import type { AdminUser, AdminRole, AuthUser, UpdateUserInput } from '@somwave/shared';
 import { MAX_PAGE_SIZE } from '@somwave/shared';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/http';
-import { hashPassword } from '../lib/password';
-import { assertNewPasswordAllowed } from '../lib/password-policy';
 
 const adminUserSelect = {
   id: true,
@@ -121,26 +114,34 @@ async function assertRoleAssignmentAllowed(roleIds: string[], actor: AuthUser): 
     throw new AppError('FORBIDDEN', 403, 'Only a super administrator can assign this role');
 }
 
-export async function createUser(input: CreateUserInput, actor: AuthUser): Promise<AdminUser> {
-  await assertRolesExist(input.roleIds);
-  await assertRoleAssignmentAllowed(input.roleIds, actor);
+export { inviteUser as createUser } from './user-invitation.service';
 
-  const existing = await prisma.user.findUnique({ where: { email: input.email } });
-  if (existing) {
-    throw new AppError('CONFLICT', 409, 'This email address is already in use');
-  }
-  await assertNewPasswordAllowed(input.password, { name: input.name, email: input.email });
-
-  const row = await prisma.user.create({
-    data: {
-      email: input.email,
-      name: input.name,
-      passwordHash: await hashPassword(input.password),
-      roles: { create: input.roleIds.map((roleId) => ({ roleId })) },
-    },
-    select: adminUserSelect,
+// Lock the system role row before counting so two administrators cannot each
+// remove the other concurrently and leave the application without an owner.
+async function protectLastSuperAdmin(
+  tx: Prisma.TransactionClient,
+  id: string,
+  input: UpdateUserInput,
+  removing = false,
+) {
+  await tx.$queryRaw`SELECT id FROM roles WHERE name = 'SUPER_ADMIN' FOR UPDATE`;
+  const current = await tx.user.findFirst({
+    where: { id, deletedAt: null },
+    select: { isActive: true, roles: { select: { role: { select: { name: true } } } } },
   });
-  return toAdminUser(row);
+  if (!current?.isActive || !current.roles.some((r) => r.role.name === 'SUPER_ADMIN')) return;
+  const keepsRole =
+    input.roleIds === undefined ||
+    !!(await tx.role.findFirst({
+      where: { id: { in: input.roleIds }, name: 'SUPER_ADMIN' },
+      select: { id: true },
+    }));
+  if (!removing && input.isActive !== false && keepsRole) return;
+  const count = await tx.user.count({
+    where: { isActive: true, deletedAt: null, roles: { some: { role: { name: 'SUPER_ADMIN' } } } },
+  });
+  if (count <= 1)
+    throw new AppError('CONFLICT', 409, 'At least one active super administrator must remain');
 }
 
 export async function updateUser(
@@ -177,39 +178,29 @@ export async function updateUser(
     await assertRoleAssignmentAllowed(input.roleIds, actor);
   }
 
-  const update = prisma.user.update({
-    where: { id },
-    data: {
-      ...(input.name !== undefined ? { name: input.name } : {}),
-      ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
-      ...(input.roleIds
-        ? { roles: { deleteMany: {}, create: input.roleIds.map((roleId) => ({ roleId })) } }
-        : {}),
-    },
-    select: adminUserSelect,
-  });
-
-  // Commit suspension and session revocation together. Access tokens are also
-  // checked against the live isActive flag on every authenticated request.
-  if (input.isActive === false) {
-    const [row] = await prisma.$transaction([
-      update,
-      prisma.refreshToken.updateMany({
+  return prisma.$transaction(async (tx) => {
+    await protectLastSuperAdmin(tx, id, input);
+    const row = await tx.user.update({
+      where: { id },
+      data: {
+        ...(input.name !== undefined ? { name: input.name } : {}),
+        ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+        ...(input.roleIds
+          ? { roles: { deleteMany: {}, create: input.roleIds.map((roleId) => ({ roleId })) } }
+          : {}),
+      },
+      select: adminUserSelect,
+    });
+    if (input.isActive === false) {
+      await tx.refreshToken.updateMany({
         where: { userId: id, revokedAt: null },
         data: { revokedAt: new Date() },
-      }),
-      ...(user.engineerProfile?.status === 'ACTIVE'
-        ? [
-            prisma.engineerProfile.update({
-              where: { userId: id },
-              data: { status: 'DEACTIVATED' },
-            }),
-          ]
-        : []),
-    ]);
+      });
+      if (user.engineerProfile?.status === 'ACTIVE')
+        await tx.engineerProfile.update({ where: { userId: id }, data: { status: 'DEACTIVATED' } });
+    }
     return toAdminUser(row);
-  }
-  return toAdminUser(await update);
+  });
 }
 
 // Soft delete — users are never hard-deleted (§7). Also revokes live sessions.
@@ -228,14 +219,12 @@ export async function deactivateUser(id: string, actor: AuthUser): Promise<void>
   )
     throw new AppError('FORBIDDEN', 403, 'Only a super administrator can remove this account');
 
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id },
-      data: { isActive: false, deletedAt: new Date() },
-    }),
-    prisma.refreshToken.updateMany({
+  await prisma.$transaction(async (tx) => {
+    await protectLastSuperAdmin(tx, id, {}, true);
+    await tx.user.update({ where: { id }, data: { isActive: false, deletedAt: new Date() } });
+    await tx.refreshToken.updateMany({
       where: { userId: id, revokedAt: null },
       data: { revokedAt: new Date() },
-    }),
-  ]);
+    });
+  });
 }

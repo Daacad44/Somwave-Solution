@@ -14,13 +14,12 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { useLogin, useVerifyTwoFactor } from './hooks';
 import { AuthLayout } from './AuthLayout';
+import { loginDestination } from './loginDestination';
 
 export function LoginPage(): ReactNode {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedPath = searchParams.get('next');
-  const nextPath =
-    requestedPath === '/engineering' || requestedPath === '/portal/projects' ? requestedPath : '/';
   const loginMutation = useLogin();
   const verifyMutation = useVerifyTwoFactor();
   const [challengeToken, setChallengeToken] = useState<string | null>(null);
@@ -40,7 +39,7 @@ export function LoginPage(): ReactNode {
         codeForm.setValue('challengeToken', result.challengeToken);
         return;
       }
-      navigate(nextPath === '/portal/projects' && !result.user.clientId ? '/' : nextPath, {
+      navigate(loginDestination(result.user, requestedPath), {
         replace: true,
       });
     } catch {
@@ -51,7 +50,7 @@ export function LoginPage(): ReactNode {
   const onVerify = codeForm.handleSubmit(async (values) => {
     try {
       const result = await verifyMutation.mutateAsync(values);
-      navigate(nextPath === '/portal/projects' && !result.user.clientId ? '/' : nextPath, {
+      navigate(loginDestination(result.user, requestedPath), {
         replace: true,
       });
     } catch {

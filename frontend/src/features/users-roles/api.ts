@@ -30,8 +30,25 @@ export function listRoles(): Promise<AdminRole[]> {
   return apiFetch<AdminRole[]>('/roles');
 }
 
-export function createUser(input: CreateUserInput): Promise<AdminUser> {
-  return apiFetch<AdminUser>('/users', { method: 'POST', body: JSON.stringify(input) });
+export interface UserInvitation {
+  id: string;
+  name: string;
+  email: string;
+  roleIds: string[];
+  status: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export function listInvitations(): Promise<UserInvitation[]> {
+  return apiFetch<UserInvitation[]>('/users/invitations');
+}
+export function invitationAction(id: string, action: 'resend' | 'cancel'): Promise<UserInvitation> {
+  return apiFetch<UserInvitation>(`/users/invitations/${id}/${action}`, { method: 'POST' });
+}
+
+export function createUser(input: CreateUserInput): Promise<UserInvitation> {
+  return apiFetch<UserInvitation>('/users', { method: 'POST', body: JSON.stringify(input) });
 }
 
 export function updateUser(id: string, input: UpdateUserInput): Promise<AdminUser> {

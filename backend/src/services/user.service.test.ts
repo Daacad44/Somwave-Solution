@@ -13,14 +13,17 @@ vi.mock('../lib/prisma', () => ({
     role: { count: vi.fn(), findMany: vi.fn(), findFirst: vi.fn() },
     refreshToken: { updateMany: vi.fn() },
     engineerProfile: { update: vi.fn() },
-    $transaction: vi.fn((ops: unknown[]) => Promise.all(ops)),
+    $queryRaw: vi.fn(),
+    $transaction: vi.fn((ops: unknown[] | ((tx: unknown) => Promise<unknown>)) =>
+      typeof ops === 'function' ? ops(prisma) : Promise.all(ops),
+    ),
   },
 }));
 vi.mock('../lib/password', () => ({ hashPassword: vi.fn().mockResolvedValue('hashed') }));
 vi.mock('../lib/password-policy', () => ({ assertNewPasswordAllowed: vi.fn() }));
 
 import { prisma } from '../lib/prisma';
-import { createUser, updateUser, deactivateUser, listUsers } from './user.service';
+import { updateUser, deactivateUser, listUsers } from './user.service';
 import { AppError } from '../lib/http';
 import type { AuthUser } from '@somwave/shared';
 
@@ -46,85 +49,6 @@ const row = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-});
-
-describe('createUser', () => {
-  it('creates a user, validating roles and hashing the password', async () => {
-    vi.mocked(prisma.role.count).mockResolvedValue(1 as never);
-    vi.mocked(prisma.user.findUnique).mockResolvedValue(null as never);
-    vi.mocked(prisma.user.create).mockResolvedValue(row as never);
-
-    const result = await createUser(
-      {
-        email: 'cali@example.com',
-        name: 'Cali',
-        password: 'a-strong-password',
-        roleIds: ['role_1'],
-      },
-      admin,
-    );
-
-    expect(result).toEqual({
-      id: 'usr_1',
-      email: 'cali@example.com',
-      name: 'Cali',
-      isActive: true,
-      roles: ['ADMIN'],
-      createdAt: '2026-01-01T00:00:00.000Z',
-    });
-    expect(prisma.user.create).toHaveBeenCalledOnce();
-  });
-
-  it('rejects a duplicate email with CONFLICT', async () => {
-    vi.mocked(prisma.role.count).mockResolvedValue(0 as never);
-    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: 'existing' } as never);
-
-    await expect(
-      createUser(
-        {
-          email: 'cali@example.com',
-          name: 'Cali',
-          password: 'a-strong-password',
-          roleIds: [],
-        },
-        admin,
-      ),
-    ).rejects.toMatchObject({ code: 'CONFLICT' });
-    expect(prisma.user.create).not.toHaveBeenCalled();
-  });
-
-  it('rejects an unknown role id', async () => {
-    vi.mocked(prisma.role.count).mockResolvedValue(0 as never);
-
-    await expect(
-      createUser(
-        {
-          email: 'cali@example.com',
-          name: 'Cali',
-          password: 'a-strong-password',
-          roleIds: ['ghost'],
-        },
-        admin,
-      ),
-    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
-  });
-
-  it('prevents an administrator from assigning SUPER_ADMIN to a new user', async () => {
-    vi.mocked(prisma.role.count).mockResolvedValue(1 as never);
-    vi.mocked(prisma.role.findFirst).mockResolvedValue({ id: 'super_role' } as never);
-    await expect(
-      createUser(
-        {
-          email: 'super@example.com',
-          name: 'Super',
-          password: 'a-strong-password',
-          roleIds: ['super_role'],
-        },
-        admin,
-      ),
-    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
-    expect(prisma.user.create).not.toHaveBeenCalled();
-  });
 });
 
 describe('updateUser', () => {
@@ -217,5 +141,35 @@ describe('listUsers', () => {
     expect(result.pageSize).toBe(100); // MAX_PAGE_SIZE
     expect(result.items[0]?.roles).toEqual(['ADMIN']);
     expect(result.total).toBe(1);
+  });
+});
+
+describe('last active super administrator', () => {
+  const superActor = { ...admin, roles: ['SUPER_ADMIN'] };
+  beforeEach(() => {
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({
+      id: 'last',
+      isActive: true,
+      roles: [{ role: { name: 'SUPER_ADMIN' } }],
+    } as never);
+    vi.mocked(prisma.user.count).mockResolvedValue(1);
+    vi.mocked(prisma.role.findFirst).mockResolvedValue(null);
+  });
+  it('prevents removal of the last owner role', async () => {
+    await expect(updateUser('last', { roleIds: [] }, superActor)).rejects.toMatchObject({
+      code: 'CONFLICT',
+    });
+    expect(prisma.user.update).not.toHaveBeenCalled();
+    expect(prisma.$queryRaw).toHaveBeenCalled();
+  });
+  it('prevents suspension of the last active owner', async () => {
+    await expect(updateUser('last', { isActive: false }, superActor)).rejects.toMatchObject({
+      code: 'CONFLICT',
+    });
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+  it('prevents deletion of the last active owner', async () => {
+    await expect(deactivateUser('last', superActor)).rejects.toMatchObject({ code: 'CONFLICT' });
+    expect(prisma.user.update).not.toHaveBeenCalled();
   });
 });

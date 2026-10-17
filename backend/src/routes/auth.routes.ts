@@ -1,5 +1,8 @@
 import { Router } from 'express';
 import {
+  verifyPasswordResetSchema,
+  verifyUserInvitationSchema,
+  activateUserInvitationSchema,
   confirmTwoFactorSchema,
   disableTwoFactorSchema,
   forgotPasswordSchema,
@@ -15,10 +18,17 @@ import {
 import { validate } from '../middleware/validate';
 import { requireAuth } from '../middleware/auth';
 import { loginIpRateLimiter, loginAccountRateLimiter } from '../middleware/rateLimit';
+import * as invitations from '../services/user-invitation.service';
+import { sendData } from '../lib/http';
+import * as authService from '../services/auth.service';
 import * as authController from '../controllers/auth.controller';
 import * as engineerAccountController from '../controllers/engineer-account.controller';
 
 export const authRouter: Router = Router();
+authRouter.use((_req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+});
 
 authRouter.post(
   '/login',
@@ -34,8 +44,56 @@ authRouter.post(
   validate(verifyTwoFactorSchema),
   authController.verifyTwoFactor,
 );
-authRouter.post('/forgot-password', validate(forgotPasswordSchema), authController.forgotPassword);
-authRouter.post('/reset-password', validate(resetPasswordSchema), authController.resetPassword);
+authRouter.post(
+  '/forgot-password',
+  loginIpRateLimiter,
+  validate(forgotPasswordSchema),
+  loginAccountRateLimiter,
+  authController.forgotPassword,
+);
+authRouter.post(
+  '/reset-password',
+  loginIpRateLimiter,
+  validate(resetPasswordSchema),
+  authController.resetPassword,
+);
+authRouter.post(
+  '/password-reset/verify',
+  loginIpRateLimiter,
+  validate(verifyPasswordResetSchema),
+  loginAccountRateLimiter,
+  async (req, res, next) => {
+    try {
+      sendData(res, await authService.verifyPasswordResetCode(req.body.email, req.body.code));
+    } catch (e) {
+      next(e);
+    }
+  },
+);
+authRouter.post(
+  '/user-invitations/verify',
+  loginIpRateLimiter,
+  validate(verifyUserInvitationSchema),
+  async (req, res, next) => {
+    try {
+      sendData(res, await invitations.verifyInvitation(req.body.token));
+    } catch (e) {
+      next(e);
+    }
+  },
+);
+authRouter.post(
+  '/user-invitations/activate',
+  loginIpRateLimiter,
+  validate(activateUserInvitationSchema),
+  async (req, res, next) => {
+    try {
+      sendData(res, await invitations.activateInvitation(req.body.token, req.body.password));
+    } catch (e) {
+      next(e);
+    }
+  },
+);
 authRouter.post(
   '/engineer-invitations/verify',
   loginIpRateLimiter,

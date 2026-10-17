@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CreateUserInput, UpdateUserInput } from '@somwave/shared';
 import {
   listUsers,
+  listInvitations,
+  invitationAction,
   listRoles,
   createUser,
   updateUser,
@@ -50,6 +52,18 @@ export function useDeactivateUser() {
   return useMutation({
     mutationFn: (id: string) => deactivateUser(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: USERS_KEY }),
+  });
+}
+
+export function useInvitations() {
+  return useQuery({ queryKey: [...USERS_KEY, 'invitations'], queryFn: listInvitations });
+}
+export function useInvitationAction() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, action }: { id: string; action: 'resend' | 'cancel' }) =>
+      invitationAction(id, action),
+    onSuccess: () => client.invalidateQueries({ queryKey: USERS_KEY }),
   });
 }
 

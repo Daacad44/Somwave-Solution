@@ -253,3 +253,28 @@ These routes also require an access cookie and the named global permission. Proj
 | `DELETE /api/v1/users/:id` | `users.delete` | Only a current `SUPER_ADMIN` may remove another super administrator; self-removal is rejected. |
 
 Client document and media downloads use the same storage reader as uploads, including S3-compatible production storage. The API returns file bytes only after record access checks.
+
+## Generic user invitations and password recovery
+
+These routes supplement the Engineer/Client flows above. Public auth actions
+are rate limited and use no-store responses. No administrator password is accepted
+by user creation. Only SUPER_ADMIN can assign or manage SUPER_ADMIN invitations;
+the final active Super Admin cannot be removed, suspended or demoted.
+
+| Method and path | Authorization | Contract |
+| --- | --- | --- |
+| `POST /api/v1/users` | `users.create` | `{name,email,roleIds}` sends a pending invitation; no active user/password is created yet. |
+| `GET /api/v1/users/invitations` | `users.read` | Pending, expired, cancelled and accepted invitation metadata; no secret tokens. |
+| `POST /api/v1/users/invitations/:id/resend` | `users.create` | Rotates the old token; one-minute resend cooldown. |
+| `POST /api/v1/users/invitations/:id/cancel` | `users.create` | Invalidates the outstanding token. |
+| `POST /api/v1/auth/user-invitations/verify` | Public | `{token}` returns name/email only for a valid pending invitation. |
+| `POST /api/v1/auth/user-invitations/activate` | Public | `{token,password}` atomically creates the intended role-bound account; single use. |
+| `POST /api/v1/auth/forgot-password` | Public | `{email}` always uses a generic response; sends a six-digit Resend OTP when eligible. |
+| `POST /api/v1/auth/password-reset/verify` | Public | `{email,code}` consumes a correct OTP and returns `{token}` reset proof. |
+| `POST /api/v1/auth/reset-password` | Public | `{token,password}` consumes verified proof, changes the hash and revokes old sessions/challenges. |
+
+Invitation tokens expire after 48 hours; reset OTP and subsequent reset proof
+expire after ten minutes each. OTP attempts are capped at five. Recovery requests
+have a per-account cooldown and IP/account rate limits. Passwords use the shared
+12–128 character policy. Confirmation email acceptance is not mailbox delivery
+proof. See [production acceptance](PRODUCTION_FIX_ACCEPTANCE.md).
