@@ -23,7 +23,7 @@ function isActive(href: string): boolean {
 }
 ---
 
-<header id="site-header" class="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur-md">
+<header id="site-header" class="site-header sticky top-0 z-40">
   <nav
     class="mx-auto flex h-[76px] max-w-site items-center justify-between gap-3 px-4 sm:px-6"
     aria-label="Main navigation"
@@ -148,8 +148,46 @@ function isActive(href: string): boolean {
   }
 </script>
 
-<style>
-  #site-header { transition: box-shadow var(--motion-fast) ease; }
-  #site-header.header-scrolled { box-shadow: 0 8px 28px rgb(11 31 58 / 0.08); }
-  @media (prefers-reduced-motion: reduce) { #site-header { transition: none; } }
+<style is:global>
+  /* Clean sticky header. The old build used bg-surface/95 + backdrop-blur-md,
+     which made page text visibly smudged under the bar and showed a faint
+     backdrop halo (reported by the user). Solid background with a thin bottom
+     border is calmer and avoids the blur artefact. */
+  .site-header {
+    background: var(--color-surface, #ffffff);
+    border-bottom: 1px solid transparent;
+    transition:
+      box-shadow 220ms ease,
+      border-color 220ms ease,
+      background-color 220ms ease;
+  }
+  .site-header.header-scrolled {
+    border-bottom-color: var(--color-border, #e2e8f0);
+    box-shadow: 0 6px 20px -8px rgb(11 31 58 / 0.12);
+  }
+  /* Keep section headings clear of the 76px sticky header on in-page links. */
+  :target,
+  [id] {
+    scroll-margin-top: calc(76px + 1rem);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .site-header {
+      transition: none;
+    }
+  }
+
+  /* Active underline for primary nav links. */
+  .site-header nav ul a {
+    position: relative;
+  }
+  .site-header nav ul a[aria-current='page']::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -6px;
+    height: 2px;
+    background: var(--color-brand, #1462f2);
+    border-radius: 2px;
+  }
 </style>

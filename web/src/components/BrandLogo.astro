@@ -1,20 +1,33 @@
 ---
-// Original Somwave Solution wordmark. Do not redraw, recolor, or crop the artwork.
-// This optimized, trimmed derivative preserves the official artwork and avoids
-// downloading the large transparent source canvas on every page.
+// Official Somwave Solution wordmark. The asset is the exact file supplied by
+// the brand (web/public/brand/somwave-logo.webp, 2000×667, 3:1). Do not redraw,
+// recolor, or crop the artwork. The compact copy is a size-only resample of the
+// same file (same artwork, smaller bytes) served to the browser; the full
+// asset remains available for pages that need it at scale.
 interface Props {
   class?: string;
-  size?: 'sm' | 'md';
+  size?: 'sm' | 'md' | 'lg';
 }
 const { class: className = '', size = 'md' } = Astro.props;
+
+// Native asset is 800×267 (3:1). CSS sets the height; width is derived from
+// the natural aspect ratio, so the mark never stretches or clips.
+const dimensions = {
+  sm: { height: 32 },
+  md: { height: 44 },
+  lg: { height: 64 },
+}[size];
 ---
 
-<span class:list={['brand-logo', size === 'sm' ? 'brand-logo-sm' : 'brand-logo-md', className]}>
+<span
+  class:list={['brand-logo', `brand-logo-${size}`, className]}
+  style={`--logo-height: ${dimensions.height}px;`}
+>
   <img
     src="/brand/somwave-logo-compact.webp"
     alt="Somwave Solution"
-    width="403"
-    height="146"
+    width="800"
+    height="267"
     decoding="sync"
     loading="eager"
     fetchpriority="high"
@@ -25,19 +38,15 @@ const { class: className = '', size = 'md' } = Astro.props;
 <style>
   .brand-logo {
     position: relative;
-    display: inline-block;
+    display: inline-flex;
     flex-shrink: 0;
-  }
-  .brand-logo-sm {
-    width: 148px;
-    height: 40px;
-  }
-  .brand-logo-md {
-    width: 176px;
-    height: 48px;
+    align-items: center;
+    /* 3:1 natural aspect of the trimmed artwork. */
+    height: var(--logo-height, 44px);
   }
   .brand-logo-img {
-    width: auto;
+    display: block;
     height: 100%;
+    width: auto;
   }
 </style>
