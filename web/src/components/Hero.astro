@@ -1,176 +1,559 @@
 ---
-import BrandLogo from './BrandLogo.astro';
+// Static premium hero — one visual, no carousel. The slider was removed with
+// this component rewrite; `heroSlides` and `heroSlideOrder` remain in the CMS
+// schema for data compatibility but are no longer rendered.
 import HomeIcon from './home/HomeIcon.astro';
-import { defaultSiteContent, type SiteContent, type HeroSlideId } from '@somwave/shared';
+import { defaultSiteContent, type SiteContent } from '@somwave/shared';
 
-interface Props { content?: SiteContent }
+interface Props {
+  content?: SiteContent;
+}
 const { content = defaultSiteContent } = Astro.props;
-const byId = {
-  intro: { id: 'intro' as const, ...content.hero },
-  software: content.heroSlides.find((slide) => slide.id === 'software')!,
-  connected: content.heroSlides.find((slide) => slide.id === 'connected')!,
-};
-const slides = content.heroSlideOrder.map((id: HeroSlideId) => byId[id]);
+const hero = content.hero;
+
+// Split the headline on the last word so the final word (e.g. "Connected.") can
+// be styled with the brand accent without needing a second CMS field.
+const words = hero.headline.trim().split(/\s+/);
+const accent = words.pop() ?? '';
+const headlineLead = words.join(' ');
+
+// Service strip under the headline — short, static labels. Links go to the
+// Services page, so a click always lands somewhere useful.
+const serviceStrip = [
+  { key: 'web', label: 'Web & Mobile Development' },
+  { key: 'automation', label: 'Cloud & IT Solutions' },
+  { key: 'software', label: 'Business Systems' },
+  { key: 'consult', label: 'Consulting & Support' },
+] as const;
+
+const stats = [
+  { value: '100+', label: 'Projects Delivered' },
+  { value: '50+', label: 'Happy Clients' },
+  { value: '10+', label: 'Years Experience' },
+  { value: '24/7', label: 'Technical Support' },
+] as const;
+
+const isUploadedImage = /^https:\/\//.test(hero.imageUrl);
+const srcset = isUploadedImage
+  ? undefined
+  : [
+      '/images/hero-architecture-480.webp 480w',
+      '/images/hero-architecture-768.webp 768w',
+      '/images/hero-architecture-1200.webp 1200w',
+    ].join(', ');
 ---
 
-<section class="hero-slider relative overflow-hidden" aria-label="Somwave highlights" aria-roledescription="carousel" tabindex="0">
-  <div class="hero-stage relative">
-    {slides.map((slide, index) => {
-      const imageUrl = slide.imageUrl === '/images/hero-somwave.png' ? '/images/hero-devices-1200.webp' : slide.imageUrl;
-      return <article class:list={['hero-slide', index === 0 && 'is-active']} data-slide={index} aria-hidden={index === 0 ? 'false' : 'true'} inert={index !== 0}>
-        <div class="hero-atmosphere" aria-hidden="true"></div>
-        <div class="hero-inner mx-auto grid max-w-site items-center gap-9 px-4 sm:px-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] lg:gap-12">
-          <div class="hero-copy relative z-10">
-            <p class="section-kicker hero-entrance">{slide.badge}</p>
-            {index === 0 ? <h1 id="hero-heading" class="hero-headline hero-entrance mt-6">{slide.headline}</h1> : <h2 class="hero-headline hero-entrance mt-6">{slide.headline}</h2>}
-            <p class="hero-entrance mt-6 max-w-xl text-base leading-8 text-muted sm:text-lg">{slide.description}</p>
-            <div class="hero-entrance hero-actions mt-8 flex flex-wrap gap-3">
-              <a href={slide.primaryHref} class="inline-flex min-h-12 items-center justify-center gap-3 rounded-md bg-brand px-6 text-sm font-bold text-surface shadow-md transition-all hover:-translate-y-0.5 hover:bg-brand-600 hover:shadow-lg">{slide.primaryLabel} <HomeIcon name="arrow" class="h-4 w-4" /></a>
-              {slide.secondaryLabel && slide.secondaryHref && <a href={slide.secondaryHref} class="inline-flex min-h-12 items-center justify-center gap-3 rounded-md border border-border bg-surface px-6 text-sm font-bold text-primary transition-colors hover:border-brand hover:text-brand">{slide.secondaryLabel} <HomeIcon name="arrow" class="h-4 w-4" /></a>}
+<section class="hero" aria-labelledby="hero-heading" data-hero>
+  <div class="hero-ambient" aria-hidden="true">
+    <span class="hero-ambient-glow" data-hero-glow></span>
+    <span class="hero-ambient-grid"></span>
+  </div>
+
+  <div
+    class="mx-auto grid max-w-site items-center gap-10 px-4 pb-16 pt-10 sm:px-6 sm:pb-20 sm:pt-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] lg:gap-14 lg:pb-24 lg:pt-16"
+  >
+    <div class="hero-copy relative z-10">
+      <p class="hero-badge" data-reveal>
+        <span class="hero-badge-dot" aria-hidden="true"></span>{hero.badge}
+      </p>
+
+      <h1 id="hero-heading" class="hero-headline" data-reveal>
+        {headlineLead}
+        {headlineLead ? ' ' : ''}
+        <span class="hero-headline-accent">{accent}</span>
+      </h1>
+
+      <p class="hero-description" data-reveal>{hero.description}</p>
+
+      <div class="hero-actions" data-reveal>
+        <a href={hero.primaryHref} class="hero-cta hero-cta-primary" data-magnetic>
+          <span>{hero.primaryLabel}</span>
+          <HomeIcon name="arrow" class="h-4 w-4" />
+        </a>
+        {
+          hero.secondaryLabel && hero.secondaryHref ? (
+            <a href={hero.secondaryHref} class="hero-cta hero-cta-secondary" data-magnetic>
+              <span>{hero.secondaryLabel}</span>
+              <HomeIcon name="arrow" class="h-4 w-4" />
+            </a>
+          ) : null
+        }
+      </div>
+
+      <ul class="hero-services" data-reveal aria-label="Core service areas">
+        {
+          serviceStrip.map((item) => (
+            <li>
+              <a href="/adeegyada" class="hero-service">
+                <span class="hero-service-icon" aria-hidden="true">
+                  <HomeIcon name={item.key} class="h-5 w-5" />
+                </span>
+                <span class="hero-service-label">{item.label}</span>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+
+      <dl class="hero-stats" data-reveal>
+        {
+          stats.map((stat) => (
+            <div>
+              <dt>{stat.value}</dt>
+              <dd>{stat.label}</dd>
             </div>
-          </div>
-          <div class="hero-art relative min-w-0" role="img" aria-label={slide.imageAlt}>
-            <div class="hero-halo" aria-hidden="true"></div>
-            {imageUrl ? <figure class="hero-frame relative overflow-hidden rounded-lg border border-border bg-surface p-2 shadow-float sm:p-3">
-              {slide.id === 'intro' && imageUrl === '/images/hero-devices-1200.webp' ? <picture>
-                <source type="image/webp" srcset="/images/hero-devices-768.webp 768w, /images/hero-devices-1200.webp 1200w" sizes="(max-width: 1023px) 100vw, 46vw" />
-                <img src={imageUrl} width="1200" height="675" alt="" loading={index === 0 ? 'eager' : 'lazy'} decoding="async" fetchpriority={index === 0 ? 'high' : undefined} class="block h-auto w-full rounded-md" />
-              </picture> : <img src={imageUrl} width="1200" height="675" alt="" loading={index === 0 ? 'eager' : 'lazy'} decoding="async" class="block h-auto w-full rounded-md" />}
-            </figure> : <div class="connected-art" aria-hidden="true">
-              <span class="connected-orbit"></span><span class="connected-orbit connected-orbit-inner"></span>
-              <span class="connected-core"><BrandLogo size="md" /></span>
-              <span class="connected-satellite satellite-one"><HomeIcon name="web" /></span>
-              <span class="connected-satellite satellite-two"><HomeIcon name="mobile" /></span>
-              <span class="connected-satellite satellite-three"><HomeIcon name="payment" /></span>
-              <span class="connected-satellite satellite-four"><HomeIcon name="analytics" /></span>
-            </div>}
-          </div>
-        </div>
-      </article>;
-    })}
-  </div>
-  <div class="hero-controls relative z-10 mx-auto flex max-w-site items-center gap-4 px-4 pb-8 sm:px-6">
-    <button type="button" class="hero-arrow" data-direction="prev" aria-label="Previous slide">←</button>
-    <div class="flex items-center gap-2" role="group" aria-label="Choose a slide">
-      {slides.map((slide, index) => <button type="button" class="hero-indicator" data-go={index} aria-label={`Show slide ${index + 1}: ${slide.headline}`} aria-current={index === 0 ? 'true' : undefined}><span></span></button>)}
+          ))
+        }
+      </dl>
     </div>
-    <button type="button" class="hero-arrow" data-direction="next" aria-label="Next slide">→</button>
-    <span class="hero-count ms-auto text-xs font-bold text-primary" aria-hidden="true">01 / 0{slides.length}</span>
+
+    <div class="hero-art" data-reveal>
+      <div class="hero-art-frame" data-hero-tilt>
+        {
+          srcset ? (
+            <img
+              src={hero.imageUrl}
+              srcset={srcset}
+              sizes="(max-width: 1023px) 100vw, 46vw"
+              width="1200"
+              height="891"
+              alt={hero.imageAlt}
+              loading="eager"
+              decoding="async"
+              fetchpriority="high"
+              class="hero-art-image"
+            />
+          ) : (
+            <img
+              src={hero.imageUrl}
+              width="1200"
+              height="891"
+              alt={hero.imageAlt}
+              loading="eager"
+              decoding="async"
+              fetchpriority="high"
+              class="hero-art-image"
+            />
+          )
+        }
+      </div>
+    </div>
   </div>
-  <div class="hero-progress" aria-hidden="true"><span></span></div>
-  <p class="sr-only hero-announcement" aria-live="polite"></p>
 </section>
 
 <style>
-  .hero-slider { background: linear-gradient(115deg, #fff 8%, var(--color-sky) 100%); }
-  .hero-stage { min-height: 650px; }
-  .hero-slide { position: absolute; inset: 0; display: grid; align-items: center; opacity: 0; visibility: hidden; pointer-events: none; transform: scale(1.015); transition: opacity 850ms ease, transform 950ms ease, visibility 850ms; }
-  .hero-slide.is-active { z-index: 1; opacity: 1; visibility: visible; pointer-events: auto; transform: scale(1); }
-  .hero-atmosphere { position: absolute; inset: 0; background: radial-gradient(circle at 80% 42%, rgb(0 126 255 / .16), transparent 36%); }
-  .hero-inner { width: 100%; padding-block: 4.5rem; }
-  .hero-headline { max-width: 720px; color: var(--color-primary); font-size: clamp(2.55rem, 4vw, 3.9rem); font-weight: 800; line-height: 1.06; letter-spacing: -.055em; text-wrap: balance; }
-  .hero-entrance { transition: transform 700ms ease, opacity 700ms ease; }
-  .hero-slide:not(.is-active) .hero-entrance { transform: translateY(22px); opacity: 0; }
-  .hero-slide.is-active .hero-actions { transition-delay: 180ms; }
-  .hero-art { isolation: isolate; }
-  .hero-halo { position: absolute; inset: -8%; z-index: -1; border-radius: 50%; background: radial-gradient(circle, rgb(20 98 242 / .23), transparent 68%); }
-  .hero-arrow { display: grid; width: 44px; height: 44px; flex: none; place-items: center; border: 1px solid var(--color-border); border-radius: 50%; background: white; color: var(--color-brand); font-size: 1.25rem; transition: background 180ms, transform 180ms; }
-  .hero-arrow:hover { background: var(--color-brand-soft); transform: translateY(-2px); }
-  .hero-indicator { display: grid; min-width: 34px; min-height: 44px; place-items: center; }
-  .hero-indicator span { display: block; width: 8px; height: 8px; border-radius: 99px; background: #9eb3d5; transition: width 300ms, background 300ms; }
-  .hero-indicator[aria-current='true'] span { width: 26px; background: var(--color-brand); }
-  .hero-progress { height: 3px; background: rgb(20 98 242 / .1); }
-  .hero-progress span { display: block; width: 0; height: 100%; background: var(--color-brand); }
-  .hero-slider.is-playing .hero-progress span { animation: hero-timer 7s linear forwards; }
-  @keyframes hero-timer { to { width: 100%; } }
-  .connected-art { position: relative; width: min(100%, 490px); aspect-ratio: 1.15; margin-inline: auto; }
-  .connected-orbit { position: absolute; inset: 8%; border: 1px dashed rgb(20 98 242 / .35); border-radius: 50%; }
-  .connected-orbit-inner { inset: 20%; border-style: solid; box-shadow: 0 0 0 16px rgb(255 255 255 / .5); }
-  .connected-core { position: absolute; inset: 28%; display: grid; place-items: center; border-radius: 50%; background: white; box-shadow: 0 20px 45px rgb(17 84 183 / .22); }
-  .connected-core :global(.brand-logo) { transform: scale(.85); }
-  .connected-satellite { position: absolute; display: grid; width: 56px; height: 56px; place-items: center; border-radius: 50%; background: white; color: var(--color-brand); box-shadow: var(--shadow-md); }
-  .satellite-one { top: 11%; left: 25%; }.satellite-two { top: 50%; left: 3%; }.satellite-three { top: 14%; right: 13%; }.satellite-four { bottom: 12%; right: 18%; }
-  @media (max-width: 767px) { .hero-stage { min-height: 790px; }.hero-inner { padding-block: 3.25rem 1rem; }.hero-art { width: min(100%, 520px); margin-inline: auto; }.hero-headline { font-size: clamp(2.2rem, 8.4vw, 3.6rem); } }
-  @media (max-width: 390px) { .hero-stage { min-height: 825px; } }
-  @media (prefers-reduced-motion: reduce) { .hero-slide, .hero-entrance, .hero-arrow, .hero-indicator span { transition: none; }.hero-progress { display: none; } }
+  .hero {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    background:
+      radial-gradient(1200px 600px at 85% 10%, rgb(0 126 255 / 0.1), transparent 60%),
+      linear-gradient(180deg, #fff 0%, var(--color-sky, #eaf2ff) 100%);
+  }
+
+  .hero-ambient {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .hero-ambient-glow {
+    position: absolute;
+    top: var(--glow-y, 20%);
+    left: var(--glow-x, 70%);
+    width: 540px;
+    height: 540px;
+    transform: translate3d(-50%, -50%, 0);
+    background: radial-gradient(circle, rgb(20 98 242 / 0.18) 0%, transparent 65%);
+    border-radius: 50%;
+    will-change: transform;
+    transition: top 500ms ease, left 500ms ease;
+  }
+
+  .hero-ambient-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgb(20 98 242 / 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(20 98 242 / 0.05) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse at 50% 20%, #000 30%, transparent 80%);
+    opacity: 0.4;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.9rem;
+    border: 1px solid rgb(20 98 242 / 0.18);
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.7);
+    color: var(--color-brand, #0b2a67);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    backdrop-filter: blur(6px);
+  }
+
+  .hero-badge-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-brand, #1462f2);
+    box-shadow: 0 0 0 4px rgb(20 98 242 / 0.15);
+  }
+
+  .hero-headline {
+    margin-top: 1.5rem;
+    max-width: 720px;
+    color: var(--color-primary, #0b1f3a);
+    font-size: clamp(2.3rem, 4.3vw, 4rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+
+  .hero-headline-accent {
+    color: var(--color-brand, #1462f2);
+    background: linear-gradient(
+      120deg,
+      var(--color-brand, #1462f2) 0%,
+      var(--color-brand-strong, #0b47d1) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    white-space: nowrap;
+  }
+
+  .hero-description {
+    margin-top: 1.5rem;
+    max-width: 36rem;
+    color: var(--color-muted, #4b5a7a);
+    font-size: 1.0625rem;
+    line-height: 1.7;
+  }
+
+  .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 2rem;
+  }
+
+  .hero-cta {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    height: 3rem;
+    padding: 0 1.5rem;
+    border-radius: 10px;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    overflow: hidden;
+    transition:
+      transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 220ms ease,
+      background 220ms ease;
+    will-change: transform;
+  }
+
+  .hero-cta-primary {
+    background: var(--color-brand, #1462f2);
+    color: #fff;
+    box-shadow:
+      0 8px 20px rgb(20 98 242 / 0.28),
+      0 2px 6px rgb(20 98 242 / 0.18);
+  }
+
+  .hero-cta-primary::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 0.25) 50%, transparent 80%);
+    transform: translateX(-100%);
+    transition: transform 700ms ease;
+  }
+
+  .hero-cta-primary:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 14px 28px rgb(20 98 242 / 0.32),
+      0 4px 10px rgb(20 98 242 / 0.22);
+  }
+  .hero-cta-primary:hover::before {
+    transform: translateX(100%);
+  }
+
+  .hero-cta-secondary {
+    background: rgb(255 255 255 / 0.9);
+    color: var(--color-primary, #0b1f3a);
+    border: 1px solid var(--color-border, #d8e0ef);
+  }
+
+  .hero-cta-secondary:hover {
+    transform: translateY(-2px);
+    border-color: var(--color-brand, #1462f2);
+    color: var(--color-brand, #1462f2);
+    box-shadow: 0 10px 24px rgb(11 31 58 / 0.08);
+  }
+
+  .hero-services {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-top: 2.5rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .hero-service {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 12px;
+    background: rgb(255 255 255 / 0.7);
+    border: 1px solid rgb(216 224 239 / 0.6);
+    transition:
+      transform 220ms ease,
+      border-color 220ms ease,
+      box-shadow 220ms ease;
+  }
+
+  .hero-service:hover {
+    transform: translateY(-2px);
+    border-color: rgb(20 98 242 / 0.4);
+    box-shadow: 0 10px 24px rgb(11 31 58 / 0.06);
+  }
+
+  .hero-service-icon {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgb(20 98 242 / 0.1), rgb(20 98 242 / 0.03));
+    color: var(--color-brand, #1462f2);
+  }
+
+  .hero-service-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-primary, #0b1f3a);
+    line-height: 1.3;
+  }
+
+  .hero-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1.5rem;
+    margin: 2.5rem 0 0 0;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgb(216 224 239 / 0.8);
+  }
+
+  .hero-stats div {
+    text-align: start;
+  }
+
+  .hero-stats dt {
+    font-size: clamp(1.5rem, 2.3vw, 1.9rem);
+    font-weight: 800;
+    color: var(--color-brand, #1462f2);
+    letter-spacing: -0.02em;
+  }
+
+  .hero-stats dd {
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--color-muted, #4b5a7a);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .hero-art {
+    position: relative;
+    perspective: 1200px;
+  }
+
+  .hero-art-frame {
+    position: relative;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow:
+      0 24px 60px -16px rgb(11 31 58 / 0.3),
+      0 10px 30px -10px rgb(20 98 242 / 0.2);
+    transform-style: preserve-3d;
+    transform:
+      perspective(1200px)
+      rotateX(var(--tilt-x, 0deg))
+      rotateY(var(--tilt-y, 0deg));
+    transition: transform 500ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    will-change: transform;
+  }
+
+  .hero-art-image {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  /* Scroll-reveal: start hidden, revealed by IntersectionObserver. */
+  [data-reveal] {
+    opacity: 0;
+    transform: translateY(16px);
+    transition:
+      opacity 700ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  [data-reveal].is-visible {
+    opacity: 1;
+    transform: none;
+  }
+  [data-reveal]:nth-child(2) {
+    transition-delay: 60ms;
+  }
+  [data-reveal]:nth-child(3) {
+    transition-delay: 120ms;
+  }
+  [data-reveal]:nth-child(4) {
+    transition-delay: 180ms;
+  }
+  [data-reveal]:nth-child(5) {
+    transition-delay: 240ms;
+  }
+
+  @media (max-width: 768px) {
+    .hero-ambient-glow {
+      display: none;
+    }
+    .hero-art-frame {
+      transform: none !important;
+    }
+    .hero-services {
+      grid-template-columns: 1fr;
+    }
+    .hero-stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-reveal] {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+    .hero-ambient-glow,
+    .hero-art-frame,
+    .hero-cta,
+    .hero-service {
+      transition: none !important;
+    }
+    .hero-cta-primary::before {
+      display: none;
+    }
+  }
 </style>
 
 <script>
-  const root = document.querySelector<HTMLElement>('.hero-slider');
-  if (root) {
-    const slides = [...root.querySelectorAll<HTMLElement>('.hero-slide')];
-    const indicators = [...root.querySelectorAll<HTMLButtonElement>('.hero-indicator')];
-    const announcement = root.querySelector<HTMLElement>('.hero-announcement');
-    const progress = root.querySelector<HTMLElement>('.hero-progress span');
+  // Hero interactions. Pointer-only (touch skips magnetic/tilt), reduced-motion safe,
+  // and torn down on Astro navigation so there's no listener leak.
+  const hero = document.querySelector<HTMLElement>('[data-hero]');
+  if (hero) {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const coarse = window.matchMedia('(pointer: coarse)');
+
+    const reveal = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            reveal.unobserve(entry.target);
+          }
+        }
+      },
+      { threshold: 0.12 },
+    );
+    hero.querySelectorAll<HTMLElement>('[data-reveal]').forEach((el) => reveal.observe(el));
+
+    const glow = hero.querySelector<HTMLElement>('[data-hero-glow]');
+    const tilt = hero.querySelector<HTMLElement>('[data-hero-tilt]');
+    const buttons = hero.querySelectorAll<HTMLAnchorElement>('[data-magnetic]');
     const controller = new AbortController();
     const { signal } = controller;
-    let current = 0;
-    let timer: number | undefined;
-    let remaining = 7000;
-    let startedAt = 0;
-    let hovered = false;
-    let focused = false;
-    let touchStartX: number | null = null;
-    const pause = () => {
-      if (timer !== undefined) {
-        window.clearTimeout(timer);
-        remaining = Math.max(0, remaining - (performance.now() - startedAt));
-        timer = undefined;
-      }
-      root.classList.remove('is-playing');
-      if (progress) progress.style.animationPlayState = 'paused';
-    };
-    const canPlay = () => !reduced.matches && !hovered && !focused && !document.hidden;
-    const play = () => {
-      if (!canPlay() || timer !== undefined) return;
-      startedAt = performance.now();
-      timer = window.setTimeout(() => show((current + 1) % slides.length, false), remaining);
-      root.classList.add('is-playing');
-      if (progress) progress.style.animationPlayState = 'running';
-    };
-    const show = (index: number, manual: boolean) => {
-      pause();
-      current = (index + slides.length) % slides.length;
-      slides.forEach((slide, position) => {
-        const active = position === current;
-        slide.classList.toggle('is-active', active);
-        slide.setAttribute('aria-hidden', String(!active));
-        slide.inert = !active;
+
+    if (!reduced.matches && !coarse.matches) {
+      let frame = 0;
+      const onMove = (event: MouseEvent) => {
+        if (frame) return;
+        frame = window.requestAnimationFrame(() => {
+          frame = 0;
+          const rect = hero.getBoundingClientRect();
+          const x = ((event.clientX - rect.left) / rect.width) * 100;
+          const y = ((event.clientY - rect.top) / rect.height) * 100;
+          glow?.style.setProperty('--glow-x', `${x}%`);
+          glow?.style.setProperty('--glow-y', `${y}%`);
+          if (tilt) {
+            const dx = (event.clientX - rect.left) / rect.width - 0.5;
+            const dy = (event.clientY - rect.top) / rect.height - 0.5;
+            // Soft tilt (±4°) and parallax Y so the art tracks the pointer gently.
+            tilt.style.setProperty('--tilt-x', `${-dy * 4}deg`);
+            tilt.style.setProperty('--tilt-y', `${dx * 4}deg`);
+          }
+        });
+      };
+      const reset = () => {
+        tilt?.style.setProperty('--tilt-x', '0deg');
+        tilt?.style.setProperty('--tilt-y', '0deg');
+      };
+      hero.addEventListener('pointermove', onMove, { signal });
+      hero.addEventListener('pointerleave', reset, { signal });
+
+      // Magnetic CTAs: track pointer within a small radius; return smoothly on leave.
+      buttons.forEach((button) => {
+        let activeFrame = 0;
+        button.addEventListener(
+          'pointermove',
+          (event: PointerEvent) => {
+            if (activeFrame) return;
+            activeFrame = window.requestAnimationFrame(() => {
+              activeFrame = 0;
+              const rect = button.getBoundingClientRect();
+              const mx = event.clientX - rect.left - rect.width / 2;
+              const my = event.clientY - rect.top - rect.height / 2;
+              const strength = 0.25;
+              button.style.transform = `translate(${mx * strength}px, ${my * strength}px)`;
+            });
+          },
+          { signal },
+        );
+        button.addEventListener(
+          'pointerleave',
+          () => {
+            button.style.transform = '';
+          },
+          { signal },
+        );
       });
-      indicators.forEach((indicator, position) => {
-        if (position === current) indicator.setAttribute('aria-current', 'true');
-        else indicator.removeAttribute('aria-current');
-      });
-      const count = root.querySelector<HTMLElement>('.hero-count');
-      if (count) count.textContent = `0${current + 1} / 0${slides.length}`;
-      if (manual && announcement) announcement.textContent = `Slide ${current + 1} of ${slides.length}: ${slides[current]?.querySelector('h1,h2')?.textContent ?? ''}`;
-      remaining = 7000;
-      if (progress) { progress.style.animation = 'none'; void progress.offsetWidth; progress.style.animation = ''; }
-      play();
-    };
-    root.querySelectorAll<HTMLButtonElement>('[data-direction]').forEach((button) => button.addEventListener('click', () => show(current + (button.dataset.direction === 'next' ? 1 : -1), true), { signal }));
-    indicators.forEach((button, index) => button.addEventListener('click', () => show(index, true), { signal }));
-    root.addEventListener('keydown', (event) => {
-      if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
-        event.preventDefault();
-        show(current + (event.key === 'ArrowRight' ? 1 : -1), true);
-      }
-    }, { signal });
-    root.addEventListener('mouseenter', () => { hovered = true; pause(); }, { signal });
-    root.addEventListener('mouseleave', () => { hovered = false; play(); }, { signal });
-    root.addEventListener('focusin', () => { focused = true; pause(); }, { signal });
-    root.addEventListener('focusout', () => { focused = root.contains(document.activeElement); if (!focused) play(); }, { signal });
-    root.addEventListener('touchstart', (event) => { touchStartX = event.changedTouches[0]?.clientX ?? null; }, { passive: true, signal });
-    root.addEventListener('touchend', (event) => {
-      if (touchStartX === null) return;
-      const delta = (event.changedTouches[0]?.clientX ?? touchStartX) - touchStartX;
-      if (Math.abs(delta) > 50) show(current + (delta < 0 ? 1 : -1), true);
-      touchStartX = null;
-    }, { passive: true, signal });
-    document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); else play(); }, { signal });
-    reduced.addEventListener('change', () => { if (reduced.matches) pause(); else play(); }, { signal });
-    document.addEventListener('astro:before-swap', () => { pause(); controller.abort(); }, { once: true, signal });
-    play();
+    }
+
+    document.addEventListener(
+      'astro:before-swap',
+      () => {
+        controller.abort();
+        reveal.disconnect();
+      },
+      { once: true, signal },
+    );
   }
 </script>
