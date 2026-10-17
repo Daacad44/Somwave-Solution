@@ -81,3 +81,16 @@ export type FinanceTransactionRecord = CreateFinanceTransactionInput & {
   postedJournalId: string | null;
   createdAt: string;
 };
+
+// Somalia has a fixed UTC+03:00 offset and no daylight-saving transitions.
+export function financeBusinessDate(now = new Date()): string {
+  return new Date(now.getTime() + 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+/** A date input denotes midnight in Africa/Mogadishu, never browser-local midnight. */
+export function parseFinanceBusinessDate(value: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const utc = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(utc.getTime()) || utc.toISOString().slice(0, 10) !== value) return null;
+  return new Date(utc.getTime() - 3 * 60 * 60 * 1000);
+}

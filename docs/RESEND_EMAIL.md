@@ -1,5 +1,13 @@
 # Resend transactional email
 
+Generic Users invitations now use `POST /api/v1/users` with name, email and
+authorized role IDs; administrator passwords are rejected. Invitations lead to
+`/activate-account`, and password recovery uses a six-digit email OTP followed
+by a single-use reset proof. Resend/cancel management rotates invitation tokens.
+The same Resend runtime settings apply; there is no SMTP configuration.
+See [production acceptance](PRODUCTION_FIX_ACCEPTANCE.md) for local evidence and
+the live mailbox-delivery checks still required.
+
 The backend sends engineer invitations, project assignment notifications, password resets, invoices and enquiry alerts through the Resend HTTPS API. SMTP is not used. The official `resend` SDK version 5 is used because the production Docker image runs Node 20.
 
 ## Coolify runtime settings

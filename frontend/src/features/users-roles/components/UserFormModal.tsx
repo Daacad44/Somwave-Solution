@@ -19,10 +19,17 @@ export interface UserFormModalProps {
   open: boolean;
   onClose: () => void;
   roles: AdminRole[];
+  onSaved?: (invited: boolean) => void;
   user?: AdminUser | null; // present → edit, absent → create
 }
 
-export function UserFormModal({ open, onClose, roles, user }: UserFormModalProps): ReactNode {
+export function UserFormModal({
+  open,
+  onClose,
+  roles,
+  user,
+  onSaved,
+}: UserFormModalProps): ReactNode {
   const isEdit = Boolean(user);
   const createMutation = useCreateUser();
   const updateMutation = useUpdateUser();
@@ -31,10 +38,15 @@ export function UserFormModal({ open, onClose, roles, user }: UserFormModalProps
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<CreateUserInput>({
     resolver: zodResolver(createUserSchema),
-    defaultValues: { email: user?.email ?? '', name: user?.name ?? '', password: '', roleIds: [] },
+    defaultValues: {
+      email: user?.email ?? '',
+      name: user?.name ?? '',
+      roleIds: roles.filter((r) => user?.roles.includes(r.name)).map((r) => r.id),
+    },
   });
 
   // Roles are assigned by name in the AdminUser shape; map to ids for editing.
@@ -44,9 +56,11 @@ export function UserFormModal({ open, onClose, roles, user }: UserFormModalProps
   const [serverError, setServerError] = useState<string | null>(null);
 
   const toggleRole = (id: string): void => {
-    setSelectedRoleIds((prev) =>
-      prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id],
-    );
+    const next = selectedRoleIds.includes(id)
+      ? selectedRoleIds.filter((r) => r !== id)
+      : [...selectedRoleIds, id];
+    setSelectedRoleIds(next);
+    setValue('roleIds', next, { shouldValidate: true });
   };
 
   const close = (): void => {
@@ -66,6 +80,7 @@ export function UserFormModal({ open, onClose, roles, user }: UserFormModalProps
       } else {
         await createMutation.mutateAsync({ ...values, roleIds: selectedRoleIds });
       }
+      onSaved?.(!isEdit);
       close();
     } catch (err) {
       setServerError(
@@ -89,17 +104,19 @@ export function UserFormModal({ open, onClose, roles, user }: UserFormModalProps
         />
         <Input label="Name" error={errors.name?.message} {...register('name')} />
         {!isEdit ? (
-          <Input
-            label="Password"
-            type="password"
-            autoComplete="new-password"
-            error={errors.password?.message}
-            {...register('password')}
-          />
+          <p className="text-sm text-muted">
+            The user receives an email invitation and creates their own password. No account is
+            activated until they accept.
+          </p>
         ) : null}
 
         <fieldset className="flex flex-col gap-2">
           <legend className="text-sm font-medium text-ink">Roles</legend>
+          {serverError ? null : errors.roleIds?.message ? (
+            <p role="alert" className="text-sm text-error">
+              {errors.roleIds.message}
+            </p>
+          ) : null}
           {roles.length === 0 ? (
             <p className="text-sm text-muted">No roles available yet.</p>
           ) : (
@@ -125,7 +142,7 @@ export function UserFormModal({ open, onClose, roles, user }: UserFormModalProps
               checked={isActive}
               onChange={(e) => setIsActive(e.target.checked)}
             />
-            Active (active)
+            Account active
           </label>
         ) : null}
 
@@ -136,7 +153,7 @@ export function UserFormModal({ open, onClose, roles, user }: UserFormModalProps
             Cancel
           </Button>
           <Button type="submit" isLoading={pending}>
-            {isEdit ? 'Save' : 'Create'}
+            {isEdit ? 'Save' : 'Send Invitation'}
           </Button>
         </div>
       </form>

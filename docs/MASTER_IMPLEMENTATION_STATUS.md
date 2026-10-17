@@ -1,5 +1,10 @@
 # Integrated website, finance and reporting status
 
+Latest production bug-fix acceptance (17 October 2026):
+[PRODUCTION_FIX_ACCEPTANCE.md](PRODUCTION_FIX_ACCEPTANCE.md). It supersedes the
+storage/onboarding/date-handling details below and records live-production
+verification deferred to the user's configuration.
+
 Snapshot: 16 October 2026. This document describes code and local validation for
 the website, inquiry, finance and reports change. It is **not** a production acceptance or
 deployment record. Existing project, account, engineering and accounting data

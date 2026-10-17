@@ -51,12 +51,13 @@ export type AdminUser = z.infer<typeof adminUserSchema>;
 
 export const passwordSchema = newPasswordSchema;
 
-export const createUserSchema = z.object({
-  email: z.string().trim().email('Enter a valid email address'),
-  name: z.string().trim().min(1, 'Name is required').max(120),
-  password: passwordSchema,
-  roleIds: z.array(z.string()).default([]),
-});
+export const createUserSchema = z
+  .object({
+    email: z.string().trim().email('Enter a valid email address'),
+    name: z.string().trim().min(1, 'Name is required').max(120),
+    roleIds: z.array(z.string()).min(1, 'Select at least one role'),
+  })
+  .strict();
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { NextFunction, Request, Response } from 'express';
 import { PERMISSIONS, ROLES } from '@somwave/shared';
 import { AppError } from '../lib/http';
-import { parseFinanceHistoryQuery, requireFinanceTwoFactor } from './finance.routes';
+import { parseFinanceHistoryQuery, reportDates, requireFinanceTwoFactor } from './finance.routes';
 
 function call(enabled: boolean, verifiedAt: number | null = null) {
   const next = vi.fn() as unknown as NextFunction;
@@ -45,7 +45,7 @@ describe('finance history query validation', () => {
       ? parseFinanceHistoryQuery({ query } as unknown as Request, 'transactions')
       : parseFinanceHistoryQuery({ query } as unknown as Request, 'journals');
 
-  it('parses bounded pagination and half-open UTC dates', () => {
+  it('parses bounded pagination and half-open Mogadishu dates', () => {
     expect(
       parse(
         {
@@ -60,8 +60,8 @@ describe('finance history query validation', () => {
     ).toMatchObject({
       page: 2,
       pageSize: 50,
-      from: new Date('2026-01-01T00:00:00.000Z'),
-      to: new Date('2026-02-01T00:00:00.000Z'),
+      from: new Date('2025-12-31T21:00:00.000Z'),
+      to: new Date('2026-01-31T21:00:00.000Z'),
       statuses: ['SUBMITTED', 'APPROVED'],
     });
   });
@@ -86,5 +86,28 @@ describe('finance history query validation', () => {
       search: 'REV-',
     });
     expect(() => parse({ sourceType: 'UNKNOWN' }, 'journals')).toThrow(AppError);
+  });
+});
+
+describe('finance dashboard range', () => {
+  it('uses the same Mogadishu boundary as transaction and journal history', () => {
+    const query = { from: '2026-02-01', to: '2026-03-01' };
+    const range = reportDates({ query } as unknown as Request);
+    expect(range).toMatchObject({
+      from: new Date('2026-01-31T21:00:00Z'),
+      to: new Date('2026-02-28T21:00:00Z'),
+    });
+    expect(parseFinanceHistoryQuery({ query } as unknown as Request, 'journals')).toMatchObject(
+      range,
+    );
+  });
+  it('rejects impossible, reversed, equal and repeated dates', () => {
+    for (const query of [
+      { from: '2026-02-30', to: '2026-03-01' },
+      { from: '2026-03-01', to: '2026-03-01' },
+      { from: '2026-03-02', to: '2026-03-01' },
+      { from: ['2026-03-01'], to: '2026-04-01' },
+    ])
+      expect(() => reportDates({ query } as unknown as Request)).toThrow(AppError);
   });
 });

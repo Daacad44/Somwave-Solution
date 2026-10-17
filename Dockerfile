@@ -72,6 +72,8 @@ COPY --from=builder --chown=node:node /app/packages ./packages
 COPY --from=builder --chown=node:node /app/backend ./backend
 COPY --from=builder --chown=node:node /app/tsconfig.base.json ./
 
+RUN mkdir -p /data/uploads && chown node:node /data/uploads
+
 USER node
 WORKDIR /app/backend
 

@@ -8,6 +8,9 @@ import {
   type AdminTestimonial,
   type CreateTestimonialInput,
 } from '@somwave/shared';
+import { articleImageFileError } from '@somwave/shared';
+import { uploadArticleImage } from '../api';
+import { ArticleImageField } from './ArticleImageField';
 import { Modal } from '../../../components/ui/Modal';
 import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
@@ -34,6 +37,11 @@ export function TestimonialFormModal({
   const updateMutation = useUpdateTestimonial();
   const [serverError, setServerError] = useState<string | null>(null);
 
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageRemoved, setImageRemoved] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+
   const {
     register,
     handleSubmit,
@@ -56,6 +64,9 @@ export function TestimonialFormModal({
   const close = (): void => {
     reset();
     setServerError(null);
+    setImageFile(null);
+    setImageRemoved(false);
+    setImageError(null);
     onClose();
   };
 
@@ -71,7 +82,14 @@ export function TestimonialFormModal({
       order: values.order,
       isPublished: values.isPublished,
     };
+    if (imageError) {
+      setServerError(imageError);
+      return;
+    }
     try {
+      if (imageFile) {
+        payload.avatarUrl = (await uploadArticleImage(imageFile, setUploadProgress)).url;
+      } else if (imageRemoved) payload.avatarUrl = undefined;
       if (isEdit && testimonial) {
         await updateMutation.mutateAsync({
           id: testimonial.id,
@@ -115,11 +133,37 @@ export function TestimonialFormModal({
           {errors.quote ? <span className="text-sm text-error">{errors.quote.message}</span> : null}
         </label>
 
+        <ArticleImageField
+          label="Image"
+          existingUrl={testimonial?.avatarUrl}
+          file={imageFile}
+          removed={imageRemoved}
+          error={imageError}
+          uploading={isSubmitting}
+          progress={uploadProgress}
+          onSelect={(file) => {
+            const error = articleImageFileError({
+              name: file.name,
+              type: file.type,
+              size: file.size,
+            });
+            setImageError(error);
+            if (!error) {
+              setImageFile(file);
+              setImageRemoved(false);
+            }
+          }}
+          onRemove={() => {
+            setImageFile(null);
+            setImageRemoved(true);
+            setImageError(null);
+          }}
+        />
         <Input
           label="Image URL (optional)"
           placeholder="https://"
           error={errors.avatarUrl?.message}
-          {...register('avatarUrl')}
+          {...register('avatarUrl', { setValueAs: orUndefined })}
         />
 
         <div className="grid grid-cols-2 gap-3">

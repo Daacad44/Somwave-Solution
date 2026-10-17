@@ -6,6 +6,7 @@ vi.mock('../lib/prisma', () => ({
     post: { count: vi.fn() },
   },
 }));
+vi.mock('./media-references', () => ({ mediaIsReferenced: vi.fn() }));
 vi.mock('../lib/storage', () => ({
   decodeArticleImage: vi.fn(),
   putArticleImage: vi.fn(),
@@ -14,6 +15,7 @@ vi.mock('../lib/storage', () => ({
 }));
 vi.mock('../lib/logger', () => ({ logger: { warn: vi.fn() } }));
 
+import { mediaIsReferenced } from './media-references';
 import { prisma } from '../lib/prisma';
 import { decodeArticleImage, deleteObject, putArticleImage } from '../lib/storage';
 import {
@@ -103,13 +105,13 @@ describe('resolveArticleCover', () => {
 
 describe('releaseArticleImageUrl', () => {
   it('does not delete an image that another article still uses', async () => {
-    vi.mocked(prisma.post.count).mockResolvedValue(1 as never);
+    vi.mocked(mediaIsReferenced).mockResolvedValue(true);
     await releaseArticleImageUrl('https://api.example.com/api/v1/public/article-images/img1');
     expect(deleteObject).not.toHaveBeenCalled();
   });
 
   it('deletes storage only after nothing references the image', async () => {
-    vi.mocked(prisma.post.count).mockResolvedValue(0 as never);
+    vi.mocked(mediaIsReferenced).mockResolvedValue(false);
     vi.mocked(prisma.mediaAsset.findFirst).mockResolvedValue({
       id: 'img1',
       storageKey: 'article-images/generated.jpg',

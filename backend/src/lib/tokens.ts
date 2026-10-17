@@ -10,22 +10,35 @@ export const REFRESH_TTL_MS = REFRESH_TTL_DAYS * 24 * 60 * 60 * 1000;
 export const ACCESS_TTL_MS = 15 * 60 * 1000;
 
 export interface AccessTokenPayload {
+  issuedAt?: number;
   sub: string;
   mfaVerifiedAt: number | null;
 }
 
 export interface TwoFactorChallengePayload {
+  issuedAt?: number;
   sub: string;
 }
 
 const TWO_FACTOR_PURPOSE = '2fa-login';
 const TWO_FACTOR_TTL = '5m';
 
-export function signAccessToken(userId: string, mfaVerifiedAt: Date | null = null): string {
-  return jwt.sign(mfaVerifiedAt ? { mfaVerifiedAt: mfaVerifiedAt.getTime() } : {}, env.JWT_SECRET, {
-    subject: userId,
-    expiresIn: ACCESS_TTL,
-  });
+export function signAccessToken(
+  userId: string,
+  mfaVerifiedAt: Date | null = null,
+  issuedAtMs = Date.now(),
+): string {
+  return jwt.sign(
+    {
+      issuedAtMs,
+      ...(mfaVerifiedAt ? { mfaVerifiedAt: mfaVerifiedAt.getTime() } : {}),
+    },
+    env.JWT_SECRET,
+    {
+      subject: userId,
+      expiresIn: ACCESS_TTL,
+    },
+  );
 }
 
 export function verifyAccessToken(token: string): AccessTokenPayload {
@@ -38,6 +51,12 @@ export function verifyAccessToken(token: string): AccessTokenPayload {
   }
   return {
     sub: decoded.sub,
+    issuedAt:
+      typeof decoded.issuedAtMs === 'number'
+        ? decoded.issuedAtMs
+        : typeof decoded.iat === 'number'
+          ? decoded.iat * 1000
+          : undefined,
     mfaVerifiedAt:
       typeof decoded.mfaVerifiedAt === 'number' && Number.isSafeInteger(decoded.mfaVerifiedAt)
         ? decoded.mfaVerifiedAt
@@ -45,8 +64,8 @@ export function verifyAccessToken(token: string): AccessTokenPayload {
   };
 }
 
-export function signTwoFactorChallenge(userId: string): string {
-  return jwt.sign({ purpose: TWO_FACTOR_PURPOSE }, env.JWT_SECRET, {
+export function signTwoFactorChallenge(userId: string, issuedAtMs = Date.now()): string {
+  return jwt.sign({ purpose: TWO_FACTOR_PURPOSE, issuedAtMs }, env.JWT_SECRET, {
     subject: userId,
     expiresIn: TWO_FACTOR_TTL,
   });
@@ -62,7 +81,15 @@ export function verifyTwoFactorChallenge(token: string): TwoFactorChallengePaylo
   ) {
     throw new Error('Malformed 2FA challenge');
   }
-  return { sub: decoded.sub };
+  return {
+    sub: decoded.sub,
+    issuedAt:
+      typeof decoded.issuedAtMs === 'number'
+        ? decoded.issuedAtMs
+        : typeof decoded.iat === 'number'
+          ? decoded.iat * 1000
+          : undefined,
+  };
 }
 
 export function generateRefreshToken(): string {

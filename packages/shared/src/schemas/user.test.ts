@@ -2,22 +2,18 @@ import { describe, it, expect } from 'vitest';
 import { createUserSchema, updateUserSchema } from './user';
 
 describe('createUserSchema', () => {
-  it('accepts a valid new user and defaults roleIds to []', () => {
+  it('accepts an invitation without an administrator password', () => {
     const parsed = createUserSchema.parse({
       email: 'cali@example.com',
       name: 'Cali Axmed',
-      password: 'Mosaic!7River8',
+      roleIds: ['engineer'],
     });
-    expect(parsed.roleIds).toEqual([]);
+    expect(parsed.roleIds).toEqual(['engineer']);
+    expect(parsed).not.toHaveProperty('password');
   });
-
-  it('rejects a password shorter than 12 characters', () => {
+  it('requires an authorized role selection', () => {
     expect(
-      createUserSchema.safeParse({
-        email: 'cali@example.com',
-        name: 'Cali',
-        password: 'short',
-      }).success,
+      createUserSchema.safeParse({ email: 'cali@example.com', name: 'Cali', roleIds: [] }).success,
     ).toBe(false);
   });
 
@@ -25,6 +21,17 @@ describe('createUserSchema', () => {
     expect(
       createUserSchema.safeParse({ email: 'nope', name: 'Cali', password: 'Mosaic!7River8' })
         .success,
+    ).toBe(false);
+  });
+
+  it('rejects legacy administrator-supplied passwords', () => {
+    expect(
+      createUserSchema.safeParse({
+        email: 'cali@example.com',
+        name: 'Cali',
+        roleIds: ['engineer'],
+        password: 'Mosaic!7River8',
+      }).success,
     ).toBe(false);
   });
 });

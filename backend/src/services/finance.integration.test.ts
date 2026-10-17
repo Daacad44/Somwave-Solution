@@ -1,4 +1,11 @@
 import { afterAll, describe, expect, it } from 'vitest';
+import express from 'express';
+import cookieParser from 'cookie-parser';
+import { PERMISSIONS } from '@somwave/shared';
+import type { AddressInfo } from 'node:net';
+import { financeRouter } from '../routes/finance.routes';
+import { errorHandler } from '../middleware/errorHandler';
+import { signAccessToken } from '../lib/tokens';
 import { prisma } from '../lib/prisma';
 import { refreshSession } from './auth.service';
 import { hashRefreshToken, verifyAccessToken } from '../lib/tokens';
@@ -158,6 +165,21 @@ describe.skipIf(!local)('finance ledger integration', () => {
       credits: '12.34',
       balanced: true,
     });
+    expect(before.trends).toEqual([
+      { month: '2020-02', currency: 'USD', revenue: '12.34', expenses: '0.00', netProfit: '12.34' },
+    ]);
+    expect(before.accountBalances.find((row) => row.code === cash.code)).toMatchObject({
+      balance: '12.34',
+      type: 'ASSET',
+    });
+    expect(
+      (await financeDashboard(new Date('2020-02-01T00:00:00Z'), new Date('2020-02-02T00:00:00Z')))
+        .currencies,
+    ).toEqual([]);
+    expect(
+      (await financeDashboard(new Date('2020-02-02T00:00:00Z'), new Date('2020-02-03T00:00:00Z')))
+        .currencies[0]?.revenue,
+    ).toBe('12.34');
     expect(
       (await projectProfitability(new Date('2020-02-01'), new Date('2020-03-01')))[0],
     ).toMatchObject({
@@ -240,5 +262,175 @@ describe.skipIf(!local)('finance ledger integration', () => {
         'test-maker',
       ),
     ).rejects.toThrow('Accounting period is closed');
+  });
+});
+
+describe.skipIf(!local)('finance dashboard HTTP diagnostics', () => {
+  it('returns real empty data, validates Mogadishu ranges and enforces MFA and role permissions', async () => {
+    const role = await prisma.role.upsert({
+      where: { name: 'SUPER_ADMIN' },
+      create: { name: 'SUPER_ADMIN' },
+      update: {},
+    });
+    const user = await prisma.user.create({
+      data: {
+        email: `dashboard-${Date.now()}@example.test`,
+        name: 'Dashboard fixture',
+        passwordHash: 'not-a-login-password',
+        twoFactorEnabled: true,
+        roles: { create: { roleId: role.id } },
+      },
+    });
+    const engineerRole = await prisma.role.upsert({
+      where: { name: 'ENGINEER' },
+      create: { name: 'ENGINEER' },
+      update: {},
+    });
+    const engineer = await prisma.user.create({
+      data: {
+        email: `dashboard-engineer-${Date.now()}@example.test`,
+        name: 'Engineer fixture',
+        passwordHash: 'not-a-login-password',
+        twoFactorEnabled: true,
+        roles: { create: { roleId: engineerRole.id } },
+      },
+    });
+    const app = express();
+    app.use(cookieParser());
+    app.use('/api/v1/finance', financeRouter);
+    app.use(errorHandler);
+    const server = app.listen(0, '127.0.0.1');
+    await new Promise<void>((resolve) => server.once('listening', resolve));
+    const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/v1/finance/dashboard`;
+    const request = (id: string, proof: Date | null, query = 'from=1900-01-01&to=1900-02-01') =>
+      fetch(`${url}?${query}`, {
+        headers: { Cookie: `somwave_access=${signAccessToken(id, proof)}` },
+      });
+    try {
+      const denied = await request(user.id, null);
+      expect(denied.status).toBe(403);
+      expect(await denied.json()).toMatchObject({
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Sign out and sign in with your two-factor code before accessing finance',
+        },
+      });
+      const forbidden = await request(engineer.id, new Date());
+      expect(forbidden.status).toBe(403);
+      expect(await forbidden.json()).toMatchObject({
+        error: { message: 'Insufficient permissions' },
+      });
+      const ok = await request(user.id, new Date());
+      expect(ok.status).toBe(200);
+      expect(await ok.json()).toMatchObject({
+        data: {
+          from: '1899-12-31T21:00:00.000Z',
+          to: '1900-01-31T21:00:00.000Z',
+          currencies: [],
+          pendingApprovals: 0,
+          accountBalances: [],
+          timezone: 'Africa/Mogadishu',
+        },
+      });
+      const invalid = await request(user.id, new Date(), 'from=2026-02-30&to=2026-03-01');
+      expect(invalid.status).toBe(400);
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+  });
+});
+
+describe.skipIf(!local)('finance role matrix over real HTTP and PostgreSQL', () => {
+  // Permission fixtures mirror the existing seed policy; role names alone must
+  // never imply privileges (except the explicit SUPER_ADMIN override).
+  it.each([
+    ['ADMIN', true],
+    ['FINANCE_MANAGER', true],
+    ['ACCOUNTANT', true],
+    ['PROJECT_MANAGER', false],
+    ['ENGINEER', false],
+    ['CLIENT', false],
+  ] as const)('%s receives only its authorized company finance access', async (name, allowed) => {
+    const permissionKeys =
+      name === 'ADMIN'
+        ? [
+            PERMISSIONS.FINANCE_READ,
+            PERMISSIONS.FINANCE_CREATE,
+            PERMISSIONS.FINANCE_APPROVE,
+            PERMISSIONS.FINANCE_POST,
+            PERMISSIONS.FINANCE_MANAGE,
+          ]
+        : name === 'FINANCE_MANAGER'
+          ? [
+              PERMISSIONS.FINANCE_READ,
+              PERMISSIONS.FINANCE_CREATE,
+              PERMISSIONS.FINANCE_APPROVE,
+              PERMISSIONS.FINANCE_MANAGE,
+            ]
+          : name === 'ACCOUNTANT'
+            ? [PERMISSIONS.FINANCE_READ, PERMISSIONS.FINANCE_CREATE, PERMISSIONS.FINANCE_POST]
+            : [PERMISSIONS.PROJECTS_READ];
+    for (const key of permissionKeys)
+      await prisma.permission.upsert({ where: { key }, create: { key }, update: {} });
+    const role = await prisma.role.upsert({
+      where: { name },
+      create: { name, permissions: { connect: permissionKeys.map((key) => ({ key })) } },
+      update: { permissions: { set: permissionKeys.map((key) => ({ key })) } },
+    });
+    const user = await prisma.user.create({
+      data: {
+        email: `finance-matrix-${name.toLowerCase()}-${Date.now()}@example.test`,
+        name: `${name} finance fixture`,
+        passwordHash: 'not-a-login-password',
+        twoFactorEnabled: true,
+        roles: { create: { roleId: role.id } },
+      },
+    });
+    const app = express();
+    app.use(cookieParser());
+    app.use(express.json());
+    app.use('/api/v1/finance', financeRouter);
+    app.use(errorHandler);
+    const server = app.listen(0, '127.0.0.1');
+    await new Promise<void>((resolve) => server.once('listening', resolve));
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/v1/finance`;
+    const headers = { Cookie: `somwave_access=${signAccessToken(user.id, new Date())}` };
+    try {
+      for (const endpoint of [
+        '/dashboard?from=1900-01-01&to=1900-02-01',
+        '/accounts',
+        '/transactions',
+        '/journals',
+        '/link-options',
+        '/project-profitability?from=1900-01-01&to=1900-02-01',
+        '/trial-balance?from=1900-01-01&to=1900-02-01',
+      ]) {
+        const response = await fetch(`${base}${endpoint}`, { headers });
+        expect(response.status, `${name} ${endpoint}`).toBe(allowed ? 200 : 403);
+        if (!allowed)
+          expect(await response.json()).toMatchObject({
+            error: { code: 'FORBIDDEN', message: 'Insufficient permissions' },
+          });
+      }
+      // Authorized calls use missing IDs to avoid changing financial records.
+      for (const [action, permit] of [
+        ['approve', name === 'ADMIN' || name === 'FINANCE_MANAGER'],
+        ['post', name === 'ADMIN' || name === 'ACCOUNTANT'],
+      ] as const) {
+        const response = await fetch(`${base}/transactions/does-not-exist/${action}`, {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: '{}',
+        });
+        expect(response.status, `${name} ${action}`).toBe(permit ? 409 : 403);
+        if (!permit) expect(await response.json()).toMatchObject({ error: { code: 'FORBIDDEN' } });
+      }
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
   });
 });

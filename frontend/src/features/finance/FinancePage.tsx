@@ -2,6 +2,8 @@ import { type FormEvent, type ReactNode, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   PERMISSIONS,
+  financeBusinessDate,
+  parseFinanceBusinessDate,
   type CreateFinanceAccountInput,
   type CreateFinanceTransactionInput,
   type FinanceAccountRecord,
@@ -35,16 +37,14 @@ const HISTORY_PAGE_SIZE = 20;
 const fieldClass =
   'h-11 w-full rounded-md border border-border bg-surface px-3 text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent';
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return financeBusinessDate();
 }
 function monthStart(): string {
   return `${today().slice(0, 7)}-01`;
 }
 function nextMonth(): string {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
-    .toISOString()
-    .slice(0, 10);
+  const [year, month] = today().split('-').map(Number) as [number, number, number];
+  return new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 10);
 }
 function money(amount: string, currency: string): string {
   return `${amount} ${currency}`;
@@ -55,6 +55,9 @@ export function FinancePage(): ReactNode {
   const [from, setFrom] = useState(monthStart);
   const [to, setTo] = useState(nextMonth);
   const [message, setMessage] = useState('');
+  const validRange = Boolean(
+    parseFinanceBusinessDate(from) && parseFinanceBusinessDate(to) && from < to,
+  );
   const [editing, setEditing] = useState<FinanceTransactionRecord | null>(null);
   const [transactionFilters, setTransactionFilters] = useState<TransactionHistoryFilters>({
     page: 1,
@@ -93,17 +96,17 @@ export function FinancePage(): ReactNode {
   const dashboard = useQuery({
     queryKey: ['finance-dashboard', from, to],
     queryFn: () => financeApi.dashboard(from, to),
-    enabled: from < to,
+    enabled: validRange,
   });
   const trial = useQuery({
     queryKey: ['finance-trial', from, to],
     queryFn: () => financeApi.trialBalance(from, to),
-    enabled: from < to && tab === 'General Ledger',
+    enabled: validRange && tab === 'General Ledger',
   });
   const projectProfitability = useQuery({
     queryKey: ['finance-project-profitability', from, to],
     queryFn: () => financeApi.projectProfitability(from, to),
-    enabled: from < to && tab === 'Projects',
+    enabled: validRange && tab === 'Projects',
   });
   const journals = useQuery({
     queryKey: ['finance-journals', journalFilters],
@@ -179,17 +182,25 @@ export function FinancePage(): ReactNode {
             value={to}
             onChange={(event) => setTo(event.target.value)}
           />
-          {from >= to ? (
+          {!validRange ? (
             <p className="text-sm text-error">Select an end date after the start date.</p>
           ) : null}
         </div>
       )}
+      <p className="text-sm text-muted">
+        Date filters use Africa/Mogadishu (UTC+03:00). The end date is excluded.
+      </p>
       {tab === 'Overview' &&
+        validRange &&
         (dashboard.isLoading ? (
           <LoadingState rows={3} />
         ) : dashboard.isError || !dashboard.data ? (
           <ErrorState
-            description="Could not load finance dashboard."
+            description={
+              dashboard.error instanceof Error
+                ? dashboard.error.message
+                : 'Could not load finance dashboard.'
+            }
             onRetry={() => void dashboard.refetch()}
           />
         ) : (
@@ -197,6 +208,37 @@ export function FinancePage(): ReactNode {
             <p className="rounded-md border border-border bg-surface-alt p-3 text-sm text-muted">
               {dashboard.data.basis}
             </p>
+            <p className="font-medium">
+              Pending approvals in period: {dashboard.data.pendingApprovals}
+            </p>
+            {dashboard.data.accountBalances.length > 0 && (
+              <section
+                aria-label="Ledger account balances"
+                className="overflow-x-auto rounded-md border border-border p-4"
+              >
+                <h2 className="font-semibold">Asset and liability balances at end date</h2>
+                <table className="mt-3 w-full text-left text-sm">
+                  <thead>
+                    <tr>
+                      <th>Account</th>
+                      <th>Type</th>
+                      <th>Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dashboard.data.accountBalances.map((row) => (
+                      <tr key={`${row.code}:${row.currency}`}>
+                        <td>
+                          {row.code} · {row.name}
+                        </td>
+                        <td>{row.type}</td>
+                        <td>{money(row.balance, row.currency)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+            )}
             {dashboard.data.currencies.length === 0 ? (
               <EmptyState
                 title="No posted journals in this period"
@@ -225,6 +267,44 @@ export function FinancePage(): ReactNode {
                 </div>
               ))
             )}
+            {dashboard.data.trends.length > 0 && (
+              <section
+                aria-label="Financial trends"
+                className="overflow-x-auto rounded-md border border-border p-4"
+              >
+                <h2 className="font-semibold">Monthly financial trends</h2>
+                <table className="mt-3 w-full text-left text-sm">
+                  <thead>
+                    <tr>
+                      <th>Month</th>
+                      <th>Currency</th>
+                      <th>Revenue</th>
+                      <th>Expenses</th>
+                      <th>Net profit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dashboard.data.trends.map((row) => (
+                      <tr key={`${row.month}:${row.currency}`}>
+                        <td>{row.month}</td>
+                        <td>{row.currency}</td>
+                        <td>{row.revenue}</td>
+                        <td>{row.expenses}</td>
+                        <td>{row.netProfit}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+            )}
+            <details className="text-sm text-muted">
+              <summary>Accounting coverage</summary>
+              <ul className="mt-2 list-disc pl-5">
+                {dashboard.data.limitations.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </details>
             <p className="text-sm text-muted">
               Amounts remain separate by currency. They are never added across USD, SOS or another
               currency without an approved exchange rate.
@@ -708,7 +788,9 @@ function TransactionForm({
   const [currency, setCurrency] = useState(initial?.currency ?? 'USD');
   const [category, setCategory] = useState(initial?.category ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
-  const [date, setDate] = useState(initial?.occurredOn.slice(0, 10) ?? today());
+  const [date, setDate] = useState(
+    initial ? financeBusinessDate(new Date(initial.occurredOn)) : today(),
+  );
   const [cashAccountId, setCashAccountId] = useState(initial?.cashAccountId ?? '');
   const [offsetAccountId, setOffsetAccountId] = useState(initial?.offsetAccountId ?? '');
   const [paymentMethod, setPaymentMethod] = useState(initial?.paymentMethod ?? '');
@@ -740,7 +822,10 @@ function TransactionForm({
         currency,
         category,
         description,
-        occurredOn: `${date}T00:00:00.000Z`,
+        occurredOn:
+          initial && financeBusinessDate(new Date(initial.occurredOn)) === date
+            ? initial.occurredOn
+            : parseFinanceBusinessDate(date)!.toISOString(),
         cashAccountId,
         offsetAccountId,
         paymentMethod: paymentMethod || null,
@@ -1128,7 +1213,7 @@ function TransactionList({
                   {row.category} · {row.description}
                 </p>
                 <p className="text-xs text-muted">
-                  {row.occurredOn.slice(0, 10)} · {row.status}
+                  {financeBusinessDate(new Date(row.occurredOn))} · {row.status}
                   {row.externalRef ? ` · Ref ${row.externalRef}` : ''}
                 </p>
                 {row.reviewReason ? (
@@ -1228,7 +1313,7 @@ function JournalCard({
         <strong>
           {row.reference} · {row.currency}
         </strong>
-        <span className="text-sm text-muted">{row.occurredOn.slice(0, 10)}</span>
+        <span className="text-sm text-muted">{financeBusinessDate(new Date(row.occurredOn))}</span>
       </div>
       <p className="mt-1 text-sm">{row.memo}</p>
       <ul className="mt-2 text-sm">

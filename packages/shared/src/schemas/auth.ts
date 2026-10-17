@@ -68,3 +68,12 @@ export function isTwoFactorRequired(roles: readonly string[]): boolean {
     (TWO_FACTOR_REQUIRED_ROLES as readonly string[]).includes(role as RoleName),
   );
 }
+
+export const verifyPasswordResetSchema = z.object({
+  email: z.string().trim().email(),
+  code: twoFactorCodeSchema,
+});
+export const verifyUserInvitationSchema = z.object({ token: z.string().min(32).max(256) });
+export const activateUserInvitationSchema = verifyUserInvitationSchema.extend({
+  password: newPasswordSchema,
+});

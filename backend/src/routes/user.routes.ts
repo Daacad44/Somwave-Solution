@@ -11,6 +11,8 @@ import {
 import { requireAuth } from '../middleware/auth';
 import { rbac } from '../middleware/rbac';
 import { validate } from '../middleware/validate';
+import * as invitations from '../services/user-invitation.service';
+import { sendData } from '../lib/http';
 import * as userController from '../controllers/user.controller';
 import * as roleController from '../controllers/role.controller';
 
@@ -25,6 +27,25 @@ usersRouter.post(
   validate(createUserSchema),
   userController.create,
 );
+usersRouter.get('/invitations', rbac(PERMISSIONS.USERS_READ), async (_req, res, next) => {
+  try {
+    sendData(res, await invitations.listInvitations());
+  } catch (e) {
+    next(e);
+  }
+});
+for (const action of ['resend', 'cancel'] as const)
+  usersRouter.post(
+    `/invitations/:id/${action}`,
+    rbac(PERMISSIONS.USERS_CREATE),
+    async (req, res, next) => {
+      try {
+        sendData(res, await invitations.manageInvitation(req.params.id!, action, req.authUser!));
+      } catch (e) {
+        next(e);
+      }
+    },
+  );
 usersRouter.get('/:id', rbac(PERMISSIONS.USERS_READ), userController.get);
 usersRouter.patch(
   '/:id',

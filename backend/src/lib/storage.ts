@@ -1,30 +1,107 @@
 import { randomUUID } from 'node:crypto';
+import { mkdir, open, writeFile, unlink, realpath } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { dirname, resolve, isAbsolute } from 'node:path';
+import { logger } from './logger';
+import { correlationId } from './requestContext';
 import { ARTICLE_IMAGE_MAX_BYTES, UPLOAD_MAX_BYTES } from '@somwave/shared';
 import { AppError } from './http';
 import { env } from './env';
 
 const memory = new Map<string, Buffer>();
 
-const ALLOWED_PREFIXES: ReadonlyArray<{ mime: string; magic: number[] }> = [
-  { mime: 'application/pdf', magic: [0x25, 0x50, 0x44, 0x46] },
-  { mime: 'image/jpeg', magic: [0xff, 0xd8, 0xff] },
-  { mime: 'image/png', magic: [0x89, 0x50, 0x4e, 0x47] },
-];
-
+/** Shared attachments accept PDF and the same signed image formats as CMS. */
 export function decodeUpload(contentBase64: string, claimedMime: string): Buffer {
   const bytes = Buffer.from(contentBase64, 'base64');
   if (bytes.length === 0) throw new AppError('VALIDATION_ERROR', 400, 'File is empty');
-  if (bytes.length > UPLOAD_MAX_BYTES) {
+  if (bytes.length > UPLOAD_MAX_BYTES)
     throw new AppError('VALIDATION_ERROR', 400, 'File exceeds 25 MB');
-  }
-  const match = ALLOWED_PREFIXES.find((rule) => rule.mime === claimedMime);
-  if (!match) {
-    throw new AppError('VALIDATION_ERROR', 400, 'File type is not allowed');
-  }
-  if (!match.magic.every((value, index) => bytes[index] === value)) {
-    throw new AppError('VALIDATION_ERROR', 400, 'File content does not match its type');
+  if (claimedMime === 'application/pdf') {
+    if (bytes.toString('ascii', 0, 5) !== '%PDF-') {
+      throw new AppError('VALIDATION_ERROR', 400, 'File content does not match its type');
+    }
+  } else if (
+    !ARTICLE_IMAGE_TYPES.some((rule) => rule.mime === claimedMime && rule.matches(bytes))
+  ) {
+    throw new AppError(
+      'VALIDATION_ERROR',
+      400,
+      'File content does not match an allowed PDF, JPG, PNG or WebP type',
+    );
   }
   return bytes;
+}
+
+export function storageStatus(): { provider: string; configured: boolean; durable: boolean } {
+  const provider =
+    env.STORAGE_PROVIDER ??
+    (s3Configured() ? 's3' : env.NODE_ENV === 'production' ? 'unconfigured' : 'memory');
+  const configured =
+    provider === 's3'
+      ? s3Configured()
+      : provider === 'filesystem'
+        ? Boolean(env.STORAGE_LOCAL_PATH && isAbsolute(env.STORAGE_LOCAL_PATH))
+        : provider === 'memory' && env.NODE_ENV !== 'production';
+  return { provider, configured, durable: configured && provider !== 'memory' };
+}
+
+async function localPath(key: string): Promise<string> {
+  const root = env.STORAGE_LOCAL_PATH;
+  if (!root || !isAbsolute(root))
+    throw new AppError('INTERNAL_ERROR', 503, 'File storage is unavailable');
+  await mkdir(root, { recursive: true, mode: 0o700 });
+  const canonicalRoot = await realpath(root);
+  const folder = resolve(canonicalRoot, dirname(key));
+  await mkdir(folder, { recursive: true, mode: 0o700 });
+  // Refuse a symlinked object directory; safe keys alone do not protect mounts.
+  if ((await realpath(folder)) !== folder)
+    throw new AppError('INTERNAL_ERROR', 503, 'File storage is unavailable');
+  return resolve(folder, key.split('/').at(-1)!);
+}
+
+async function storageOperation<T>(
+  operation: string,
+  key: string,
+  run: (provider: string) => Promise<T>,
+): Promise<T> {
+  const started = Date.now();
+  const status = storageStatus();
+  try {
+    if (!status.configured)
+      throw new AppError('INTERNAL_ERROR', 503, 'File storage is unavailable');
+    const result = await run(status.provider);
+    logger.info(
+      {
+        requestId: correlationId(),
+        operation,
+        provider: status.provider,
+        module: key.startsWith('article-images/') ? 'cms-images' : 'attachments',
+        httpStatus: 200,
+        durationMs: Date.now() - started,
+      },
+      'storage operation',
+    );
+    return result;
+  } catch (error) {
+    const category =
+      error && typeof error === 'object' && 'code' in error
+        ? String(error.code)
+        : error && typeof error === 'object' && 'name' in error
+          ? String(error.name)
+          : 'PROVIDER_ERROR';
+    logger.error(
+      {
+        requestId: correlationId(),
+        operation,
+        provider: status.provider,
+        errorCategory: category,
+        httpStatus: 503,
+        durationMs: Date.now() - started,
+      },
+      'storage operation failed',
+    );
+    throw new AppError('INTERNAL_ERROR', 503, 'File storage is unavailable');
+  }
 }
 
 const SAFE_KEY = /^(obj\/[0-9a-f-]{36}|article-images\/[0-9a-f-]{36}\.(jpg|png|webp))$/;
@@ -41,6 +118,7 @@ async function s3Client() {
   const { S3Client } = await import('@aws-sdk/client-s3');
   return new S3Client({
     region: env.S3_REGION ?? 'us-east-1',
+    forcePathStyle: env.S3_FORCE_PATH_STYLE === 'true',
     endpoint: env.S3_ENDPOINT,
     credentials: {
       accessKeyId: env.S3_ACCESS_KEY ?? '',
@@ -50,26 +128,24 @@ async function s3Client() {
 }
 
 async function storeBytes(key: string, bytes: Buffer, mimeType: string): Promise<void> {
-  if (!isSafeStorageKey(key)) {
-    throw new AppError('VALIDATION_ERROR', 400, 'Invalid storage key');
-  }
-  if (s3Configured()) {
-    const { PutObjectCommand } = await import('@aws-sdk/client-s3');
-    const client = await s3Client();
-    await client.send(
-      new PutObjectCommand({
-        Bucket: env.S3_BUCKET,
-        Key: key,
-        Body: bytes,
-        ContentType: mimeType,
-      }),
-    );
-    return;
-  }
-  if (env.NODE_ENV === 'production') {
-    throw new AppError('INTERNAL_ERROR', 503, 'File storage is unavailable');
-  }
-  memory.set(key, bytes);
+  if (!isSafeStorageKey(key)) throw new AppError('VALIDATION_ERROR', 400, 'Invalid storage key');
+  await storageOperation('upload', key, async (provider) => {
+    if (provider === 's3') {
+      const { PutObjectCommand } = await import('@aws-sdk/client-s3');
+      const client = await s3Client();
+      await client.send(
+        new PutObjectCommand({
+          Bucket: env.S3_BUCKET,
+          Key: key,
+          Body: bytes,
+          ContentType: mimeType,
+        }),
+      );
+    } else if (provider === 'filesystem') {
+      // O_EXCL prevents overwriting existing objects or following object symlinks.
+      await writeFile(await localPath(key), bytes, { flag: 'wx', mode: 0o600 });
+    } else memory.set(key, bytes);
+  });
 }
 
 export async function putObject(bytes: Buffer, mimeType: string): Promise<string> {
@@ -149,31 +225,50 @@ export async function putArticleImage(
 
 export async function readObject(key: string): Promise<Buffer | null> {
   if (!isSafeStorageKey(key)) return null;
-  if (s3Configured()) {
+  return storageOperation('retrieve', key, async (provider) => {
     try {
-      const { GetObjectCommand } = await import('@aws-sdk/client-s3');
-      const client = await s3Client();
-      const output = await client.send(new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: key }));
-      if (!output.Body) return null;
-      return Buffer.from(await output.Body.transformToByteArray());
-    } catch (err) {
-      const name = err && typeof err === 'object' && 'name' in err ? String(err.name) : '';
-      if (name === 'NoSuchKey' || name === 'NotFound') return null;
-      throw new AppError('INTERNAL_ERROR', 503, 'File storage is unavailable');
+      if (provider === 's3') {
+        const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+        const client = await s3Client();
+        const output = await client.send(new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: key }));
+        return output.Body ? Buffer.from(await output.Body.transformToByteArray()) : null;
+      }
+      if (provider === 'filesystem') {
+        const path = await localPath(key);
+        // Refuse object symlinks atomically, including swaps after path resolution.
+        const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+        try {
+          return await handle.readFile();
+        } finally {
+          await handle.close();
+        }
+      }
+      return memory.get(key) ?? null;
+    } catch (error) {
+      const name = error && typeof error === 'object' && 'name' in error ? String(error.name) : '';
+      const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : '';
+      if (name === 'NoSuchKey' || name === 'NotFound' || code === 'ENOENT') return null;
+      throw error;
     }
-  }
-  return memory.get(key) ?? null;
+  });
 }
 
 export async function deleteObject(key: string): Promise<void> {
   if (!isSafeStorageKey(key)) return;
-  if (s3Configured()) {
-    const { DeleteObjectCommand } = await import('@aws-sdk/client-s3');
-    const client = await s3Client();
-    await client.send(new DeleteObjectCommand({ Bucket: env.S3_BUCKET, Key: key }));
-    return;
-  }
-  memory.delete(key);
+  await storageOperation('delete', key, async (provider) => {
+    if (provider === 's3') {
+      const { DeleteObjectCommand } = await import('@aws-sdk/client-s3');
+      const client = await s3Client();
+      await client.send(new DeleteObjectCommand({ Bucket: env.S3_BUCKET, Key: key }));
+    } else if (provider === 'filesystem') {
+      try {
+        await unlink(await localPath(key));
+      } catch (error) {
+        if (!(error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT'))
+          throw error;
+      }
+    } else memory.delete(key);
+  });
 }
 
 export function getObject(key: string): Buffer | null {

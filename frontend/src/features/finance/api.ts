@@ -39,6 +39,17 @@ export type FinanceDashboard = {
   from: string;
   to: string;
   basis: string;
+  timezone: string;
+  pendingApprovals: number;
+  trends: {
+    month: string;
+    currency: string;
+    revenue: string;
+    expenses: string;
+    netProfit: string;
+  }[];
+  accountBalances: TrialBalanceRow[];
+  limitations: string[];
   currencies: {
     currency: string;
     revenue: string;

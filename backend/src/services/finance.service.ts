@@ -655,7 +655,32 @@ export async function trialBalance(from: Date, to: Date) {
 }
 
 export async function financeDashboard(from: Date, to: Date) {
-  const rows = await trialBalance(from, to);
+  const [rows, balances, pendingApprovals, trends] = await Promise.all([
+    trialBalance(from, to),
+    trialBalance(new Date('0001-01-01T00:00:00.000Z'), to),
+    prisma.financeTransaction.count({
+      where: { status: 'SUBMITTED', occurredOn: { gte: from, lt: to } },
+    }),
+    prisma.$queryRaw<
+      { month: string; currency: string; revenue: Prisma.Decimal; expenses: Prisma.Decimal }[]
+    >`
+      SELECT to_char(j.occurred_on + INTERVAL '3 hours', 'YYYY-MM') AS month, j.currency,
+        SUM(CASE WHEN a.type = 'REVENUE' THEN l.credit - l.debit ELSE 0 END) AS revenue,
+        SUM(CASE WHEN a.type IN ('EXPENSE', 'DIRECT_COST') THEN l.debit - l.credit ELSE 0 END) AS expenses
+      FROM finance_journal_lines l JOIN finance_journals j ON j.id = l.journal_id
+      JOIN finance_accounts a ON a.id = l.account_id
+      WHERE j.is_finalized = true AND j.occurred_on >= ${from} AND j.occurred_on < ${to}
+      GROUP BY month, j.currency ORDER BY month, j.currency`,
+  ]);
+  const accountBalances = balances
+    .filter((row) => row.type === 'ASSET' || row.type === 'LIABILITY')
+    .map((row) => ({
+      ...row,
+      balance:
+        row.type === 'LIABILITY'
+          ? new Prisma.Decimal(row.credit).sub(row.debit).toFixed(2)
+          : row.balance,
+    }));
   const byCurrency = new Map<
     string,
     {
@@ -689,6 +714,21 @@ export async function financeDashboard(from: Date, to: Date) {
   return {
     from: from.toISOString(),
     to: to.toISOString(),
+    timezone: 'Africa/Mogadishu',
+    pendingApprovals,
+    trends: trends.map((row) => ({
+      month: row.month,
+      currency: row.currency,
+      revenue: row.revenue.toFixed(2),
+      expenses: row.expenses.toFixed(2),
+      netProfit: row.revenue.sub(row.expenses).toFixed(2),
+    })),
+    accountBalances,
+    limitations: [
+      'Asset accounts are not classified as cash, bank or receivable; liability accounts are not classified as payable.',
+      'Legacy invoices, project budgets and payments lack currency metadata and are not added to journal totals.',
+      'Payroll, recurring expenses and bank reconciliation are not implemented.',
+    ],
     basis:
       'Posted finance journals only; legacy invoices and payments are not yet reconciled into the ledger',
     currencies: [...byCurrency.values()].map((row) => ({
