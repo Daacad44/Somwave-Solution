@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Clean architectural hero illustration. No text, no logos, no UI baked in —
+  everything on the hero (headline, cards, stats) is live HTML on top of this.
+  Pure SVG so it stays crisp at every viewport, 1200×900.
+-->
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 1200 900"
+  role="img"
+  aria-labelledby="hero-skyline-title"
+  preserveAspectRatio="xMidYMid slice"
+>
+  <title id="hero-skyline-title">Stylised modern technology skyline with soft glass towers and connection lines</title>
+
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#eff6ff" />
+      <stop offset="40%" stop-color="#dbeafe" />
+      <stop offset="100%" stop-color="#bfdbfe" />
+    </linearGradient>
+
+    <radialGradient id="sun" cx="78%" cy="18%" r="45%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
+      <stop offset="60%" stop-color="#dbeafe" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#dbeafe" stop-opacity="0" />
+    </radialGradient>
+
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1462f2" stop-opacity="0.95" />
+      <stop offset="55%" stop-color="#2a7dff" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="#0b47d1" stop-opacity="0.95" />
+    </linearGradient>
+
+    <linearGradient id="glass-highlight" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0" />
+      <stop offset="50%" stop-color="#ffffff" stop-opacity="0.18" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </linearGradient>
+
+    <linearGradient id="towerBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#60a5fa" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#1e40af" stop-opacity="0.65" />
+    </linearGradient>
+
+    <linearGradient id="towerBg2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#93c5fd" stop-opacity="0.35" />
+      <stop offset="100%" stop-color="#1e3a8a" stop-opacity="0.55" />
+    </linearGradient>
+
+    <linearGradient id="reflection" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1462f2" stop-opacity="0.35" />
+      <stop offset="100%" stop-color="#1462f2" stop-opacity="0" />
+    </linearGradient>
+
+    <pattern id="windows" width="22" height="18" patternUnits="userSpaceOnUse">
+      <rect width="22" height="18" fill="transparent" />
+      <rect x="2" y="2" width="8" height="7" fill="#ffffff" opacity="0.18" rx="1" />
+      <rect x="12" y="2" width="8" height="7" fill="#ffffff" opacity="0.12" rx="1" />
+      <rect x="2" y="10" width="8" height="7" fill="#ffffff" opacity="0.1" rx="1" />
+      <rect x="12" y="10" width="8" height="7" fill="#ffffff" opacity="0.22" rx="1" />
+    </pattern>
+
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="12" />
+    </filter>
+  </defs>
+
+  <!-- Sky and ambient light -->
+  <rect width="1200" height="900" fill="url(#sky)" />
+  <rect width="1200" height="900" fill="url(#sun)" />
+
+  <!-- Faint grid, mimics a technical blueprint -->
+  <g opacity="0.14" stroke="#1462f2" stroke-width="1">
+    <path d="M0 150H1200M0 300H1200M0 450H1200M0 600H1200M0 750H1200" />
+    <path d="M150 0V900M300 0V900M450 0V900M600 0V900M750 0V900M900 0V900M1050 0V900" />
+  </g>
+
+  <!-- Distant cityscape silhouette, far layer -->
+  <g opacity="0.35">
+    <rect x="0" y="520" width="110" height="260" fill="url(#towerBg2)" rx="2" />
+    <rect x="110" y="470" width="80" height="310" fill="url(#towerBg2)" rx="2" />
+    <rect x="190" y="540" width="60" height="240" fill="url(#towerBg2)" rx="2" />
+    <rect x="950" y="510" width="90" height="270" fill="url(#towerBg2)" rx="2" />
+    <rect x="1040" y="470" width="70" height="310" fill="url(#towerBg2)" rx="2" />
+    <rect x="1110" y="530" width="90" height="250" fill="url(#towerBg2)" rx="2" />
+  </g>
+
+  <!-- Mid-layer towers -->
+  <g opacity="0.6">
+    <rect x="80" y="440" width="130" height="340" fill="url(#towerBg)" rx="4" />
+    <rect x="80" y="440" width="130" height="340" fill="url(#windows)" rx="4" />
+
+    <rect x="210" y="380" width="100" height="400" fill="url(#towerBg)" rx="4" />
+    <rect x="210" y="380" width="100" height="400" fill="url(#windows)" rx="4" />
+
+    <rect x="910" y="420" width="120" height="360" fill="url(#towerBg)" rx="4" />
+    <rect x="910" y="420" width="120" height="360" fill="url(#windows)" rx="4" />
+
+    <rect x="1030" y="360" width="120" height="420" fill="url(#towerBg)" rx="4" />
+    <rect x="1030" y="360" width="120" height="420" fill="url(#windows)" rx="4" />
+  </g>
+
+  <!-- Hero glass tower, centred (modern, premium) -->
+  <g>
+    <!-- Base podium -->
+    <rect x="430" y="720" width="340" height="60" fill="#1e3a8a" opacity="0.9" rx="6" />
+    <!-- Entrance glow -->
+    <rect x="560" y="720" width="80" height="60" fill="#fbbf24" opacity="0.55" rx="4" />
+
+    <!-- Main glass body -->
+    <rect x="460" y="200" width="280" height="520" fill="url(#glass)" rx="10" />
+    <rect x="460" y="200" width="280" height="520" fill="url(#windows)" rx="10" />
+    <rect x="460" y="200" width="280" height="520" fill="url(#glass-highlight)" rx="10" />
+
+    <!-- Cantilevered terrace -->
+    <rect x="430" y="340" width="340" height="24" fill="#0b47d1" opacity="0.85" rx="4" />
+    <rect x="430" y="520" width="340" height="18" fill="#0b47d1" opacity="0.65" rx="4" />
+
+    <!-- Vertical highlight strip -->
+    <rect x="590" y="200" width="20" height="520" fill="#ffffff" opacity="0.14" rx="2" />
+
+    <!-- Rooftop crown -->
+    <rect x="490" y="180" width="220" height="20" fill="#1e3a8a" opacity="0.9" rx="4" />
+    <rect x="585" y="150" width="30" height="36" fill="#1e3a8a" opacity="0.9" rx="2" />
+
+    <!-- Soft tower reflection on ground -->
+    <rect x="470" y="780" width="260" height="80" fill="url(#reflection)" rx="4" />
+  </g>
+
+  <!-- Foreground plaza / water line -->
+  <rect x="0" y="780" width="1200" height="120" fill="#dbeafe" opacity="0.55" />
+  <rect x="0" y="780" width="1200" height="2" fill="#1462f2" opacity="0.3" />
+
+  <!-- Subtle connection arcs — hints at the "connected" idea -->
+  <g fill="none" stroke="#1462f2" stroke-width="1.5" opacity="0.4">
+    <path d="M240 320 Q 600 110 960 300" stroke-dasharray="2 6" />
+    <path d="M180 480 Q 600 220 1020 460" stroke-dasharray="2 6" />
+  </g>
+  <g fill="#1462f2">
+    <circle cx="240" cy="320" r="4" />
+    <circle cx="960" cy="300" r="4" />
+    <circle cx="180" cy="480" r="4" />
+    <circle cx="1020" cy="460" r="4" />
+  </g>
+
+  <!-- Signal nodes above the tower -->
+  <g fill="none" stroke="#1462f2" stroke-width="1.5" opacity="0.5">
+    <circle cx="600" cy="130" r="30" />
+    <circle cx="600" cy="130" r="55" opacity="0.4" />
+    <circle cx="600" cy="130" r="85" opacity="0.25" />
+  </g>
+</svg>
