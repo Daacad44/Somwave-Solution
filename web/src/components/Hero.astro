@@ -55,19 +55,27 @@ const effectiveImage = legacyBaked.has(hero.imageUrl) ? DEFAULT_SKYLINE : hero.i
 // Positions are expressed as a percentage of the art container so they move
 // with the layout and never collide with the image's own content (there is
 // no baked UI in the SVG to collide with).
-const floatingCards = [
+interface FloatingCard {
+  id: string;
+  title: string;
+  caption: string;
+  icon: 'analytics' | 'value' | 'trust' | 'software';
+  position: 'tl' | 'tr' | 'bl' | 'br';
+  accent?: boolean;
+}
+const floatingCards: FloatingCard[] = [
   {
     id: 'growth',
     title: 'Drive Digital Growth',
     caption: 'From idea to impact',
-    icon: 'analytics' as const,
+    icon: 'analytics',
     position: 'tl',
   },
   {
     id: 'projects',
     title: '100+ Projects',
     caption: 'Delivered end to end',
-    icon: 'value' as const,
+    icon: 'value',
     position: 'tr',
     accent: true,
   },
@@ -75,17 +83,17 @@ const floatingCards = [
     id: 'secure',
     title: 'Secure & Scalable',
     caption: 'Enterprise-grade',
-    icon: 'trust' as const,
+    icon: 'trust',
     position: 'bl',
   },
   {
     id: 'custom',
     title: 'Custom Solutions',
     caption: 'Built for your business',
-    icon: 'software' as const,
+    icon: 'software',
     position: 'br',
   },
-] as const;
+];
 ---
 
 <section class="hero" aria-labelledby="hero-heading" data-hero>
