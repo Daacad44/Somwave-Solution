@@ -29,12 +29,22 @@ try {
   // Keep the verified defaults when the CMS is temporarily unavailable.
 }
 const siteContent = homepage.siteContent;
-// Preload the single hero image. Legacy device/showcase paths are mapped onto
-// their maintained equivalents so a stale CMS value never races the LCP.
+// Preload the active hero image. Legacy stored paths (device mockups and the
+// earlier architecture crop that contained the mockup's own UI) are mapped to
+// the hand-authored SVG skyline so stale CMS values never render baked UI.
+const legacyBaked = new Set([
+  '/images/hero-somwave.png',
+  '/images/hero-devices-1200.webp',
+  '/images/hero-somwave-1200.webp',
+  '/images/hero-software-1200.webp',
+  '/images/hero-architecture-480.webp',
+  '/images/hero-architecture-768.webp',
+  '/images/hero-architecture-1200.webp',
+]);
 const heroImage = siteContent.hero.imageUrl;
-const legacyHero = heroImage === '/images/hero-somwave.png' || heroImage === '/images/hero-devices-1200.webp';
-const firstImage = legacyHero ? '/images/hero-architecture-1200.webp' : heroImage;
-const architectureHero = firstImage === '/images/hero-architecture-1200.webp';
+const firstImage = legacyBaked.has(heroImage) ? '/images/hero-skyline.svg' : heroImage;
+// SVG has no srcset variants; only remote-uploaded bitmaps do, and ImageKit
+// generates its own variants on request.
 const visibleSections = siteContent.sectionOrder.filter((id) => !siteContent.hiddenSections.includes(id));
 ---
 
@@ -44,9 +54,7 @@ const visibleSections = siteContent.sectionOrder.filter((id) => !siteContent.hid
   siteContent={siteContent}
   homepage
   preloadImage={firstImage || undefined}
-  preloadImageSrcset={architectureHero
-    ? '/images/hero-architecture-480.webp 480w, /images/hero-architecture-768.webp 768w, /images/hero-architecture-1200.webp 1200w'
-    : undefined}
+  preloadImageSrcset={undefined}
 >
   <Hero content={siteContent} />
   {visibleSections.map((id) => {

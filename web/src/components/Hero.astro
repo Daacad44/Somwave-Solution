@@ -33,14 +33,67 @@ const stats = [
   { value: '24/7', label: 'Technical Support' },
 ] as const;
 
-const isUploadedImage = /^https:\/\//.test(hero.imageUrl);
-const srcset = isUploadedImage
-  ? undefined
-  : [
-      '/images/hero-architecture-480.webp 480w',
-      '/images/hero-architecture-768.webp 768w',
-      '/images/hero-architecture-1200.webp 1200w',
-    ].join(', ');
+// Hero image source. Default uses the hand-authored SVG skyline (no baked UI,
+// no logos, no text). When an administrator uploads a photo through the CMS,
+// that photo replaces the SVG; the SVG remains the fallback for the default
+// state so a brand-new install never ships embedded screenshot UI.
+const DEFAULT_SKYLINE = '/images/hero-skyline.svg';
+const legacyBaked = new Set([
+  '/images/hero-devices-1200.webp',
+  '/images/hero-somwave-1200.webp',
+  '/images/hero-software-1200.webp',
+  '/images/hero-somwave.png',
+  '/images/hero-architecture-1200.webp',
+  '/images/hero-architecture-768.webp',
+  '/images/hero-architecture-480.webp',
+]);
+// The SVG scales natively and ImageKit URLs ship their own responsive variants,
+// so there is no srcset for either; the single `src` is enough.
+const effectiveImage = legacyBaked.has(hero.imageUrl) ? DEFAULT_SKYLINE : hero.imageUrl;
+
+// Floating performance highlights, overlaid as real HTML on top of the art.
+// Positions are expressed as a percentage of the art container so they move
+// with the layout and never collide with the image's own content (there is
+// no baked UI in the SVG to collide with).
+interface FloatingCard {
+  id: string;
+  title: string;
+  caption: string;
+  icon: 'analytics' | 'value' | 'trust' | 'software';
+  position: 'tl' | 'tr' | 'bl' | 'br';
+  accent?: boolean;
+}
+const floatingCards: FloatingCard[] = [
+  {
+    id: 'growth',
+    title: 'Drive Digital Growth',
+    caption: 'From idea to impact',
+    icon: 'analytics',
+    position: 'tl',
+  },
+  {
+    id: 'projects',
+    title: '100+ Projects',
+    caption: 'Delivered end to end',
+    icon: 'value',
+    position: 'tr',
+    accent: true,
+  },
+  {
+    id: 'secure',
+    title: 'Secure & Scalable',
+    caption: 'Enterprise-grade',
+    icon: 'trust',
+    position: 'bl',
+  },
+  {
+    id: 'custom',
+    title: 'Custom Solutions',
+    caption: 'Built for your business',
+    icon: 'software',
+    position: 'br',
+  },
+];
 ---
 
 <section class="hero" aria-labelledby="hero-heading" data-hero>
@@ -109,34 +162,35 @@ const srcset = isUploadedImage
 
     <div class="hero-art" data-reveal>
       <div class="hero-art-frame" data-hero-tilt>
-        {
-          srcset ? (
-            <img
-              src={hero.imageUrl}
-              srcset={srcset}
-              sizes="(max-width: 1023px) 100vw, 46vw"
-              width="1200"
-              height="891"
-              alt={hero.imageAlt}
-              loading="eager"
-              decoding="async"
-              fetchpriority="high"
-              class="hero-art-image"
-            />
-          ) : (
-            <img
-              src={hero.imageUrl}
-              width="1200"
-              height="891"
-              alt={hero.imageAlt}
-              loading="eager"
-              decoding="async"
-              fetchpriority="high"
-              class="hero-art-image"
-            />
-          )
-        }
+        <img
+          src={effectiveImage}
+          width="1200"
+          height="900"
+          alt={hero.imageAlt}
+          loading="eager"
+          decoding="async"
+          fetchpriority="high"
+          class="hero-art-image"
+        />
       </div>
+
+      <!-- Floating highlights. Real HTML, keyboard accessible, hidden from
+           assistive tech because the headline + stats already carry the facts. -->
+      <ul class="hero-floats" aria-hidden="true">
+        {
+          floatingCards.map((card) => (
+            <li class:list={['hero-float', `hero-float-${card.position}`, card.accent && 'is-accent']}>
+              <span class="hero-float-icon">
+                <HomeIcon name={card.icon} class="h-5 w-5" />
+              </span>
+              <span class="hero-float-body">
+                <strong>{card.title}</strong>
+                <small>{card.caption}</small>
+              </span>
+            </li>
+          ))
+        }
+      </ul>
     </div>
   </div>
 </section>
@@ -404,6 +458,113 @@ const srcset = isUploadedImage
     display: block;
     width: 100%;
     height: auto;
+    background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+  }
+
+  /* Floating performance highlights. Pure HTML; the SVG behind them has no
+     text or UI, so these are the only labels on the hero art. */
+  .hero-floats {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    pointer-events: none;
+  }
+
+  .hero-float {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.6rem 0.9rem;
+    min-width: 10rem;
+    max-width: 13.5rem;
+    background: rgb(255 255 255 / 0.95);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgb(216 224 239 / 0.9);
+    border-radius: 14px;
+    box-shadow:
+      0 10px 24px -8px rgb(11 31 58 / 0.18),
+      0 2px 6px -2px rgb(11 31 58 / 0.08);
+    pointer-events: auto;
+    animation: hero-float 7s ease-in-out infinite;
+  }
+
+  .hero-float.is-accent {
+    background: linear-gradient(135deg, #1462f2 0%, #0b47d1 100%);
+    border-color: transparent;
+    color: #fff;
+    box-shadow:
+      0 14px 32px -10px rgb(20 98 242 / 0.5),
+      0 2px 6px rgb(20 98 242 / 0.2);
+  }
+
+  .hero-float-icon {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: rgb(20 98 242 / 0.1);
+    color: var(--color-brand, #1462f2);
+    flex-shrink: 0;
+  }
+  .hero-float.is-accent .hero-float-icon {
+    background: rgb(255 255 255 / 0.18);
+    color: #fff;
+  }
+
+  .hero-float-body {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+  }
+  .hero-float-body strong {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--color-primary, #0b1f3a);
+  }
+  .hero-float-body small {
+    font-size: 0.6875rem;
+    color: var(--color-muted, #4b5a7a);
+  }
+  .hero-float.is-accent .hero-float-body strong,
+  .hero-float.is-accent .hero-float-body small {
+    color: #fff;
+  }
+
+  /* Four corners of the art container, nudged inward so they sit over the sky
+     area and not the glass tower centre. */
+  .hero-float-tl {
+    top: 8%;
+    left: -4%;
+    animation-delay: 0s;
+  }
+  .hero-float-tr {
+    top: 10%;
+    right: -4%;
+    animation-delay: 1.4s;
+  }
+  .hero-float-bl {
+    bottom: 10%;
+    left: -2%;
+    animation-delay: 2.8s;
+  }
+  .hero-float-br {
+    bottom: 8%;
+    right: -2%;
+    animation-delay: 4.2s;
+  }
+
+  @keyframes hero-float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-6px);
+    }
   }
 
   /* Scroll-reveal: start hidden, revealed by IntersectionObserver. */
@@ -431,6 +592,18 @@ const srcset = isUploadedImage
     transition-delay: 240ms;
   }
 
+  /* Tablet: pull cards inward so they stay inside the viewport. */
+  @media (max-width: 1023px) {
+    .hero-float-tl,
+    .hero-float-bl {
+      left: 2%;
+    }
+    .hero-float-tr,
+    .hero-float-br {
+      right: 2%;
+    }
+  }
+
   @media (max-width: 768px) {
     .hero-ambient-glow {
       display: none;
@@ -445,6 +618,16 @@ const srcset = isUploadedImage
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 1rem;
     }
+    /* Reduce to two cards on mobile — top-left and bottom-right — to avoid
+       overpowering the image on a narrow screen. */
+    .hero-float {
+      min-width: 8.5rem;
+      padding: 0.5rem 0.7rem;
+    }
+    .hero-float-tr,
+    .hero-float-bl {
+      display: none;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -456,8 +639,10 @@ const srcset = isUploadedImage
     .hero-ambient-glow,
     .hero-art-frame,
     .hero-cta,
-    .hero-service {
+    .hero-service,
+    .hero-float {
       transition: none !important;
+      animation: none !important;
     }
     .hero-cta-primary::before {
       display: none;
