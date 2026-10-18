@@ -21,6 +21,7 @@ import {
   type JournalHistoryFilters,
   type TransactionHistoryFilters,
 } from './api';
+import { FinanceStepUp, financeAccessReason } from './FinanceStepUp';
 
 type Tab =
   'Overview' | 'Transactions' | 'Approvals' | 'Projects' | 'Chart of Accounts' | 'General Ledger';
@@ -139,6 +140,18 @@ export function FinancePage(): ReactNode {
     },
     onError: (error: Error) => setMessage(error.message),
   });
+  // Every finance endpoint shares the 2FA gate; the dashboard query runs first.
+  const accessReason = financeAccessReason(dashboard.error);
+  if (accessReason) {
+    return (
+      <div className="space-y-6">
+        <header>
+          <h1 className="text-2xl font-semibold text-ink">Financial Management</h1>
+        </header>
+        <FinanceStepUp reason={accessReason} />
+      </div>
+    );
+  }
   return (
     <div className="space-y-6">
       <header>

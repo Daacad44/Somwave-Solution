@@ -124,6 +124,14 @@ authRouter.post(
   validate(confirmTwoFactorSchema),
   authController.confirmTwoFactor,
 );
+// Upgrades the current session after re-entering a TOTP or backup code (finance step-up).
+authRouter.post(
+  '/2fa/step-up',
+  requireAuth,
+  loginIpRateLimiter,
+  validate(disableTwoFactorSchema),
+  authController.stepUpTwoFactor,
+);
 authRouter.post(
   '/2fa/disable',
   requireAuth,

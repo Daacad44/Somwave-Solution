@@ -74,11 +74,22 @@ export class EvcPlusGateway implements PaymentGateway {
       });
     });
 
-    const { transactionId } = await initiateEvcCharge({
-      amount: amount.toFixed(2),
-      phone: input.payerPhone,
-      merchantReference: pending.id,
-    });
+    let transactionId: string;
+    try {
+      ({ transactionId } = await initiateEvcCharge({
+        amount: amount.toFixed(2),
+        phone: input.payerPhone,
+        merchantReference: pending.id,
+      }));
+    } catch (error) {
+      // PAYMENT_FAILED means the provider refused (or is not configured): nothing
+      // was charged, so release the reserved amount. Network errors and timeouts
+      // are ambiguous and stay PENDING until the provider webhook settles them.
+      if (error instanceof AppError && error.code === 'PAYMENT_FAILED') {
+        await prisma.payment.update({ where: { id: pending.id }, data: { status: 'FAILED' } });
+      }
+      throw error;
+    }
 
     const updated = await prisma.payment.update({
       where: { id: pending.id },

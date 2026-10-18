@@ -220,7 +220,7 @@ async function issueBackupCodes(userId: string): Promise<string[]> {
 export async function confirmTwoFactorEnrolment(
   userId: string,
   code: string,
-): Promise<{ user: AuthUser; backupCodes: string[] }> {
+): Promise<{ user: AuthUser; backupCodes: string[]; session: IssuedSession }> {
   const user = await loadActiveUser({ id: userId });
   if (!user) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
   if (user.twoFactorEnabled) {
@@ -233,14 +233,24 @@ export async function confirmTwoFactorEnrolment(
   if (!valid) {
     throw new AppError('VALIDATION_ERROR', 400, 'Invalid 2FA code');
   }
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { twoFactorEnabled: true },
+  // A TOTP code was just verified, so the replacement session carries MFA proof.
+  // Without it, finance stayed 403 until the user signed out and back in.
+  const session = await prisma.$transaction(async (tx) => {
+    await tx.user.update({ where: { id: user.id }, data: { twoFactorEnabled: true } });
+    const updated = await loadActiveUser({ id: user.id }, tx);
+    if (!updated) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+    return issueSession(updated, new Date(), tx);
   });
   const backupCodes = await issueBackupCodes(user.id);
-  const updated = await loadActiveUser({ id: user.id });
-  if (!updated) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
-  return { user: toAuthUser(updated), backupCodes };
+  return { user: session.user, backupCodes, session };
+}
+
+/** Re-verifies a signed-in user's 2FA code and issues a session with MFA proof. */
+export async function stepUpTwoFactor(userId: string, code: string): Promise<IssuedSession> {
+  const user = await loadActiveUser({ id: userId });
+  if (!user) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+  await assertCurrentTwoFactorCode(user, code);
+  return withCurrentCredentials(user, (current, tx) => issueSession(current, new Date(), tx));
 }
 
 async function assertCurrentTwoFactorCode(user: UserWithRoles, code: string): Promise<void> {

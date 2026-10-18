@@ -52,8 +52,22 @@ export function assertBalanced(lines: { debit: Prisma.Decimal; credit: Prisma.De
     throw new AppError('VALIDATION_ERROR', 400, 'Debits and credits must balance');
 }
 
-function periodOf(date: Date): { year: number; month: number } {
-  return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1 };
+// Accounting periods follow the business calendar (Africa/Mogadishu, UTC+03:00, no
+// DST), matching financeBusinessDate(). A UTC month put entries dated the 1st
+// (stored as 21:00Z on the previous day) into the previous period.
+const BUSINESS_OFFSET_MS = 3 * 60 * 60 * 1000;
+
+export function periodOf(date: Date): { year: number; month: number } {
+  const local = new Date(date.getTime() + BUSINESS_OFFSET_MS);
+  return { year: local.getUTCFullYear(), month: local.getUTCMonth() + 1 };
+}
+
+/** UTC instants bounding a business-calendar month: [start, end). */
+export function periodBounds(year: number, month: number): { start: Date; end: Date } {
+  return {
+    start: new Date(Date.UTC(year, month - 1, 1) - BUSINESS_OFFSET_MS),
+    end: new Date(Date.UTC(year, month, 1) - BUSINESS_OFFSET_MS),
+  };
 }
 
 async function lockOpenPeriod(tx: Tx, date: Date): Promise<void> {
@@ -593,8 +607,7 @@ export async function closePeriod(year: number, month: number, actorId: string) 
       FROM "finance_periods" WHERE "year" = ${year} AND "month" = ${month} FOR UPDATE`;
       if (rows[0]?.status !== 'OPEN')
         throw new AppError('CONFLICT', 409, 'Period is already closed');
-      const start = new Date(Date.UTC(year, month - 1, 1));
-      const end = new Date(Date.UTC(year, month, 1));
+      const { start, end } = periodBounds(year, month);
       const pending = await tx.financeTransaction.count({
         where: {
           occurredOn: { gte: start, lt: end },

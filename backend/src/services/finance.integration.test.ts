@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import express from 'express';
 import cookieParser from 'cookie-parser';
-import { PERMISSIONS } from '@somwave/shared';
+import { PERMISSIONS, parseFinanceBusinessDate } from '@somwave/shared';
 import type { AddressInfo } from 'node:net';
 import { financeRouter } from '../routes/finance.routes';
 import { errorHandler } from '../middleware/errorHandler';
@@ -15,6 +15,7 @@ import {
   createAccount,
   createTransaction,
   financeDashboard,
+  periodOf,
   projectProfitability,
   postTransaction,
   reverseJournal,
@@ -266,6 +267,47 @@ describe.skipIf(!local)('finance ledger integration', () => {
 });
 
 describe.skipIf(!local)('finance dashboard HTTP diagnostics', () => {
+  it('assigns a 1st-of-month entry to that month even after the previous month closes', async () => {
+    const code = `P${Date.now()}`;
+    const account = (type: 'ASSET' | 'REVENUE', suffix: string) =>
+      createAccount(
+        {
+          code: `${code}${suffix}`,
+          name: `Period ${suffix}`,
+          type,
+          currency: 'USD',
+          allowPosting: true,
+        },
+        'test-manager',
+      );
+    const cash = await account('ASSET', 'A');
+    const revenue = await account('REVENUE', 'R');
+    // March 2019 may already be closed by an earlier run on this disposable database.
+    await closePeriod(2019, 3, 'test-manager').catch((error: unknown) => {
+      if (!(error instanceof Error) || !error.message.includes('already closed')) throw error;
+    });
+    // 1 April in Mogadishu is 2019-03-31T21:00Z; under the old UTC rule it hit closed March.
+    const firstOfApril = parseFinanceBusinessDate('2019-04-01')!;
+    expect(periodOf(firstOfApril)).toEqual({ year: 2019, month: 4 });
+    const entry = await createTransaction(
+      {
+        type: 'INCOME',
+        amount: '3.00',
+        currency: 'USD',
+        category: 'Period boundary',
+        description: 'Dated the first business day of April',
+        occurredOn: firstOfApril.toISOString(),
+        cashAccountId: cash.id,
+        offsetAccountId: revenue.id,
+      },
+      'test-maker',
+    );
+    await submitTransaction(entry.id, 'test-maker');
+    await reviewTransaction(entry.id, 'test-reviewer', true);
+    // Both the service and the database trigger must place it in April.
+    await expect(postTransaction(entry.id, 'test-poster')).resolves.toBeTruthy();
+  });
+
   it('returns real empty data, validates Mogadishu ranges and enforces MFA and role permissions', async () => {
     const role = await prisma.role.upsert({
       where: { name: 'SUPER_ADMIN' },
@@ -312,7 +354,8 @@ describe.skipIf(!local)('finance dashboard HTTP diagnostics', () => {
       expect(await denied.json()).toMatchObject({
         error: {
           code: 'FORBIDDEN',
-          message: 'Sign out and sign in with your two-factor code before accessing finance',
+          message: 'Confirm your two-factor code to open finance',
+          details: { reason: 'FINANCE_MFA_STEP_UP_REQUIRED' },
         },
       });
       const forbidden = await request(engineer.id, new Date());
