@@ -47,12 +47,9 @@ const legacyBaked = new Set([
   '/images/hero-architecture-768.webp',
   '/images/hero-architecture-480.webp',
 ]);
+// The SVG scales natively and ImageKit URLs ship their own responsive variants,
+// so there is no srcset for either; the single `src` is enough.
 const effectiveImage = legacyBaked.has(hero.imageUrl) ? DEFAULT_SKYLINE : hero.imageUrl;
-const isSvg = effectiveImage.endsWith('.svg');
-const isRemote = /^https:\/\//.test(effectiveImage);
-// Only our bitmap hero ships size variants. SVG scales natively, remote
-// (ImageKit) delivery handles its own responsive variants.
-const srcset = !isSvg && !isRemote ? undefined : undefined;
 
 // Floating performance highlights, overlaid as real HTML on top of the art.
 // Positions are expressed as a percentage of the art container so they move
