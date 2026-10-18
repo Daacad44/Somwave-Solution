@@ -39,6 +39,9 @@ export async function initiateEvcCharge(params: EvcInitiateParams): Promise<EvcI
       'Content-Type': 'application/json',
       Authorization: `Bearer ${env.PAYMENT_EVC_API_KEY}`,
     },
+    // A timeout is ambiguous (the charge may still complete), so callers keep the
+    // payment PENDING for the webhook; only an explicit rejection marks it FAILED.
+    signal: AbortSignal.timeout(20_000),
     body: JSON.stringify({
       merchantId: env.PAYMENT_EVC_MERCHANT_ID,
       amount: params.amount,

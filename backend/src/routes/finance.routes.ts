@@ -53,13 +53,16 @@ financeRouter.use(requireAuth);
 export function requireFinanceTwoFactor(req: Request, _res: Response, next: NextFunction): void {
   if (!req.authUser?.twoFactorEnabled || !req.financeMfaVerifiedAt) {
     next(
-      new AppError(
-        'FORBIDDEN',
-        403,
-        req.authUser?.twoFactorEnabled
-          ? 'Sign out and sign in with your two-factor code before accessing finance'
-          : 'Enable two-factor authentication in Security settings before accessing finance',
-      ),
+      req.authUser?.twoFactorEnabled
+        ? new AppError('FORBIDDEN', 403, 'Confirm your two-factor code to open finance', {
+            reason: 'FINANCE_MFA_STEP_UP_REQUIRED',
+          })
+        : new AppError(
+            'FORBIDDEN',
+            403,
+            'Enable two-factor authentication in Security settings before accessing finance',
+            { reason: 'FINANCE_2FA_NOT_ENROLLED' },
+          ),
     );
     return;
   }

@@ -49,6 +49,14 @@ export function disableTwoFactor(input: DisableTwoFactorInput): Promise<{ user: 
   });
 }
 
+/** Re-enter a 2FA code to give the current session MFA proof (finance step-up). */
+export function stepUpTwoFactor(input: DisableTwoFactorInput): Promise<{ user: AuthUser }> {
+  return apiFetch<{ user: AuthUser }>('/auth/2fa/step-up', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
 export function regenerateBackupCodes(
   input: RegenerateBackupCodesInput,
 ): Promise<{ backupCodes: string[] }> {

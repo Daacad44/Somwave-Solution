@@ -71,7 +71,27 @@ export async function confirmTwoFactor(
     const userId = req.authUser?.id;
     if (!userId) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
     const { code } = req.body as ConfirmTwoFactorInput;
-    sendData(res, await authService.confirmTwoFactorEnrolment(userId, code));
+    const { user, backupCodes, session } = await authService.confirmTwoFactorEnrolment(
+      userId,
+      code,
+    );
+    setAuthCookies(res, session.accessToken, session.refreshToken);
+    sendData(res, { user, backupCodes });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function stepUpTwoFactor(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const userId = req.authUser?.id;
+    if (!userId) throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
+    const { code } = req.body as DisableTwoFactorInput;
+    sendSession(res, await authService.stepUpTwoFactor(userId, code));
   } catch (err) {
     next(err);
   }

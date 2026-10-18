@@ -56,8 +56,10 @@ import {
   verifyPasswordResetCode,
   getUserAuthContext,
   refreshSession,
+  stepUpTwoFactor,
   verifyTwoFactorLogin,
 } from './auth.service';
+import { verifyAccessToken } from '../lib/tokens';
 
 const user = {
   id: 'user_1',
@@ -161,6 +163,33 @@ describe('two-factor enrolment', () => {
     const result = await confirmTwoFactorEnrolment('user_1', '123456');
     expect(result.user.twoFactorEnabled).toBe(true);
     expect(result.backupCodes).toHaveLength(8);
+    // The replacement session proves MFA, so finance opens without signing in again.
+    expect(verifyAccessToken(result.session.accessToken).mfaVerifiedAt).toEqual(expect.any(Number));
+    expect(prisma.refreshToken.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ userId: 'user_1', mfaVerifiedAt: expect.any(Date) }),
+    });
+  });
+
+  it('upgrades the current session with MFA proof after a valid step-up code', async () => {
+    const enabled = { ...user, twoFactorSecret: 'stored', twoFactorEnabled: true };
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(enabled as never);
+    vi.mocked(prisma.user.update).mockResolvedValue(enabled as never);
+    vi.mocked(verifyTotp).mockResolvedValue(true);
+    const session = await stepUpTwoFactor('user_1', '123456');
+    expect(verifyAccessToken(session.accessToken).mfaVerifiedAt).toEqual(expect.any(Number));
+  });
+
+  it('refuses a step-up with a wrong code and issues no session', async () => {
+    const enabled = { ...user, twoFactorSecret: 'stored', twoFactorEnabled: true };
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(enabled as never);
+    vi.mocked(verifyTotp).mockResolvedValue(false);
+    vi.mocked(prisma.twoFactorBackupCode.findMany).mockResolvedValue([] as never);
+    vi.mocked(prisma.twoFactorBackupCode.updateMany).mockResolvedValue({ count: 0 } as never);
+    vi.mocked(prisma.refreshToken.create).mockClear();
+    await expect(stepUpTwoFactor('user_1', '000000')).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+    });
+    expect(prisma.refreshToken.create).not.toHaveBeenCalled();
   });
 
   it('refuses disable when the role requires 2FA', async () => {
