@@ -238,3 +238,202 @@ Every test in prompt §10. Implementation notes:
 | D6 | Do **not** accrue to 2100. Use cost allocation: Dr 5000 Labour Cost (project) / Cr 5900 Labour Cost Allocated (contra-expense). | Replaces the `time.approved` cost rule in §3.7. **Before implementing I8.2**, I check how salaries are recorded in `FinanceTransaction` today, and the I8.2 PR confirms that salary cost is not counted twice in the P&L. Net company labour = salary expense + 5000 − 5900, so 5000 and 5900 cancel at company level and only redistribute cost to projects. |
 | D7 | Automatic postings into a closed month roll to the first day of the open period. The original event date is kept in metadata, and they are listed as "late postings" in the period report. Manual postings stay rejected. | §3.5 as written, plus the late-postings list in I8.5. |
 | D8 | `feat/I8.x-*` branches, one PR each. Never commit I8 code directly to `main`. | Supersedes C15. The stacked `a`/`b` splits in §6 become separate branches only if a sub-phase would exceed 400 lines; otherwise one PR per sub-phase. |
+
+---
+
+## 10. I8.B — Historical backfill and project finance dashboard
+
+Status: **DRAFT — awaiting approval.** No I8.B code has been written. The order becomes `I8.0 → I8.B → I8.1 …`.
+
+Files read for this section: `backend/src/services/{finance,project-finance,payment,invoice}.service.ts`, `backend/src/payments/**`, `frontend/src/features/finance/*`, `frontend/src/features/reports/*`, `frontend/src/features/dashboard/charts.tsx`, migrations `20261016120000_finance_ledger_foundation`, `20261016140000_finance_account_metadata_guard` and `20261018100000_finance_period_business_calendar`, and `docs/FINANCE_BUG_REGISTER.md`.
+
+### 10.1 What the codebase constrains
+
+These facts shape the design. Each one either needs a decision (§10.10) or is handled below.
+
+| # | Fact | Consequence |
+|---|---|---|
+| B-F1 | The ledger is guarded **in PostgreSQL**, not only in the service. Triggers: `finance_open_period_before_post` rejects any journal insert dated in a CLOSED period; `finance_journal_immutable` allows a journal update only to finalize it; `finance_line_immutable` blocks changes to lines and appending to a finalized journal; deferred `finance_journal_balanced` enforces balance at commit. | The closed-period path for backfill (prompt §5.3.4) has to be a **trigger change**, not just a service branch. See §10.5. The immutability trigger must also cover the new journal columns. |
+| B-F2 | `FinanceJournal @@unique([sourceType, sourceId])`. A reversal is a separate journal with `sourceType = 'REVERSAL'`, `sourceId = <original id>`. | Commit-twice idempotency works as the prompt says. But after a run is reversed, a **new run cannot re-post the same legacy row**: the original journal still holds its `(LEGACY_INVOICE, id)` key. This contradicts the prompt's "a new run can then be started". See D-B1. |
+| B-F3 | The currency lives on the journal (`FinanceJournal.currency String`, any 3-letter code), not on lines. Accounts may be currency-scoped (`FinanceAccount.currency`). Posting rejects an account whose currency differs from the journal's. | Account-role mapping must be **per currency**: a USD-only cash account can't take an SOS payment. See §10.3. |
+| B-F4 | The I8 plan (§3.1) planned `enum Currency { USD SOS }` for I8.1. The existing ledger and `FinanceTransaction` use `String` with `financeCurrencySchema`. | Recommendation: new currency columns are `String`, validated by a shared `SUPPORTED_CURRENCIES = ['USD','SOS']`. I8.1 builds on that instead of adding an enum. See D-B2. |
+| B-F5 | `Payment` has no completion timestamp. Manual payments are created `COMPLETED`. An EVC payment's last update is the webhook that completed it, because a COMPLETED payment is never updated again. | Payment date = `createdAt` for manual and bank payments, `updatedAt` for `EVC_PLUS`. Recorded per row in the run summary. |
+| B-F6 | `Payment` stores no currency or EVC currency metadata (only `gatewayRef`, `payerPhone`, `reference`). | The prompt's "EVC metadata shows a different currency → NO_CURRENCY" check has nothing to read. Payments always inherit the invoice currency. `NO_CURRENCY` is raised only when the invoice's currency can't be resolved, which won't happen while a default exists. Stated here rather than faked. |
+| B-F7 | FIN-07: before the fix, the manual gateway recorded `STRIPE` and `EDAHAB` payments as `COMPLETED` with no settlement gateway. | New exception reason **`UNSETTLED_METHOD`** for COMPLETED payments with method `STRIPE` or `EDAHAB`. Posting them as cash would be a guess. |
+| B-F8 | FIN-05: before the fix, `PARTIAL` invoices could be voided after money was recorded. | `VOID_WITH_PAYMENTS` is a real legacy case, not hypothetical. |
+| B-F9 | `Invoice.total = subtotal + tax − discount`. There is no tax account. | The prompt credits revenue with `total`, which counts collected tax as revenue. See D-B3. |
+| B-F10 | `ProjectExpense` has no `clientId` and a free-text `category`. Approved plan C5 said legacy project expenses would be migrated to `Expense` in I8.3 **unposted**. | I8.B now posts ACTUAL rows, which supersedes that part of C5. I8.3 must mark migrated rows as already posted (link by `legacyProjectExpenseId` to the `LEGACY_PROJECT_EXPENSE` journal) and never post them again. Line `clientId` comes from `project.clientId`. |
+| B-F11 | `sendInvoice()` updates the status and then sends mail, with no transaction. `createProjectExpense` already runs in a transaction. | B2 wraps the status change and `emitEvent` in one transaction. Mail stays outside it. |
+| B-F12 | No ledger line knows which invoice it settles. | AR ageing and the "AR per invoice = total − payments" check would have to join through the source tables. Recommendation: add `FinanceJournalLine.invoiceId` (nullable, indexed), so AR is a pure ledger sub-ledger. See D-B4. |
+| B-F13 | I don't have access to production data or a copy of it. | Prompt §12 asks for migration results and a dry-run summary from a copy of production. **I can't produce these.** B1 ships the dry run. Options: you run it on staging/production after deploy (it posts nothing), or you give me a sanitized dump. |
+
+### 10.2 Models and migrations
+
+Ledger tables keep their existing types. New money columns on ledger tables are `Decimal(20,2)` (prompt §11). Others are `Decimal(12,2)` (D2).
+
+**B1 — `…_i8_b1_backfill_foundation`**
+- `Invoice.currency String?`, `Payment.currency String?`, `ProjectExpense.currency String?`, `Client.defaultCurrency String?`.
+  - Nullable in the database.
+  - **Required on create** in the shared Zod schemas: invoice create takes `currency`, defaulting in the form to the client's default, then USD.
+  - A payment copies the invoice currency in the service.
+  - A project expense defaults to the client's currency, then USD.
+- `enum FinanceAccountRoleKey { ACCOUNTS_RECEIVABLE PROJECT_REVENUE CASH EVC_WALLET BANK DIRECT_COST LEGACY_EXPENSE_CLEARING TAX_PAYABLE }`. `TAX_PAYABLE` only if D-B3 is accepted.
+- `FinanceAccountRole { id, role, currency String?, accountId → FinanceAccount (Restrict), updatedById, timestamps }`, unique `(role, currency) NULLS NOT DISTINCT`. See §10.3.
+- `FinanceBackfillRun`, as in prompt §5.1, with these changes:
+  - `status` is an enum `DRY_RUN_RUNNING | DRY_RUN | AWAITING_APPROVAL | COMMITTING | COMMITTED | REVERSING | REVERSED | FAILED`. The prompt's five statuses aren't enough: the DB trigger in §10.5 keys on `COMMITTING`, and a crashed commit must be resumable.
+  - Add `revision Int` (D-B1), `lastDryRunAt`, `failureReason`.
+  - A partial unique index allows only one run outside `REVERSED`/`FAILED`.
+- `FinanceBackfillException`, as in prompt §5.1, with:
+  - `reason` as an enum, adding `UNSETTLED_METHOD` (B-F7) and `TAX_UNMAPPED` (if D-B3).
+  - Add `stale Boolean`: set when a re-run no longer finds the condition. Resolutions are kept across re-runs.
+- `FinanceJournal`:
+  - add `origin FinanceJournalOrigin @default(LIVE)` (`LIVE | BACKFILL`), `backfillRunId String?` (FK, Restrict), `revision Int @default(0)` and `originalOccurredOn DateTime?` (the D7 late-posting date);
+  - change the unique key to `(sourceType, sourceId, revision)`;
+  - add `@@index([origin])` and `@@index([backfillRunId])`.
+  - The immutability trigger is extended to the new columns.
+  - A new trigger rejects a second **unreversed** journal for the same `(sourceType, sourceId)`, so `revision` can't be used to double-post. See D-B1.
+- `FinanceJournalLine`: add `invoiceId String?` (D-B4) and `category String?`, which carries the legacy `ProjectExpense.category` so "costs by category" works for legacy rows. Add `@@index([projectId, accountId])` and `@@index([invoiceId])`.
+- Permission `finance.backfill.manage`, seeded to `FINANCE_MANAGER` (and ADMIN/SUPER_ADMIN by the existing rule).
+
+**B2 — `…_i8_b2_backfill_commit`**
+- Replace `finance_open_period_guard()` (§10.5).
+- Seed nothing: the chart of accounts stays user-managed.
+
+### 10.3 Account mapping: `FinanceAccountRole` table, not `Setting`
+
+I'm choosing a table over a `finance.accountMap` JSON setting because:
+1. **Referential integrity.** A foreign key with `Restrict` means a mapped account can't disappear. A JSON id can point at nothing.
+2. **Per-currency mapping** (B-F3). The lookup is `(role, currency)` first, then `(role, NULL)` for a currency-agnostic account. The target account's own currency must match the journal's or be null; this is checked on save and again at post time.
+3. **Typed roles and audited changes.** Each change is recorded with `recordAudit(tx)`, including before and after values.
+4. **One resolver for both paths.** Live and backfill postings call the same `resolveAccount(tx, role, currency)` (prompt §4).
+
+Account types are enforced on save:
+
+| Role | Account type |
+|---|---|
+| AR, CASH, EVC_WALLET, BANK | `ASSET` |
+| PROJECT_REVENUE | `REVENUE` |
+| DIRECT_COST | `DIRECT_COST` |
+| LEGACY_EXPENSE_CLEARING, TAX_PAYABLE | `LIABILITY` |
+
+"Create suggested account" calls the existing `createAccount()` with a proposed code and the correct type, under `finance.manage`. A run, and every live posting, fails with `VALIDATION_ERROR` naming the unmapped role or currency.
+
+Payment method to cash role:
+
+| Method | Role |
+|---|---|
+| `EVC_PLUS` | EVC_WALLET |
+| `BANK_TRANSFER` | BANK |
+| `MANUAL` | CASH |
+| `STRIPE`, `EDAHAB` | exception `UNSETTLED_METHOD` (B-F7) |
+
+### 10.4 Rules, beyond prompt §3
+
+- **Scope.** A legacy row is in scope only if no `LIVE` journal exists for its live successor. That means no `INVOICE` journal for that invoice, and no `PAYMENT` journal for that payment. Rows touched after B2's live posting is switched on are therefore never posted twice.
+- **Invoice amount.** If D-B3 is accepted: credit Revenue with `total − tax` and credit `TAX_PAYABLE` with `tax`. Otherwise credit Revenue with `total`, as the prompt says. Discount is already netted into `total`.
+- **Exception resolutions.** Each resolution is stored on the exception; the legacy row is never edited.
+
+  | Reason | Allowed resolutions |
+  |---|---|
+  | `NO_PROJECT` | `ASSIGN_PROJECT` (project of the same client) · `POST_AS_IS` (client-level, `projectId` null) · `SKIP` |
+  | `VOID_WITH_PAYMENTS` | `POST_AS_IS` (post invoice and payments as if not void; finance follows up with a credit note) · `SKIP` (skip the invoice **and** its payments) |
+  | `OVERPAID` | `POST_AS_IS` (AR ends in credit, i.e. a customer credit) · `SKIP` (pick the payments to exclude) |
+  | `POSSIBLE_DUPLICATE` | `MERGE_WITH_TRANSACTION` (don't post; link to the `FinanceTransaction`) · `POST_AS_IS` · `SKIP` |
+  | `NO_CURRENCY` | `POST_AS_IS` with a currency override |
+  | `CLOSED_PERIOD` | `POST_AS_IS` (explicit consent to post into that closed month) · `SKIP` |
+  | `UNSETTLED_METHOD` | `POST_AS_IS` with a chosen cash role · `SKIP` |
+  | `TAX_UNMAPPED` | map `TAX_PAYABLE`, then re-run |
+
+- **Possible duplicate.** The match is a `FinanceTransaction` of type `EXPENSE`, status `POSTED`, `APPROVED` or `SUBMITTED`, same `projectId`, same amount, `occurredOn` within ±3 days of `expenseDate ?? createdAt`.
+- **Segregation.** The approver must differ from `startedById` **and** from every user who resolved an exception with `POST_AS_IS`, `ASSIGN_PROJECT` or `MERGE_WITH_TRANSACTION`. This extends the prompt; see D-B5.
+
+### 10.5 The single closed-period path
+
+The trigger is replaced so it allows a closed-period insert only when all of the following hold:
+- `NEW.origin = 'BACKFILL'`,
+- `NEW.backfill_run_id` names a run whose status is `COMMITTING`,
+- `NEW.source_type` is a `LEGACY_*` type.
+
+Everything else is rejected, as today. Only `commitBackfillRun()` sets `origin = BACKFILL`, and it moves the run to `COMMITTING` under a row lock. A `recordAudit` row is written for each journal posted into a closed month.
+
+Tests prove that each of these is rejected **at the database**, even with direct SQL:
+- a BACKFILL insert for a run that is not COMMITTING;
+- a LIVE insert into a closed period;
+- a manual `postTransaction` into a closed period.
+
+### 10.6 Flow (prompt §5.3), concretely
+
+1. **Dry run.** `POST /finance/backfill/runs` enqueues `finance.backfill.dry-run` on a new BullMQ queue `somwave-finance`. The API only enqueues, so the API still runs no timers.
+   - The worker reads every legacy row, writes `summary` (counts and totals by source × project × currency, plus skipped lists) and upserts exceptions. It posts nothing.
+   - Re-running updates the same run while its status is `DRY_RUN` or `AWAITING_APPROVAL`.
+   - The run moves to `AWAITING_APPROVAL` once no exception is unresolved.
+2. **Commit.** `POST /runs/:id/commit` requires `Idempotency-Key`, 2FA and the segregation check, then enqueues the commit job.
+   - The job posts one transaction per project, each journal finalized.
+   - Journals are dated with the original date, use `revision = run.revision`, and set `invoiceId` on AR lines.
+   - The commit is resumable: an already-posted source is skipped thanks to the unique key.
+3. **Reconcile** (prompt §5.4), all run from ledger SQL:
+   - the trial balance balances per currency;
+   - per invoice, ledger AR equals `total − completed payments` (via `invoiceId`);
+   - per project, revenue and direct cost equal the posted sources;
+   - the count and total of posted journals equal the dry-run summary.
+   - Any failure sets `REVERSING`, reverses every journal in the run, then sets `FAILED` with `failureReason`.
+4. **Reverse.** `POST /runs/:id/reverse` (2FA, audit) posts reversal journals in the open period, using the existing `reverseJournal` logic factored into a tx-level helper. Reversals inherit `origin = BACKFILL`, so the "Legacy" filter nets to zero.
+5. **New run after reversal.** It gets `revision + 1` (D-B1).
+
+### 10.7 Live posting (B2, prompt §6)
+
+Events are emitted with `emitEvent(tx)` in the same transaction as the business change. Handlers live in `backend/src/events/handlers.ts`.
+
+| Event | Emitted from | Handler | Journal |
+|---|---|---|---|
+| `invoice.issued` | `sendInvoice` (DRAFT→SENT/OVERDUE) | `ledger.invoice.v1` | `INVOICE`: Dr AR / Cr Revenue (+ tax per D-B3), dated `issueDate` |
+| `invoice.voided` | `voidInvoice` | `ledger.invoice-void.v1` | reverses the invoice's journal, whether `INVOICE` or `LEGACY_INVOICE`. If none exists (backfill not yet committed), it records nothing; the backfill then skips the void invoice. |
+| `payment.completed` | manual gateway, EVC webhook | `ledger.payment.v1` | `PAYMENT`: Dr cash role / Cr AR (`invoiceId` set) |
+| `project_expense.recorded` | `createProjectExpense` (ACTUAL) | `ledger.project-expense.v1` | `PROJECT_EXPENSE`: Dr Direct Cost / Cr Expense Clearing, line `category` set |
+| `project_expense.removed` | expense soft-delete | `ledger.project-expense-void.v1` | reversal of whichever journal exists |
+
+- Dates in a closed period roll to the first day of the next open period, with `originalOccurredOn` set (D7). They appear in the "late postings" list.
+- An unmapped role makes the handler fail. It retries and is then parked `FAILED`. This pulls forward a minimal `GET /finance/events?status=failed` and `POST /finance/events/:id/retry` from I8.7, shown on the data-health panel.
+- Every posting bumps the Redis key `finance:cache-version` after commit. Dashboard cache keys include it, which handles invalidation.
+- I8.4/I8.5 replace these handlers with the posting-rules table. The `(sourceType, sourceId)` unreversed-journal trigger guarantees they can't double-post.
+- **Cutover.** Payments on legacy invoices made after B2 and before the backfill commit leave that invoice's AR negative until the commit. Reconciliation still holds afterwards, because it sums live and legacy journals. **Recommendation: deploy B2 and commit the backfill in the same maintenance window.**
+
+### 10.8 Dashboard and project finance (B3, B4)
+
+- **Money figures come from ledger SQL only.**
+  - Source tables are joined for attributes only: invoice `dueDate` for ageing and overdue, client and project names, milestone dates.
+  - Non-posted figures are labelled as such: budget, planned cost, and hours from `TaskTimeEntry`/`Timesheet`. Labour cost shows "rates not set".
+  - Overdue and ageing use AR lines grouped by `invoiceId`, with the due date from the invoice.
+  - Cash and bank use the CASH, BANK and EVC_WALLET role accounts.
+- **Currencies.** Totals are per currency only. B3 adds no FX-converted "all in USD" view, because there are no exchange rates until I8.1.
+- **Charts** extend the existing SVG approach in `features/dashboard/charts.tsx`. No new chart library.
+- **Caching.** Redis, 5 minutes, keyed by filters plus `finance:cache-version`.
+- **Performance.** `backend/scripts/seed-finance-perf.ts` generates 50,000 lines in a disposable database. A test records p95 for each endpoint, with a target under 500 ms.
+- **Access.** PMs see their own projects' financial page via `projectManageScope`. Any other project, and any non-finance user, gets 404. Clients have no route.
+
+### 10.9 PR split
+
+| PR | Scope | Est. lines (non-test) |
+|---|---|---|
+| B1a | Migration, currency columns + shared schemas + forms, `FinanceAccountRole` API + settings screen | ~400 |
+| B1b | Dry-run job, rules, exceptions + resolve API | ~400 |
+| B1c | Historical data screen (summary, exceptions, resolutions) | ~350 |
+| B2a | Commit, closed-period trigger, reconciliation, reverse | ~400 |
+| B2b | Live posting handlers + events retry + limitation removal | ~350 |
+| B3-0 | `FinancePage.tsx` split: move-only, no behaviour change (large diff, zero logic) | move |
+| B3 | Dashboard API, cache, perf seed, dashboard UI | ~400 (may split API/UI) |
+| B4a | Projects list/detail/timeline/lines/ageing APIs + CSV | ~400 |
+| B4b | Projects finance list, project page, Financials tab | ~400 |
+
+Each PR goes on its own `feat/I8.B*-*` branch per D8, and meets §15 of `CLAUDE.md`. The Playwright scenario from prompt §10 lands in B4b, once every screen exists.
+
+### 10.10 Decisions requested for I8.B
+
+1. **D-B1 Re-running after reversal.** Add `FinanceJournal.revision` and change the unique key to `(sourceType, sourceId, revision)`, plus a trigger allowing only one *unreversed* journal per source. The alternative is to forbid any new run once a run has been committed and reversed. *Recommended: revision.*
+2. **D-B2 Currency type.** Currency columns are `String` validated against `SUPPORTED_CURRENCIES ['USD','SOS']`, matching the ledger. I8.1 drops its planned `Currency` enum. *Recommended.*
+3. **D-B3 Tax.** Split invoice tax to a `TAX_PAYABLE` liability (required only if any legacy invoice has `tax > 0`), or credit `total` to revenue as the prompt says. *Recommended: split.*
+4. **D-B4** Add `FinanceJournalLine.invoiceId` so AR ageing and per-invoice reconciliation are pure ledger queries. *Recommended.*
+5. **D-B5** The approver must also differ from anyone who resolved exceptions that allow posting. *Recommended.*
+6. **D-B6** Payment date = `createdAt` (manual and bank) or `updatedAt` (EVC), per B-F5. *Recommended.*
+7. **D-B7 Production evidence (B-F13).** Who runs the dry run against production or a sanitized copy, and when? Until then, I can only report results from fixture data.
+8. **D-B8 Cutover.** Deploy B2 and commit the backfill in the same window (§10.7). *Recommended.*
