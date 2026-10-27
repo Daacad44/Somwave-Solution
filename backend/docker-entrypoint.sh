@@ -8,5 +8,11 @@ if [ -z "${DATABASE_URL:-}" ]; then
   exit 1
 fi
 
+# One image, two Coolify services: SOMWAVE_PROCESS=worker runs the BullMQ worker
+# (scheduled jobs + domain events). The API service runs no background work.
+if [ "${SOMWAVE_PROCESS:-api}" = "worker" ]; then
+  exec npm run worker
+fi
+
 npm run prisma:migrate
 exec npm start

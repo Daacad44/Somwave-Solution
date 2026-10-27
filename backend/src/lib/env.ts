@@ -44,7 +44,6 @@ const envSchema = z
       .optional(),
     APP_PUBLIC_URL: z.string().url().optional(),
     HEALTH_PROBE_HOSTS: z.string().optional(),
-    BACKGROUND_WORKERS_ENABLED: z.enum(['true', 'false']).default('true'),
   })
   .superRefine((value, ctx) => {
     const sender = value.EMAIL_FROM?.trim();

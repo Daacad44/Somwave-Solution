@@ -1,6 +1,6 @@
 # I8 — Project Finance Integration: implementation plan
 
-Status: **DRAFT — awaiting approval.** No I8 code has been written. I8.0 starts only after this plan, and the decisions in §1, are approved.
+Status: **APPROVED 27 October 2026** with the decisions recorded in §9. Where §9 differs from §1–§8, §9 wins.
 
 Snapshot: 27 October 2026, `main` at `403ab19`.
 
@@ -108,9 +108,9 @@ All new tables use `cuid` ids, `createdAt`/`updatedAt`, snake_case `@map` and `@
 - `FinanceJournalLine`: add `fxCurrency String?` and `fxAmount Decimal(20,2)?`. `projectId`/`clientId` already exist.
 - `FinanceAccount`: seed the I8 accounts if absent:
   - Assets: 1000 Cash, 1010 EVC Wallet, 1100 AR, 1200 Unbilled WIP.
-  - Liabilities: 2000 AP, 2100 Accrued Payroll.
+  - Liabilities: 2000 AP. (No 2100 Accrued Payroll; see §9 D6.)
   - Revenue: 4000 Project Revenue, 4050 WIP Revenue, 4100 Retainer Revenue, 4900 Credit Notes (contra-revenue).
-  - Costs and expenses: 5000 Labour Cost, 5100 Project Expenses, 6000 Overhead Expenses.
+  - Costs and expenses: 5000 Labour Cost, 5100 Project Expenses, 5900 Labour Cost Allocated (contra-expense), 6000 Overhead Expenses.
   - Seeded by code. If a code is already used by a different account type, the migration fails loudly instead of re-purposing it.
 - Insert-only is enforced by a trigger that blocks `UPDATE`/`DELETE` on `finance_journal_lines`, and on `finance_journals` once finalized. The existing code already has no update path.
 - `FinancePeriod` is reused as is. "Posting into a CLOSED period moves to the current open period" is **new behaviour**: today `lockOpenPeriod` rejects the posting. For event-driven postings I will date the journal on the first day of the current open period and record the original date in `memo`/metadata. Manual postings keep the existing rejection.
@@ -120,7 +120,7 @@ All new tables use `cuid` ids, `createdAt`/`updatedAt`, snake_case `@map` and `@
 
 ### 3.7 Posting rules — `backend/src/finance/postingRules.ts`
 A table-driven map from `(eventType, variant)` to `{ debit: code, credit: code, dimension: 'project'|'client'|'both' }`, exactly as prompt §4.7. Not covered by the prompt, and needing decisions:
-- `time.approved` credits **2100 Accrued Payroll**. There is no payroll engine (out of scope), so 2100 grows without bound until payroll exists. Proposed: accept that and document it. Finance reverses 2100 manually through an adjustment when salaries are paid.
+- `time.approved` posts Dr 5000 Labour Cost (project) / Cr 5900 Labour Cost Allocated. Time on the Company Overhead project posts Dr 6000 instead of 5000 (§9 D4, D6).
 - An overhead expense (no `projectId`) debits 6000.
 - `payment.completed` uses 1010 for `EVC_PLUS` and 1000 otherwise.
 - Retainer invoices credit 4100. All other sources credit 4000.
@@ -215,7 +215,7 @@ Every test in prompt §10. Implementation notes:
 ## 8. Out of scope (follow-ups, per prompt §11)
 
 - Xero/QuickBooks export.
-- Payroll engine, and settlement of 2100 Accrued Payroll.
+- Payroll engine.
 - Tax filing and VAT.
 - Bank feed reconciliation.
 - Revenue-recognition schedules.
@@ -226,13 +226,15 @@ Every test in prompt §10. Implementation notes:
 
 ---
 
-## 9. Decisions requested
+## 9. Decisions (approved 27 October 2026)
 
-1. **C1–C3**: extend the existing ledger instead of adding `LedgerAccount`/`JournalEntry`.
-2. **C4**: `Decimal(14,2)` for new money columns, plus the matching `CLAUDE.md` §7 amendment.
-3. **C7 / §7**: add `bullmq` (and optionally `fast-check`).
-4. **C13**: what happens to timesheets with no project.
-5. **§3.1**: whether projects with an existing budget get a DRAFT FIXED_FEE contract.
-6. **§3.7**: 2100 Accrued Payroll grows until payroll exists.
-7. **§3.5**: event postings into a closed month roll into the first day of the open period.
-8. **C15**: confirm `feat/I8.x-*` branches + PRs for the sub-phases.
+| # | Decision | Effect on this plan |
+|---|---|---|
+| D1 | Extend the existing `FinanceAccount`/`FinanceJournal`/`FinanceJournalLine`/`FinancePeriod` ledger. No second ledger. | C1–C3 and §3.5 as written. |
+| D2 | Keep `Decimal(12,2)` for **all** money columns. `Decimal(18,8)` for exchange rates only. No `CLAUDE.md` change. | Supersedes C4 and every `Decimal(14,2)` in the prompt. Rates stay `(12,4)`. Existing ledger lines stay `(20,2)` and are not narrowed; new I8 columns, including `fxAmount`, are `(12,2)`. |
+| D3 | Add `bullmq` (dependency) and `fast-check` (devDependency). | Both added in I8.0. |
+| D4 | Create an internal **Company Overhead** project (`isInternal = true`, non-billable, hidden from the client portal and from profitability rankings). Migrate project-less timesheets into it. Its labour cost posts to 6000. | Supersedes C13. I8.2 adds `Project.isInternal Boolean @default(false)`, seeds the project idempotently, and filters `isInternal` out of portal queries and the profitability ranking. |
+| D5 | Auto-create DRAFT contracts for projects with a budget, carrying `budgetAmount` only. `contractValue` and `billingModel` stay null while DRAFT; the PM sets them before ACTIVE. Add a "contracts needing setup" list. | Supersedes §3.1's data step. `ProjectContract.billingModel` and `currency` become nullable, with a service check (and test) that ACTIVE requires both plus `contractValue` where the model needs it. I8.1 adds `GET /finance/contracts?status=DRAFT&needsSetup=true` and a list screen. |
+| D6 | Do **not** accrue to 2100. Use cost allocation: Dr 5000 Labour Cost (project) / Cr 5900 Labour Cost Allocated (contra-expense). | Replaces the `time.approved` cost rule in §3.7. **Before implementing I8.2**, I check how salaries are recorded in `FinanceTransaction` today, and the I8.2 PR confirms that salary cost is not counted twice in the P&L. Net company labour = salary expense + 5000 − 5900, so 5000 and 5900 cancel at company level and only redistribute cost to projects. |
+| D7 | Automatic postings into a closed month roll to the first day of the open period. The original event date is kept in metadata, and they are listed as "late postings" in the period report. Manual postings stay rejected. | §3.5 as written, plus the late-postings list in I8.5. |
+| D8 | `feat/I8.x-*` branches, one PR each. Never commit I8 code directly to `main`. | Supersedes C15. The stacked `a`/`b` splits in §6 become separate branches only if a sub-phase would exceed 400 lines; otherwise one PR per sub-phase. |

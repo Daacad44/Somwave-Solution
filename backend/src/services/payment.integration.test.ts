@@ -88,6 +88,16 @@ describe.skipIf(!local)('invoice and payment PostgreSQL concurrency', () => {
     expect(callbacks.map((result) => result?.status)).toEqual(['COMPLETED', 'COMPLETED']);
     const evcInvoice = await prisma.invoice.findUniqueOrThrow({ where: { id: second.id } });
     expect(evcInvoice.paidAmount.toFixed(2)).toBe('40.00');
+    // Exactly one callback claimed the PENDING payment, so exactly one credit was audited.
+    const evcPayment = await prisma.payment.findFirstOrThrow({ where: { gatewayRef } });
+    const evcAudits = await prisma.auditLog.findMany({
+      where: { action: 'payment.evc.completed', subjectId: evcPayment.id },
+    });
+    expect(evcAudits).toHaveLength(1);
+    const replay = await applyEvcWebhook({ transactionId: gatewayRef, status: 'SUCCESS' });
+    expect(replay?.status).toBe('COMPLETED');
+    const afterReplay = await prisma.invoice.findUniqueOrThrow({ where: { id: second.id } });
+    expect(afterReplay.paidAmount.toFixed(2)).toBe('40.00');
 
     const reservedInvoice = await createInvoice(input);
     await prisma.invoice.update({ where: { id: reservedInvoice.id }, data: { status: 'SENT' } });

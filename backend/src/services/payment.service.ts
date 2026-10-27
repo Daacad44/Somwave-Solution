@@ -6,6 +6,7 @@ import type {
 } from '@somwave/shared';
 import { AppError } from '../lib/http';
 import { prisma } from '../lib/prisma';
+import { recordAudit } from '../lib/audit';
 import { nextInvoiceStatus, toPaymentRecord } from '../payments/paymentCore';
 import { EvcPlusGateway, type ScopedChargeInput } from '../payments/gateways/evcplus.gateway';
 import { ManualBankTransferGateway } from '../payments/gateways/manualBank.gateway';
@@ -87,11 +88,24 @@ export async function applyEvcWebhook(payload: EvcWebhookPayload): Promise<Payme
     });
     if (!payment) return null;
     if (payment.status !== 'PENDING') return payment;
+    const reference = payload.reference ?? payment.reference;
     if (payload.status === 'FAILED') {
-      return tx.payment.update({
-        where: { id: payment.id },
-        data: { status: 'FAILED', reference: payload.reference ?? payment.reference },
+      // Conditional claim: only the callback that moves PENDING wins.
+      const claimed = await tx.payment.updateMany({
+        where: { id: payment.id, status: 'PENDING' },
+        data: { status: 'FAILED', reference },
       });
+      if (claimed.count === 1) {
+        await recordAudit(tx, {
+          action: 'payment.evc.failed',
+          subjectType: 'Payment',
+          subjectId: payment.id,
+          before: { status: 'PENDING' },
+          after: { status: 'FAILED' },
+          metadata: { transactionId: payload.transactionId },
+        });
+      }
+      return tx.payment.findUniqueOrThrow({ where: { id: payment.id } });
     }
     const invoice = await tx.invoice.findFirst({
       where: { id: payment.invoiceId, deletedAt: null },
@@ -103,18 +117,26 @@ export async function applyEvcWebhook(payload: EvcWebhookPayload): Promise<Payme
     if (nextPaid.gt(invoice.total)) {
       throw new AppError('PAYMENT_FAILED', 409, 'Payment exceeds the outstanding balance');
     }
-    const updatedPayment = await tx.payment.update({
-      where: { id: payment.id },
-      data: { status: 'COMPLETED', reference: payload.reference ?? payment.reference },
+    const claimed = await tx.payment.updateMany({
+      where: { id: payment.id, status: 'PENDING' },
+      data: { status: 'COMPLETED', reference },
     });
+    if (claimed.count === 0) return tx.payment.findUniqueOrThrow({ where: { id: payment.id } });
+    const status = nextInvoiceStatus(invoice.status, nextPaid, invoice.total);
     await tx.invoice.update({
       where: { id: invoice.id },
-      data: {
-        paidAmount: nextPaid,
-        status: nextInvoiceStatus(invoice.status, nextPaid, invoice.total),
-      },
+      // Increment, never overwrite: the credit is relative to the locked balance.
+      data: { paidAmount: { increment: payment.amount }, status },
     });
-    return updatedPayment;
+    await recordAudit(tx, {
+      action: 'payment.evc.completed',
+      subjectType: 'Payment',
+      subjectId: payment.id,
+      before: { status: 'PENDING', invoicePaidAmount: invoice.paidAmount.toFixed(2) },
+      after: { status: 'COMPLETED', invoicePaidAmount: nextPaid.toFixed(2), invoiceStatus: status },
+      metadata: { invoiceId: invoice.id, transactionId: payload.transactionId },
+    });
+    return tx.payment.findUniqueOrThrow({ where: { id: payment.id } });
   });
   return result ? toPaymentRecord(result) : null;
 }
