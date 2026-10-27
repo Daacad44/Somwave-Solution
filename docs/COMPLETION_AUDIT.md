@@ -49,7 +49,7 @@ Live GitHub App authentication is **BLOCKED** until `GITHUB_APP_ID`, `GITHUB_APP
 1. Back up production PostgreSQL and validate all 27 migrations on a production-like staging clone.
 2. Configure production `DATABASE_URL`, authenticated `REDIS_URL` or `REDIS_PASSWORD`, a unique `JWT_SECRET`, and exact `CORS_ORIGINS`.
 3. Configure and verify SMTP, object storage, GitHub App, HTTPS webhook delivery, `HEALTH_PROBE_HOSTS`, and network egress. Confirm the production storage guard rejects uploads when S3 is absent.
-4. Run one background worker with `npm run worker --workspace @somwave/backend` and set `BACKGROUND_WORKERS_ENABLED=false` on API replicas. Monitor retries, SLA/health scans, and failures.
+4. Run exactly one background worker: the API image deployed as a second service with `SOMWAVE_PROCESS=worker` (or `npm run worker --workspace @somwave/backend`). Since I8.0 the API runs no background jobs. Monitor retries, SLA/health scans, and failures.
 5. Execute the requested 20-step role workflow in staging with manager, engineer, QA, administrator, and client accounts, including a real GitHub PR/check run.
 6. Finish endpoint security, accessibility, responsive, and copy reviews; then rerun tests, lint, typecheck, build, API smoke, and browser suite against that staging environment.
 7. Obtain explicit approval before publishing cloud environment changes, migrating production, or deploying production.

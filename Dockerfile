@@ -19,6 +19,12 @@
 #   NODE_ENV, PORT, DATABASE_URL, REDIS_URL, REDIS_PASSWORD, JWT_SECRET, CORS_ORIGINS
 #   RESEND_API_KEY, EMAIL_FROM, APP_PUBLIC_URL (transactional email)
 #
+# Background worker (I8.0): deploy this same image as a second Coolify service
+# with runtime env SOMWAVE_PROCESS=worker and the same DATABASE_URL/REDIS_* vars.
+# It runs every scheduled job and domain-event handler; the API runs none.
+# Run exactly one worker. Without it, email delivery, SLA/health scans and
+# reminders stop. The worker has no HTTP port, so disable the health check.
+#
 # Coolify Redis requires AUTH. Host-only REDIS_URL → NOAUTH → /health 503.
 # Set REDIS_PASSWORD (or REDIS_URL=redis://:PASSWORD@<redis-uuid>:6379).
 #

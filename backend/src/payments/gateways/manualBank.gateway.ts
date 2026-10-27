@@ -1,5 +1,6 @@
 import type { PaymentGateway, PaymentGatewayChargeInput } from '@somwave/shared';
 import { prisma } from '../../lib/prisma';
+import { recordAudit } from '../../lib/audit';
 import {
   assertPaymentReplay,
   assertAmountWithinBalance,
@@ -50,12 +51,19 @@ export class ManualBankTransferGateway implements PaymentGateway {
           idempotencyKey: input.idempotencyKey,
         },
       });
+      const status = nextInvoiceStatus(invoice.status, nextPaid, invoice.total);
       await tx.invoice.update({
         where: { id: invoice.id },
-        data: {
-          paidAmount: nextPaid,
-          status: nextInvoiceStatus(invoice.status, nextPaid, invoice.total),
-        },
+        data: { paidAmount: { increment: amount }, status },
+      });
+      await recordAudit(tx, {
+        actorId: input.actorId,
+        action: 'payment.manual.completed',
+        subjectType: 'Payment',
+        subjectId: created.id,
+        before: { invoicePaidAmount: invoice.paidAmount.toFixed(2) },
+        after: { invoicePaidAmount: nextPaid.toFixed(2), invoiceStatus: status },
+        metadata: { invoiceId: invoice.id, method: input.method },
       });
       return created;
     });

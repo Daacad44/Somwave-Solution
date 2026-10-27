@@ -66,6 +66,8 @@ describe('recordPayment', () => {
 
   it('updates paidAmount and marks PARTIAL', async () => {
     vi.mocked(prisma.invoice.findFirst).mockResolvedValue(invoice as never);
+    const invoiceUpdate = vi.fn().mockResolvedValue({});
+    const auditCreate = vi.fn().mockResolvedValue({});
     const created = {
       id: 'pay_1',
       invoiceId: 'inv_1',
@@ -85,8 +87,9 @@ describe('recordPayment', () => {
         },
         invoice: {
           findFirst: vi.fn().mockResolvedValue(invoice),
-          update: vi.fn().mockResolvedValue({}),
+          update: invoiceUpdate,
         },
+        auditLog: { create: auditCreate },
       };
       return fn(tx as never);
     });
@@ -101,6 +104,13 @@ describe('recordPayment', () => {
     });
     expect(result.amount).toBe('10.00');
     expect(result.status).toBe('COMPLETED');
+    expect(invoiceUpdate).toHaveBeenCalledWith({
+      where: { id: 'inv_1' },
+      data: { paidAmount: { increment: new Prisma.Decimal('10.00') }, status: 'PARTIAL' },
+    });
+    expect(auditCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({ action: 'payment.manual.completed', subjectId: 'pay_1' }),
+    });
   });
 
   it('replays the same Idempotency-Key', async () => {
@@ -285,40 +295,76 @@ describe('applyEvcWebhook', () => {
       total: new Prisma.Decimal('30.00'),
       paidAmount: new Prisma.Decimal('0.00'),
     } as never);
+    const pendingPayment = {
+      id: 'pay_1',
+      invoiceId: 'inv_1',
+      amount: new Prisma.Decimal('10.00'),
+      method: 'EVC_PLUS',
+      status: 'PENDING',
+      reference: 'evc_tx',
+      gatewayRef: 'evc_tx',
+      createdAt: new Date(),
+    };
+    const invoiceUpdate = vi.fn().mockResolvedValue({});
+    const auditCreate = vi.fn().mockResolvedValue({});
     vi.mocked(prisma.$transaction).mockImplementation(async (fn) => {
       const tx = {
         $queryRaw: vi.fn(),
         payment: {
-          findFirst: vi.fn().mockResolvedValue({
-            id: 'pay_1',
-            invoiceId: 'inv_1',
-            amount: new Prisma.Decimal('10.00'),
-            method: 'EVC_PLUS',
-            status: 'PENDING',
-            reference: 'evc_tx',
-            gatewayRef: 'evc_tx',
-            createdAt: new Date(),
-          }),
-          update: vi.fn().mockResolvedValue({
-            id: 'pay_1',
-            invoiceId: 'inv_1',
-            amount: new Prisma.Decimal('10.00'),
-            method: 'EVC_PLUS',
-            status: 'COMPLETED',
-            reference: 'evc_tx',
-            createdAt: new Date(),
-          }),
+          findFirst: vi.fn().mockResolvedValue(pendingPayment),
+          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+          findUniqueOrThrow: vi.fn().mockResolvedValue({ ...pendingPayment, status: 'COMPLETED' }),
         },
         invoice: {
           findFirst: vi.fn().mockResolvedValue(invoice),
-          update: vi.fn().mockResolvedValue({}),
+          update: invoiceUpdate,
         },
+        auditLog: { create: auditCreate },
       };
       return fn(tx as never);
     });
 
     const result = await applyEvcWebhook({ transactionId: 'evc_tx', status: 'SUCCESS' });
     expect(result?.status).toBe('COMPLETED');
+    expect(invoiceUpdate).toHaveBeenCalledWith({
+      where: { id: 'inv_1' },
+      data: { paidAmount: { increment: new Prisma.Decimal('10.00') }, status: 'PARTIAL' },
+    });
+    expect(auditCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({ action: 'payment.evc.completed', subjectId: 'pay_1' }),
+    });
+  });
+
+  it('does not credit the invoice when another callback already claimed the payment', async () => {
+    vi.mocked(prisma.payment.findFirst).mockResolvedValue({ invoiceId: 'inv_1' } as never);
+    const payment = {
+      id: 'pay_1',
+      invoiceId: 'inv_1',
+      amount: new Prisma.Decimal('10.00'),
+      method: 'EVC_PLUS',
+      status: 'PENDING',
+      reference: 'evc_tx',
+      gatewayRef: 'evc_tx',
+      createdAt: new Date(),
+    };
+    const invoiceUpdate = vi.fn();
+    const auditCreate = vi.fn();
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn) =>
+      fn({
+        $queryRaw: vi.fn(),
+        payment: {
+          findFirst: vi.fn().mockResolvedValue(payment),
+          updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+          findUniqueOrThrow: vi.fn().mockResolvedValue({ ...payment, status: 'COMPLETED' }),
+        },
+        invoice: { findFirst: vi.fn().mockResolvedValue(invoice), update: invoiceUpdate },
+        auditLog: { create: auditCreate },
+      } as never),
+    );
+    const result = await applyEvcWebhook({ transactionId: 'evc_tx', status: 'SUCCESS' });
+    expect(result?.status).toBe('COMPLETED');
+    expect(invoiceUpdate).not.toHaveBeenCalled();
+    expect(auditCreate).not.toHaveBeenCalled();
   });
 
   it('does not complete a pending EVC payment for a void invoice', async () => {

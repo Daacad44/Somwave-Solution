@@ -5,7 +5,6 @@ import { env } from './lib/env';
 import { logger } from './lib/logger';
 import { redis } from './lib/redis';
 import { prisma } from './lib/prisma';
-import { startBackgroundJobs } from './background-jobs';
 
 const app = createApp();
 
@@ -14,12 +13,10 @@ const server = app.listen(env.PORT, '0.0.0.0', () => {
   logger.info(`Somwave API listening on 0.0.0.0:${env.PORT} (${env.NODE_ENV})`);
 });
 
-const stopBackgroundJobs =
-  env.BACKGROUND_WORKERS_ENABLED === 'true' ? startBackgroundJobs() : () => undefined;
+// Scheduled and background work runs only in the worker process (src/worker.ts).
 
 function shutdown(signal: string): void {
   logger.info(`${signal} received — shutting down`);
-  stopBackgroundJobs();
   server.close(() => {
     void Promise.allSettled([redis.quit(), prisma.$disconnect()]).finally(() => process.exit(0));
   });
