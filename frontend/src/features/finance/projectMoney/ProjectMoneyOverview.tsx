@@ -4,8 +4,13 @@
 import { type ReactNode, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowDownUp, Download, Info } from 'lucide-react';
-import type { ProjectMoneyHealth, ProjectMoneyQuery, ProjectMoneyRow } from '@somwave/shared';
+import { ArrowDownUp, Download, Info, Wallet } from 'lucide-react';
+import {
+  PERMISSIONS,
+  type ProjectMoneyHealth,
+  type ProjectMoneyQuery,
+  type ProjectMoneyRow,
+} from '@somwave/shared';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
@@ -13,8 +18,10 @@ import { Modal } from '../../../components/ui/Modal';
 import { Select } from '../../../components/ui/Select';
 import { EmptyState, ErrorState, LoadingState } from '../../../components/states';
 import { cn } from '../../../lib/cn';
+import { useHasPermission } from '../../../lib/rbac';
 import { projectMoneyApi, projectMoneyKeys, type ProjectMoneyFilters } from './api';
 import { BarList, BudgetMeter, InOutChart, KpiTile, SectionCard } from './components';
+import { PayFromProjectModal, type PayTarget } from './PayFromProjectModal';
 import { HEALTH, formatMoney, formatMonth, formatPercent, isNegative, statusLabel } from './format';
 
 type QuickFilter = 'all' | 'outstanding' | 'overdue' | 'overBudget' | 'atRisk' | 'noBudget';
@@ -60,6 +67,12 @@ export function ProjectMoneyOverview({
     queryFn: () => projectMoneyApi.overview(mode === 'summary' ? {} : filters),
     placeholderData: (previous) => previous,
   });
+
+  const canPay = useHasPermission(PERMISSIONS.FINANCE_CREATE);
+  const [payTarget, setPayTarget] = useState<PayTarget | null>(null);
+  const [choosing, setChoosing] = useState(false);
+  const [chosenProject, setChosenProject] = useState('');
+  const [message, setMessage] = useState('');
 
   const rows = useMemo(() => {
     const list = overview.data?.projects ?? [];
@@ -115,7 +128,12 @@ export function ProjectMoneyOverview({
             {currency}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {canPay ? (
+            <Button size="sm" onClick={() => setChoosing(true)}>
+              <Wallet className="h-4 w-4" aria-hidden="true" /> Pay from a project
+            </Button>
+          ) : null}
           {mode === 'summary' ? (
             <Button variant="secondary" size="sm" onClick={onOpenAll}>
               View all projects
@@ -337,6 +355,7 @@ export function ProjectMoneyOverview({
               direction={direction}
               onSort={toggleSort}
               onOpen={openProject}
+              onPay={canPay ? (row) => setPayTarget(payTargetFor(row, currency)) : undefined}
             />
           )}
           {Number(totals.unassigned.invoiced) > 0 ? (
@@ -362,6 +381,56 @@ export function ProjectMoneyOverview({
           ))}
         </ul>
       </details>
+
+      {message ? (
+        <p
+          role="status"
+          className="rounded-md border border-border bg-surface p-3 text-sm text-ink"
+        >
+          {message}
+        </p>
+      ) : null}
+
+      <Modal open={choosing} onClose={() => setChoosing(false)} title="Pay from a project">
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const row = data.projects.find((item) => item.projectId === chosenProject);
+            if (!row) return;
+            setChoosing(false);
+            setPayTarget(payTargetFor(row, currency));
+          }}
+        >
+          <Select
+            label="Which project is paying?"
+            value={chosenProject}
+            placeholder="Choose a project"
+            options={[...data.projects]
+              .sort((a, b) => a.projectName.localeCompare(b.projectName))
+              .map((row) => ({
+                value: row.projectId,
+                label: `${row.projectName}${row.remainingBudget !== null ? ` — ${m(row.remainingBudget)} left` : ''}`,
+              }))}
+            onChange={(event) => setChosenProject(event.target.value)}
+            required
+          />
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={() => setChoosing(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!chosenProject}>
+              Continue
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <PayFromProjectModal
+        target={payTarget}
+        onClose={() => setPayTarget(null)}
+        onDone={setMessage}
+      />
 
       <Modal
         open={selectedCategory !== null}
@@ -437,6 +506,7 @@ function ProjectsTable({
   direction,
   onSort,
   onOpen,
+  onPay,
 }: {
   rows: readonly ProjectMoneyRow[];
   currency: string;
@@ -444,6 +514,7 @@ function ProjectsTable({
   direction: 'asc' | 'desc';
   onSort: (key: Sort) => void;
   onOpen: (projectId: string) => void;
+  onPay?: (row: ProjectMoneyRow) => void;
 }): ReactNode {
   const m = (value: string | null) => formatMoney(value, currency);
   return (
@@ -451,42 +522,44 @@ function ProjectsTable({
       <table className="w-full min-w-[1080px] text-sm">
         <thead className="bg-surface-alt">
           <tr>
-            {COLUMNS.map((column) => (
-              <th
-                key={column.label}
-                scope="col"
-                aria-sort={
-                  column.key && sort === column.key
-                    ? direction === 'asc'
-                      ? 'ascending'
-                      : 'descending'
-                    : undefined
-                }
-                className={cn(
-                  'p-3 font-semibold text-muted',
-                  column.align === 'end' ? 'text-end' : 'text-start',
-                )}
-              >
-                {column.key ? (
-                  <button
-                    type="button"
-                    onClick={() => onSort(column.key!)}
-                    className="inline-flex items-center gap-1 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                  >
-                    {column.label}
-                    <ArrowDownUp
-                      className={cn(
-                        'h-3.5 w-3.5',
-                        sort === column.key ? 'text-brand' : 'opacity-40',
-                      )}
-                      aria-hidden="true"
-                    />
-                  </button>
-                ) : (
-                  column.label
-                )}
-              </th>
-            ))}
+            {[...COLUMNS, ...(onPay ? [{ key: null, label: '', align: 'end' as const }] : [])].map(
+              (column) => (
+                <th
+                  key={column.label || 'actions'}
+                  scope="col"
+                  aria-sort={
+                    column.key && sort === column.key
+                      ? direction === 'asc'
+                        ? 'ascending'
+                        : 'descending'
+                      : undefined
+                  }
+                  className={cn(
+                    'p-3 font-semibold text-muted',
+                    column.align === 'end' ? 'text-end' : 'text-start',
+                  )}
+                >
+                  {column.key ? (
+                    <button
+                      type="button"
+                      onClick={() => onSort(column.key!)}
+                      className="inline-flex items-center gap-1 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    >
+                      {column.label}
+                      <ArrowDownUp
+                        className={cn(
+                          'h-3.5 w-3.5',
+                          sort === column.key ? 'text-brand' : 'opacity-40',
+                        )}
+                        aria-hidden="true"
+                      />
+                    </button>
+                  ) : (
+                    column.label
+                  )}
+                </th>
+              ),
+            )}
           </tr>
         </thead>
         <tbody>
@@ -544,10 +617,36 @@ function ProjectsTable({
               <td className="whitespace-nowrap p-3">
                 <Badge tone={HEALTH[row.health].tone}>{HEALTH[row.health].label}</Badge>
               </td>
+              {onPay ? (
+                <td className="p-3 text-end">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onPay(row);
+                    }}
+                  >
+                    Pay
+                  </Button>
+                </td>
+              ) : null}
             </tr>
           ))}
         </tbody>
       </table>
     </div>
   );
+}
+
+function payTargetFor(row: ProjectMoneyRow, currency: string): PayTarget {
+  return {
+    projectId: row.projectId,
+    projectName: row.projectName,
+    clientId: row.clientId,
+    currency,
+    budget: row.budget,
+    spent: row.spent,
+    pendingSpend: row.pendingSpend,
+  };
 }

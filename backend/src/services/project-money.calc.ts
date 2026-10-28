@@ -72,6 +72,11 @@ export interface MoneyTransaction {
   currency: string;
   date: Date;
   counterparty: string | null;
+  createdById?: string | null;
+  reviewedById?: string | null;
+  reviewReason?: string | null;
+  paymentMethod?: string | null;
+  externalRef?: string | null;
 }
 export interface MoneyTime {
   projectId: string;

@@ -122,8 +122,13 @@ async function loadMoney(projectId?: string): Promise<Loaded> {
         currency: true,
         occurredOn: true,
         counterparty: true,
+        createdById: true,
+        reviewedById: true,
+        reviewReason: true,
+        paymentMethod: true,
+        externalRef: true,
       },
-      orderBy: { occurredOn: 'desc' },
+      orderBy: [{ occurredOn: 'desc' }, { createdAt: 'desc' }],
     }),
   ]);
   return {
@@ -159,6 +164,11 @@ async function loadMoney(projectId?: string): Promise<Loaded> {
       currency: row.currency,
       date: row.occurredOn,
       counterparty: row.counterparty,
+      createdById: row.createdById,
+      reviewedById: row.reviewedById,
+      reviewReason: row.reviewReason,
+      paymentMethod: row.paymentMethod,
+      externalRef: row.externalRef,
     })),
   };
 }
@@ -392,7 +402,7 @@ export async function projectMoneyDetail(
   });
   if (!project) throw new AppError('NOT_FOUND', 404, 'Project not found');
 
-  const [loaded, revisions, byPerson, byPhase] = await Promise.all([
+  const [loaded, revisions, byPerson, byPhase, members] = await Promise.all([
     loadMoney(projectId),
     prisma.projectBudgetRevision.findMany({
       where: { projectId },
@@ -414,6 +424,11 @@ export async function projectMoneyDetail(
       WHERE t."project_id" = ${projectId} AND t."deleted_at" IS NULL
       GROUP BY ph."id", ph."title"
       ORDER BY 3 DESC`,
+    prisma.projectMember.findMany({
+      where: { projectId, removedAt: null },
+      select: { userId: true, role: true, user: { select: { name: true } } },
+      orderBy: { assignedAt: 'asc' },
+    }),
   ]);
   const totalMinutes = byPerson.reduce((sum, row) => sum + Number(row.minutes), 0);
   const figures = computeFigures({
@@ -452,6 +467,11 @@ export async function projectMoneyDetail(
       counterparty: null,
       countsAsSpent: expenseCountsAsSpent(expense),
       possibleDuplicateOf: null,
+      createdById: null,
+      reviewedById: null,
+      reviewReason: null,
+      paymentMethod: null,
+      reference: null,
     })),
     ...loaded.transactions
       .filter((tx) => tx.type === 'EXPENSE')
@@ -467,6 +487,11 @@ export async function projectMoneyDetail(
         counterparty: tx.counterparty,
         countsAsSpent: transactionCounts(tx, currency),
         possibleDuplicateOf: duplicates.get(tx.id) ?? null,
+        createdById: tx.createdById ?? null,
+        reviewedById: tx.reviewedById ?? null,
+        reviewReason: tx.reviewReason ?? null,
+        paymentMethod: tx.paymentMethod ?? null,
+        reference: tx.externalRef ?? null,
       })),
   ].sort((a, b) => b.date.localeCompare(a.date));
 
@@ -568,6 +593,7 @@ export async function projectMoneyDetail(
       reason: revision.reason,
       date: revision.createdAt.toISOString(),
     })),
+    members: members.map((row) => ({ userId: row.userId, name: row.user.name, role: row.role })),
     hoursByPerson: byPerson.map((row) => ({
       userId: row.userId,
       name: row.name,
