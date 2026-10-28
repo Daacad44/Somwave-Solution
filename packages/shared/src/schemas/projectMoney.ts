@@ -126,6 +126,32 @@ export interface ProjectMoneyPayment {
   date: string;
 }
 
+/** Standard kinds of work and costs a project pays for; free text is still allowed. */
+export const PROJECT_SPEND_CATEGORIES = [
+  'Backend development',
+  'Frontend development',
+  'Mobile development',
+  'UI / UX design',
+  'Testing & QA',
+  'DevOps & deployment',
+  'Hosting & servers',
+  'Domains & licences',
+  'Third-party services & APIs',
+  'Project management',
+  'Contractor / freelancer',
+  'Equipment',
+  'Travel & transport',
+  'Other',
+] as const;
+
+export const PROJECT_PAYMENT_METHODS = [
+  'EVC Plus',
+  'Bank transfer',
+  'Cash',
+  'eDahab',
+  'Other',
+] as const;
+
 export type ProjectMoneySpendSource = 'PROJECT_EXPENSE' | 'FINANCE_TRANSACTION';
 
 export interface ProjectMoneySpend {
@@ -141,6 +167,12 @@ export interface ProjectMoneySpend {
   counterparty: string | null;
   countsAsSpent: boolean;
   possibleDuplicateOf: string | null;
+  /** Finance transactions only: who created and reviewed it, for approval actions. */
+  createdById: string | null;
+  reviewedById: string | null;
+  reviewReason: string | null;
+  paymentMethod: string | null;
+  reference: string | null;
 }
 
 export interface ProjectMoneyIncome {
@@ -181,6 +213,7 @@ export interface ProjectMoneyDetail {
     reason: string;
     date: string;
   }[];
+  members: { userId: string; name: string; role: string }[];
   hoursByPerson: { userId: string; name: string; hours: string }[];
   hoursByPhase: { phaseId: string | null; title: string; hours: string }[];
   timeline: {

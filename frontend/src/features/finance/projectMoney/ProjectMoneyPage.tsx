@@ -4,15 +4,19 @@
 import { type ReactNode, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, ArrowLeft, ExternalLink } from 'lucide-react';
-import type { ProjectMoneyDetail, ProjectMoneySpend } from '@somwave/shared';
+import { AlertTriangle, ArrowLeft, ExternalLink, Wallet } from 'lucide-react';
+import { PERMISSIONS, type ProjectMoneyDetail, type ProjectMoneySpend } from '@somwave/shared';
 import { Badge } from '../../../components/ui/Badge';
+import { Button } from '../../../components/ui/Button';
 import { Modal } from '../../../components/ui/Modal';
 import { EmptyState, ErrorState, LoadingState } from '../../../components/states';
 import { cn } from '../../../lib/cn';
+import { useHasPermission } from '../../../lib/rbac';
 import { FinanceStepUp, financeAccessReason } from '../FinanceStepUp';
 import { projectMoneyApi, projectMoneyKeys } from './api';
 import { BarList, BudgetMeter, CumulativeChart, KpiTile, SectionCard } from './components';
+import { PayFromProjectModal, type PayTarget } from './PayFromProjectModal';
+import { SpendActions, availableActions, useSpendPermissions } from './SpendActions';
 import {
   HEALTH,
   formatDate,
@@ -72,7 +76,30 @@ function ProjectMoneyView({ data }: { data: ProjectMoneyDetail }): ReactNode {
   const [tab, setTab] = useState<Tab>('Overview');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [spend, setSpend] = useState<ProjectMoneySpend | null>(null);
+  const [payTarget, setPayTarget] = useState<PayTarget | null>(null);
+  const [message, setMessage] = useState('');
+  const canPay = useHasPermission(PERMISSIONS.FINANCE_CREATE);
+  const { userId, can } = useSpendPermissions();
   const { figures, currency, project } = data;
+  const openPay = () =>
+    setPayTarget({
+      projectId: project.id,
+      projectName: project.name,
+      clientId: project.clientId,
+      currency,
+      budget: figures.budget,
+      spent: figures.spent,
+      pendingSpend: figures.pendingSpend,
+      members: data.members,
+    });
+  const needsMe = data.spending.filter((row) =>
+    availableActions(row, userId, can).some((a) => a !== 'cancel'),
+  );
+  const inFlight = data.spending.filter(
+    (row) =>
+      row.source === 'FINANCE_TRANSACTION' &&
+      ['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED'].includes(row.state),
+  );
   const m = (value: string | null) => formatMoney(value, currency);
   const duplicates = data.spending.filter((row) => row.possibleDuplicateOf).length;
   const go = (next: Tab, category: string | null = null) => {
@@ -107,8 +134,13 @@ function ProjectMoneyView({ data }: { data: ProjectMoneyDetail }): ReactNode {
             </span>
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Badge tone={HEALTH[data.health].tone}>{HEALTH[data.health].label}</Badge>
+          {canPay ? (
+            <Button onClick={openPay}>
+              <Wallet className="h-4 w-4" aria-hidden="true" /> Pay from this project
+            </Button>
+          ) : null}
           <Link
             to={`/projects/${project.id}`}
             className="inline-flex min-h-10 items-center gap-1 rounded-md border border-border bg-surface px-3 text-sm font-medium text-ink hover:bg-surface-alt"
@@ -117,6 +149,54 @@ function ProjectMoneyView({ data }: { data: ProjectMoneyDetail }): ReactNode {
           </Link>
         </div>
       </header>
+
+      {message ? (
+        <p
+          role="status"
+          className="rounded-md border border-border bg-surface p-3 text-sm text-ink"
+        >
+          {message}
+        </p>
+      ) : null}
+
+      {inFlight.length > 0 ? (
+        <SectionCard
+          title={
+            needsMe.length
+              ? `${needsMe.length} payment(s) need your action`
+              : 'Payments in progress'
+          }
+          description="Payments from this project that are not yet posted to the ledger"
+        >
+          <ul className="divide-y divide-border">
+            {inFlight.map((row) => (
+              <li key={row.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5">
+                <button
+                  type="button"
+                  onClick={() => setSpend(row)}
+                  className="min-w-0 text-start hover:underline"
+                >
+                  <span className="block truncate text-sm font-medium text-ink">
+                    {row.category} · {row.description}
+                  </span>
+                  <span className="text-xs text-muted">
+                    {formatMoney(row.amount, row.currency)} · {row.counterparty ?? 'No payee'} ·{' '}
+                    {formatDate(row.date)} · {statusLabel(row.state)}
+                    {row.state === 'REJECTED' && row.reviewReason ? ` — ${row.reviewReason}` : ''}
+                  </span>
+                  {figures.budget !== null &&
+                  Number(figures.spent) + Number(row.amount) > Number(figures.budget) ? (
+                    <span className="mt-0.5 block text-xs font-medium text-error">
+                      Paying this takes the project over budget
+                    </span>
+                  ) : null}
+                </button>
+                <SpendActions row={row} onMessage={setMessage} />
+              </li>
+            ))}
+          </ul>
+        </SectionCard>
+      ) : null}
 
       {duplicates > 0 ? (
         <p
@@ -390,53 +470,13 @@ function ProjectMoneyView({ data }: { data: ProjectMoneyDetail }): ReactNode {
       ) : null}
 
       {tab === 'Spending' ? (
-        <div className="space-y-3">
-          {categoryFilter ? (
-            <p className="flex items-center gap-2 text-sm">
-              Showing <strong>{categoryFilter}</strong>
-              <button
-                type="button"
-                className="text-brand underline"
-                onClick={() => setCategoryFilter(null)}
-              >
-                Show all
-              </button>
-            </p>
-          ) : null}
-          <RecordTable
-            empty="No spending recorded for this project"
-            headers={['Date', 'Category', 'Description', 'Source', 'State', 'Amount']}
-            rows={data.spending
-              .filter((row) => !categoryFilter || row.category === categoryFilter)
-              .map((row) => ({
-                key: `${row.source}-${row.id}`,
-                onClick: () => setSpend(row),
-                cells: [
-                  formatDate(row.date),
-                  row.category,
-                  <span key="d">
-                    {row.description}
-                    {row.possibleDuplicateOf ? (
-                      <span className="block text-xs font-medium text-warning">
-                        Possible duplicate of a project expense
-                      </span>
-                    ) : null}
-                  </span>,
-                  row.source === 'PROJECT_EXPENSE' ? 'Project expense' : 'Finance transaction',
-                  <Badge key="s" tone={row.countsAsSpent ? 'success' : 'neutral'}>
-                    {statusLabel(row.state)}
-                  </Badge>,
-                  <span key="a" className={cn(!row.countsAsSpent && 'text-muted')}>
-                    {formatMoney(row.amount, row.currency)}
-                  </span>,
-                ],
-              }))}
-            numericFrom={5}
-          />
-          <p className="text-xs text-muted">
-            Planned amounts and transactions awaiting approval are listed but not counted as spent.
-          </p>
-        </div>
+        <SpendingTab
+          rows={data.spending}
+          categoryFilter={categoryFilter}
+          onClearCategory={() => setCategoryFilter(null)}
+          onOpen={setSpend}
+          onMessage={setMessage}
+        />
       ) : null}
 
       {tab === 'Other income' ? (
@@ -482,6 +522,12 @@ function ProjectMoneyView({ data }: { data: ProjectMoneyDetail }): ReactNode {
         </ul>
       </details>
 
+      <PayFromProjectModal
+        target={payTarget}
+        onClose={() => setPayTarget(null)}
+        onDone={setMessage}
+      />
+
       <Modal open={spend !== null} onClose={() => setSpend(null)} title="Spending record">
         {spend ? (
           <dl className="grid grid-cols-[140px_1fr] gap-x-4 gap-y-2 text-sm">
@@ -503,6 +549,21 @@ function ProjectMoneyView({ data }: { data: ProjectMoneyDetail }): ReactNode {
               <>
                 <dt className="text-muted">Paid to</dt>
                 <dd>{spend.counterparty}</dd>
+              </>
+            ) : null}
+            {spend.paymentMethod ? (
+              <>
+                <dt className="text-muted">Method</dt>
+                <dd>
+                  {spend.paymentMethod}
+                  {spend.reference ? ` · ${spend.reference}` : ''}
+                </dd>
+              </>
+            ) : null}
+            {spend.reviewReason ? (
+              <>
+                <dt className="text-muted">Review note</dt>
+                <dd>{spend.reviewReason}</dd>
               </>
             ) : null}
             <dt className="text-muted">Counted as spent</dt>
@@ -608,6 +669,113 @@ function RecordTable({
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function SpendingTab({
+  rows,
+  categoryFilter,
+  onClearCategory,
+  onOpen,
+  onMessage,
+}: {
+  rows: readonly ProjectMoneySpend[];
+  categoryFilter: string | null;
+  onClearCategory: () => void;
+  onOpen: (row: ProjectMoneySpend) => void;
+  onMessage: (message: string) => void;
+}): ReactNode {
+  const visible = rows.filter((row) => !categoryFilter || row.category === categoryFilter);
+  return (
+    <div className="space-y-3">
+      {categoryFilter ? (
+        <p className="flex items-center gap-2 text-sm">
+          Showing <strong>{categoryFilter}</strong>
+          <button type="button" className="text-brand underline" onClick={onClearCategory}>
+            Show all
+          </button>
+        </p>
+      ) : null}
+      {visible.length === 0 ? (
+        <EmptyState title="No spending recorded for this project" />
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-border bg-surface">
+          <table className="w-full min-w-[960px] text-sm">
+            <thead className="bg-surface-alt">
+              <tr>
+                {['Date', 'For', 'Description', 'Paid to', 'State', 'Amount', ''].map(
+                  (header, index) => (
+                    <th
+                      key={header || index}
+                      scope="col"
+                      className={cn(
+                        'p-3 font-semibold text-muted',
+                        index >= 5 ? 'text-end' : 'text-start',
+                      )}
+                    >
+                      {header}
+                    </th>
+                  ),
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((row) => (
+                <tr
+                  key={`${row.source}-${row.id}`}
+                  className="border-t border-border hover:bg-surface-alt"
+                >
+                  <td className="whitespace-nowrap p-3">{formatDate(row.date)}</td>
+                  <td className="p-3">{row.category}</td>
+                  <td className="p-3">
+                    <button
+                      type="button"
+                      onClick={() => onOpen(row)}
+                      className="text-start hover:underline"
+                    >
+                      {row.description}
+                    </button>
+                    <span className="block text-xs text-muted">
+                      {row.source === 'PROJECT_EXPENSE' ? 'Project expense' : 'Finance payment'}
+                    </span>
+                    {row.possibleDuplicateOf ? (
+                      <span className="block text-xs font-medium text-warning">
+                        Possible duplicate of a project expense
+                      </span>
+                    ) : null}
+                  </td>
+                  <td className="p-3">{row.counterparty ?? '—'}</td>
+                  <td className="p-3">
+                    <Badge
+                      tone={
+                        row.countsAsSpent
+                          ? 'success'
+                          : row.state === 'REJECTED'
+                            ? 'error'
+                            : 'neutral'
+                      }
+                    >
+                      {statusLabel(row.state)}
+                    </Badge>
+                  </td>
+                  <td
+                    className={cn('p-3 text-end tabular-nums', !row.countsAsSpent && 'text-muted')}
+                  >
+                    {formatMoney(row.amount, row.currency)}
+                  </td>
+                  <td className="p-3 text-end">
+                    <SpendActions row={row} onMessage={onMessage} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="text-xs text-muted">
+        Planned amounts and payments not yet posted are listed but not counted as spent.
+      </p>
     </div>
   );
 }

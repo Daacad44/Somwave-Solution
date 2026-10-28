@@ -10,6 +10,7 @@ vi.mock('../lib/prisma', () => ({
     projectExpense: { findMany: vi.fn() },
     financeTransaction: { findMany: vi.fn() },
     projectBudgetRevision: { findMany: vi.fn() },
+    projectMember: { findMany: vi.fn() },
     $queryRaw: vi.fn(),
   },
 }));
@@ -178,6 +179,9 @@ describe('projectMoneyDetail', () => {
       manager: { name: 'Daacad' },
     } as never);
     vi.mocked(prisma.projectBudgetRevision.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.projectMember.findMany).mockResolvedValue([
+      { userId: 'u1', role: 'ENGINEER', user: { name: 'Engineer' } },
+    ] as never);
     vi.mocked(prisma.$queryRaw)
       .mockResolvedValueOnce([{ userId: 'u1', name: 'Engineer', minutes: 600n }] as never)
       .mockResolvedValueOnce([{ phaseId: null, title: null, minutes: 600n }] as never);
@@ -191,6 +195,7 @@ describe('projectMoneyDetail', () => {
         ['e2', false],
       ]),
     );
+    expect(result.members).toEqual([{ userId: 'u1', name: 'Engineer', role: 'ENGINEER' }]);
     expect(result.hoursByPhase[0]).toMatchObject({ title: 'No phase', hours: '10.0' });
     expect(result.timeline[0]!.month).toBe('2026-01');
     expect(result.timeline.at(-1)).toMatchObject({
