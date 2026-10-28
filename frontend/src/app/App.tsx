@@ -129,6 +129,11 @@ const InvoicePrintPage = lazy(() =>
 const FinancePage = lazy(() =>
   import('../features/finance/FinancePage').then((m) => ({ default: m.FinancePage })),
 );
+const ProjectMoneyPage = lazy(() =>
+  import('../features/finance/projectMoney/ProjectMoneyPage').then((m) => ({
+    default: m.ProjectMoneyPage,
+  })),
+);
 const ReportsPage = lazy(() =>
   import('../features/reports/ReportsPage').then((m) => ({ default: m.ReportsPage })),
 );
@@ -462,6 +467,14 @@ export function App(): ReactNode {
             element={
               <Guarded permission={PERMISSIONS.FINANCE_READ}>
                 <FinancePage />
+              </Guarded>
+            }
+          />
+          <Route
+            path="/finance/projects/:projectId"
+            element={
+              <Guarded permission={PERMISSIONS.FINANCE_READ}>
+                <ProjectMoneyPage />
               </Guarded>
             }
           />

@@ -44,6 +44,13 @@ const envSchema = z
       .optional(),
     APP_PUBLIC_URL: z.string().url().optional(),
     HEALTH_PROBE_HOSTS: z.string().optional(),
+    // Currency of invoices, payments and project expenses, which carry no
+    // currency column yet. Finance transactions in other currencies are listed
+    // but never added into project totals.
+    FINANCE_BASE_CURRENCY: z
+      .string()
+      .regex(/^[A-Z]{3}$/, 'must be a three-letter ISO currency code')
+      .default('USD'),
   })
   .superRefine((value, ctx) => {
     const sender = value.EMAIL_FROM?.trim();

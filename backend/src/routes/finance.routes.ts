@@ -11,6 +11,7 @@ import {
   financeReviewSchema,
   updateFinanceTransactionSchema,
   closeFinancePeriodSchema,
+  projectMoneyQuerySchema,
   type CreateFinanceAccountInput,
   type CreateFinanceTransactionInput,
   type UpdateFinanceTransactionInput,
@@ -21,6 +22,7 @@ import { validate } from '../middleware/validate';
 import { AppError, sendData } from '../lib/http';
 import { logger } from '../lib/logger';
 import * as finance from '../services/finance.service';
+import * as projectMoney from '../services/project-money.service';
 
 export const financeRouter: Router = Router();
 financeRouter.use((req, res, next) => {
@@ -353,6 +355,82 @@ financeRouter.get(
   handle(async (req, res) => {
     const { from, to } = reportDates(req);
     sendData(res, await finance.projectProfitability(from, to));
+  }),
+);
+function projectMoneyQuery(req: Request) {
+  const parsed = projectMoneyQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    throw new AppError('VALIDATION_ERROR', 400, 'Invalid project money filters', {
+      fields: parsed.error.flatten().fieldErrors,
+    });
+  }
+  return parsed.data;
+}
+// Every project's money from source records, including pre-ledger history.
+financeRouter.get(
+  '/projects-money',
+  rbac(PERMISSIONS.FINANCE_READ),
+  handle(async (req, res) => {
+    sendData(res, await projectMoney.projectMoneyOverview(projectMoneyQuery(req)));
+  }),
+);
+financeRouter.get(
+  '/projects-money.csv',
+  rbac(PERMISSIONS.FINANCE_READ),
+  handle(async (req, res) => {
+    const overview = await projectMoney.projectMoneyOverview(projectMoneyQuery(req));
+    const header = [
+      'Project',
+      'Client',
+      'Status',
+      'Health',
+      `Budget (${overview.currency})`,
+      'Planned cost',
+      'Invoiced',
+      'Collected',
+      'Outstanding',
+      'Overdue',
+      'Spent',
+      'Pending spend',
+      'Remaining budget',
+      'Cash profit',
+      'Margin %',
+      'Budget used %',
+      'Hours logged',
+    ];
+    const csv = [
+      header.map(csvCell).join(','),
+      ...overview.projects.map((row) =>
+        [
+          ...[row.projectName, row.clientName ?? '', row.status, row.health].map(csvCell),
+          row.budget ?? '',
+          row.plannedCost,
+          row.invoiced,
+          row.collected,
+          row.outstanding,
+          row.overdue,
+          row.spent,
+          row.pendingSpend,
+          row.remainingBudget ?? '',
+          row.cashProfit,
+          row.marginPercent ?? '',
+          row.budgetUsedPercent ?? '',
+          row.hoursLogged,
+        ].join(','),
+      ),
+    ].join('\r\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="somwave-projects-money.csv"');
+    res.status(200).send(`\uFEFF${csv}\r\n`);
+  }),
+);
+financeRouter.get(
+  '/projects-money/:projectId',
+  rbac(PERMISSIONS.FINANCE_READ),
+  handle(async (req, res) => {
+    const projectId = req.params.projectId;
+    if (!projectId) throw new AppError('VALIDATION_ERROR', 400, 'Project ID required');
+    sendData(res, await projectMoney.projectMoneyDetail(projectId));
   }),
 );
 financeRouter.post(
