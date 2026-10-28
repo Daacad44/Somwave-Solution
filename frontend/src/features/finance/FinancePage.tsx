@@ -1,5 +1,6 @@
 import { type FormEvent, type ReactNode, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import {
   PERMISSIONS,
   financeBusinessDate,
@@ -22,6 +23,7 @@ import {
   type TransactionHistoryFilters,
 } from './api';
 import { FinanceStepUp, financeAccessReason } from './FinanceStepUp';
+import { ProjectMoneyOverview } from './projectMoney/ProjectMoneyOverview';
 
 type Tab =
   'Overview' | 'Transactions' | 'Approvals' | 'Projects' | 'Chart of Accounts' | 'General Ledger';
@@ -52,7 +54,12 @@ function money(amount: string, currency: string): string {
 }
 
 export function FinancePage(): ReactNode {
-  const [tab, setTab] = useState<Tab>('Overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const tab: Tab = tabs.includes(requestedTab as Tab) ? (requestedTab as Tab) : 'Overview';
+  const setTab = (next: Tab): void => {
+    setSearchParams(next === 'Overview' ? {} : { tab: next }, { replace: true });
+  };
   const [from, setFrom] = useState(monthStart);
   const [to, setTo] = useState(nextMonth);
   const [message, setMessage] = useState('');
@@ -181,6 +188,17 @@ export function FinancePage(): ReactNode {
           </button>
         ))}
       </nav>
+      {tab === 'Overview' ? (
+        <ProjectMoneyOverview mode="summary" onOpenAll={() => setTab('Projects')} />
+      ) : null}
+      {tab === 'Projects' ? <ProjectMoneyOverview mode="full" /> : null}
+      {tab === 'Overview' || tab === 'Projects' ? (
+        <h2 className="border-t border-border pt-5 text-lg font-semibold text-ink">
+          {tab === 'Projects'
+            ? 'Ledger profitability (posted journals)'
+            : 'Ledger (posted journals)'}
+        </h2>
+      ) : null}
       {(tab === 'Overview' || tab === 'General Ledger' || tab === 'Projects') && (
         <div className="flex flex-wrap items-end gap-3">
           <Input
@@ -433,7 +451,6 @@ export function FinancePage(): ReactNode {
       )}
       {tab === 'Projects' && (
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Project profitability</h2>
           <p className="text-sm text-muted">
             Direct project-linked posted journals only. Labor, shared overhead, legacy project
             expenses and invoices require separate reconciliation.
